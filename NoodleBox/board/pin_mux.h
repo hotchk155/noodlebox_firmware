@@ -26,6 +26,12 @@ extern "C" {
 void BOARD_InitBootPins(void);
 
 /*!
+ * @brief
+ * NMI Pin Enable: PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI pin functions as PTB4, KBI0_P12, FTM2_CH4,
+ * SPI0_MISO or ACMP1_IN2.
+ */
+#define SOPT0_NMIE_0b0 0x00u
+/*!
  * @brief UART0 RxD Filter Select: RXD0 input signal is connected to UART0 module directly. */
 #define SOPT0_RXDFE_0b00 0x00u
 
@@ -157,22 +163,6 @@ void BOARD_InitBootPins(void);
 #define BOARD_INITPINS_P_KDAT_PIN 5U                /*!<@brief PORTD pin index: 5 */
                                                     /* @} */
 
-/*! @name PORTD6 (number 17), KEYSCAN3
-  @{ */
-#define BOARD_INITPINS_KEYSCAN3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_KEYSCAN3_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_KEYSCAN3_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_KEYSCAN3_PIN 6U                /*!<@brief PORTD pin index: 6 */
-                                                      /* @} */
-
-/*! @name PORTD7 (number 16), KEYSCAN2
-  @{ */
-#define BOARD_INITPINS_KEYSCAN2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_KEYSCAN2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_KEYSCAN2_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_KEYSCAN2_PIN 7U                /*!<@brief PORTD pin index: 7 */
-                                                      /* @} */
-
 /*! @name PORTE1 (number 39), OFF_SWITCH
   @{ */
 #define BOARD_INITPINS_OFF_SWITCH_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
@@ -194,6 +184,14 @@ void BOARD_InitBootPins(void);
 #define BOARD_INITPINS_EXTSYNC_PORT PORTA /*!<@brief PORT device name: PORTA */
 #define BOARD_INITPINS_EXTSYNC_PIN 0U     /*!<@brief PORTA pin index: 0 */
                                           /* @} */
+
+/*! @name PORTB4 (number 13), KEYSCAN2
+  @{ */
+#define BOARD_INITPINS_KEYSCAN2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_KEYSCAN2_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_KEYSCAN2_PORT PORTB            /*!<@brief PORT device name: PORTB */
+#define BOARD_INITPINS_KEYSCAN2_PIN 4U                /*!<@brief PORTB pin index: 4 */
+                                                      /* @} */
 
 /*!
  * @brief Configures pin routing and optionally pin electrical features.

@@ -32,20 +32,20 @@
 #define BIT_ASCK		MK_GPIOA_BIT(PORTB_BASE, 2)
 #define BIT_ENABLE		MK_GPIOA_BIT(PORTA_BASE, 1)
 #define BIT_KEYSCAN1	MK_GPIOA_BIT(PORTC_BASE, 6)
-#define BIT_KEYSCAN2	MK_GPIOA_BIT(PORTD_BASE, 7)
-#define BIT_KEYSCAN3	MK_GPIOA_BIT(PORTD_BASE, 6)
+#define BIT_KEYSCAN2	MK_GPIOA_BIT(PORTB_BASE, 4)
+//#define BIT_KEYSCAN3	MK_GPIOA_BIT(PORTD_BASE, 6)
 #define BIT_ENCODER1	MK_GPIOA_BIT(PORTD_BASE, 0)
 #define BIT_ENCODER2	MK_GPIOA_BIT(PORTD_BASE, 1)
 
 // key scan bits for left side buttons (reserved for future use)
-#define KEY_L1	(1U<<0)
-#define KEY_L2	(1U<<1)
-#define KEY_L3	(1U<<2)
-#define KEY_L4	(1U<<3)
-#define KEY_L5	(1U<<19)
-#define KEY_L6	(1U<<18)
-#define KEY_L7	(1U<<17)
-#define KEY_L8	(1U<<16)
+//#define KEY_L1	(1U<<0)
+//#define KEY_L2	(1U<<1)
+//#define KEY_L3	(1U<<2)
+//#define KEY_L4	(1U<<3)
+//#define KEY_L5	(1U<<19)
+//#define KEY_L6	(1U<<18)
+//#define KEY_L7	(1U<<17)
+//#define KEY_L8	(1U<<16)
 
 // key scan bits for bottom side buttons
 #define KEY_B1	(1U<<9)
@@ -112,8 +112,8 @@ CDigitalOut<kGPIO_PORTA, 1> g_pin_enable;
 
 // define the input pins used to read from keyboard scan (also initialise the ports)
 CDigitalIn<kGPIO_PORTC, 6> g_pin_keyscan1;
-CDigitalIn<kGPIO_PORTD, 7> g_pin_keyscan2;
-CDigitalIn<kGPIO_PORTD, 6> g_pin_keyscan3;
+CDigitalIn<kGPIO_PORTB, 4> g_pin_keyscan2;
+//CDigitalIn<kGPIO_PORTD, 6> g_pin_keyscan3;
 
 // define the input pins used to read from encode (also initialise the ports)
 CDigitalIn<kGPIO_PORTD, 0> g_pin_encoder1;
@@ -144,7 +144,7 @@ class CUiDriver {
 
 	volatile uint16_t m_acc_key1 = 0;
 	volatile uint16_t m_acc_key2 = 0;
-	volatile uint16_t m_acc_key3 = 0;
+	//volatile uint16_t m_acc_key3 = 0;
 	volatile uint32_t m_key_state = 0;
 	volatile uint32_t m_prev_key_state = ~0;
 	volatile byte m_keys_pending = 0;
@@ -338,9 +338,9 @@ public:
 			if(!READ_GPIOA(BIT_KEYSCAN2)) {
 				m_acc_key2 |= (1U<<m_cathode);
 			}
-			if(!READ_GPIOA(BIT_KEYSCAN3)) {
-				m_acc_key3 |= (1U<<m_cathode);
-			}
+			//if(!READ_GPIOA(BIT_KEYSCAN3)) {
+				//m_acc_key3 |= (1U<<m_cathode);
+			//}
 
 			// move along to next cathode bit - have we finished a scan?
 			if(++m_cathode >= 16) {
@@ -349,12 +349,12 @@ public:
 				// form the final 32 bit key state value
 				m_key_state = ((uint32_t)m_acc_key2);
 				m_key_state |= ((uint32_t)m_acc_key1);
-				m_key_state |= (((uint32_t)m_acc_key3)<<8);
+				//m_key_state |= (((uint32_t)m_acc_key3)<<8);
 
 				// zero the key state accumulators
 				m_acc_key1 = 0;
 				m_acc_key2 = 0;
-				m_acc_key3 = 0;
+				//m_acc_key3 = 0;
 			}
 
 			m_phase = PHASE_NORMAL;
