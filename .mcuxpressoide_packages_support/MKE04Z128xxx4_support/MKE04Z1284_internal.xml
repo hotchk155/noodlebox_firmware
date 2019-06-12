@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE infoList
+  SYSTEM "crt_infolist.dtd">
+<infoList vendor="NXP">
+   <info name="MKE04Z128xxx4" chip="MKE04Z128xxx4">
+      <chip>
+         <name>MKE04Z128xxx4</name>
+         <family>KE0x</family>
+         <vendor>NXP</vendor>
+         <memory id="Flash" type="Flash" size="128" is_ro="true" can_program="true"/>
+         <memory id="RAM" type="RAM" size="16"/>
+         <memoryInstance id="PROGRAM_FLASH" derived_from="Flash" location="0x00000000" size="0x00020000"
+                         driver="FTFE_2K_KE.cfx"/>
+         <memoryInstance id="SRAM" derived_from="RAM" location="0x1ffff000" size="0x00004000"/>
+         <peripheralInstance id="FTMRE" derived_from="FTMRE" location="0x40020000"/>
+         <peripheralInstance id="IRQ" derived_from="IRQ" location="0x40031000"/>
+         <peripheralInstance id="CRC" derived_from="CRC" location="0x40032000"/>
+         <peripheralInstance id="PWT" derived_from="PWT" location="0x40033000"/>
+         <peripheralInstance id="PIT" derived_from="PIT" location="0x40037000"/>
+         <peripheralInstance id="FTM0" derived_from="FTM0" location="0x40038000"/>
+         <peripheralInstance id="FTM1" derived_from="FTM1" location="0x40039000"/>
+         <peripheralInstance id="FTM2" derived_from="FTM2" location="0x4003A000"/>
+         <peripheralInstance id="ADC" derived_from="ADC" location="0x4003B000"/>
+         <peripheralInstance id="RTC" derived_from="RTC" location="0x4003D000"/>
+         <peripheralInstance id="SIM" derived_from="SIM" location="0x40048000"/>
+         <peripheralInstance id="PORT" derived_from="PORT" location="0x40049000"/>
+         <peripheralInstance id="WDOG" derived_from="WDOG" location="0x40052000"/>
+         <peripheralInstance id="ICS" derived_from="ICS" location="0x40064000"/>
+         <peripheralInstance id="OSC" derived_from="OSC" location="0x40065000"/>
+         <peripheralInstance id="I2C0" derived_from="I2C0" location="0x40066000"/>
+         <peripheralInstance id="I2C1" derived_from="I2C1" location="0x40067000"/>
+         <peripheralInstance id="UART0" derived_from="UART0" location="0x4006A000"/>
+         <peripheralInstance id="UART1" derived_from="UART1" location="0x4006B000"/>
+         <peripheralInstance id="UART2" derived_from="UART2" location="0x4006C000"/>
+         <peripheralInstance id="ACMP0" derived_from="ACMP0" location="0x40073000"/>
+         <peripheralInstance id="ACMP1" derived_from="ACMP1" location="0x40074000"/>
+         <peripheralInstance id="SPI0" derived_from="SPI0" location="0x40076000"/>
+         <peripheralInstance id="SPI1" derived_from="SPI1" location="0x40077000"/>
+         <peripheralInstance id="KBI0" derived_from="KBI0" location="0x40079000"/>
+         <peripheralInstance id="KBI1" derived_from="KBI1" location="0x4007A000"/>
+         <peripheralInstance id="PMC" derived_from="PMC" location="0x4007D000"/>
+         <peripheralInstance id="GPIOA" derived_from="GPIOA" location="0x400FF000"/>
+         <peripheralInstance id="GPIOB" derived_from="GPIOB" location="0x400FF040"/>
+         <peripheralInstance id="GPIOC" derived_from="GPIOC" location="0x400FF080"/>
+         <peripheralInstance id="ROM" derived_from="ROM" location="0xF0002000"/>
+         <peripheralInstance id="MCM" derived_from="MCM" location="0xF0003000"/>
+         <peripheralInstance id="FGPIOA" derived_from="FGPIOA" location="0xF8000000"/>
+         <peripheralInstance id="FGPIOB" derived_from="FGPIOB" location="0xF8000040"/>
+         <peripheralInstance id="FGPIOC" derived_from="FGPIOC" location="0xF8000080"/>
+      </chip>
+      <processor>
+         <name gcc_name="cortex-m0plus">Cortex-M0+</name>
+         <family>Cortex-M</family>
+      </processor>
+      <link href="MKE04Z1284_internal_peripheral.xml"/>
+   </info>
+</infoList>
