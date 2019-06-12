@@ -72,19 +72,15 @@ class CSequenceEditor {
 	// display a popup window with info about the current step
 	void step_info(CSequenceLayer& layer, CSequenceStep step) {
 		byte value = step.m_value;
-		switch(layer.get_mode()) {
-		case V_SQL_SEQ_MODE_SCALE:
-			if(layer.get_mode() == V_SQL_SEQ_MODE_SCALE) {
-				value = layer.get_scale().index_to_note(value);
-			}
-			// fall thru
-		case V_SQL_SEQ_MODE_CHROMATIC:
+		switch(layer.get_view()) {
+		case CSequenceLayer::VIEW_PITCH_SCALED:
+		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 			g_popup.note_name(value);
 			break;
-		case V_SQL_SEQ_MODE_TRANSPOSE:
+		case CSequenceLayer::VIEW_PITCH_OFFSET:
 			g_popup.show_offset(((int)value)-64);
 			break;
-		case V_SQL_SEQ_MODE_MOD:
+		case CSequenceLayer::VIEW_MODULATION:
 			g_popup.num3digits(value);
 			break;
 		}
@@ -109,38 +105,41 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// scroll display so that a specific step is visible
-	void set_scroll_for(CSequenceLayer& layer, CSequenceStep step) {
+	/*void set_scroll_for(CSequenceLayer& layer, CSequenceStep step) {
 		int v = step.m_value;
+		if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
+			v = layer.get_scale().note_to_index(v);
+		}
 		if(v<layer.get_scroll_ofs()) {
 			layer.set_scroll_ofs(v);
 		}
 		else if(v>layer.get_scroll_ofs()+12) {
 			layer.set_scroll_ofs(v-12);
 		}
-	}
+	}*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// get info for the graticule/grid for display
 	byte get_graticule(CSequenceLayer& layer, int *baseline, int *spacing) {
 		int n;
-		switch (layer.get_mode()) {
-		case V_SQL_SEQ_MODE_CHROMATIC:
+		switch (layer.get_view()) {
+		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
 			n = 12*(n/12); // C at bottom of that octave
 			*baseline = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
 			*spacing = 12;
 			return 1;
-		case V_SQL_SEQ_MODE_SCALE:
+		case CSequenceLayer::VIEW_PITCH_SCALED:
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
 			n = 7*(n/7); // C at bottom of that octave
 			*baseline = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
 			*spacing = 7;
 			return 1;
-		case V_SQL_SEQ_MODE_TRANSPOSE:
+		case CSequenceLayer::VIEW_PITCH_OFFSET:
 			*baseline = 64;
 			*spacing = 0;
 			return 1;
-		case V_SQL_SEQ_MODE_MOD:
+		case CSequenceLayer::VIEW_MODULATION:
 			break;
 		}
 		return 0;
@@ -187,18 +186,13 @@ class CSequenceEditor {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
-			if(layer.is_note_mode() && !step.m_is_data_point) {
-				// note mode with no note in the column. in this case there is
-				// no action on button down
-			}
-			else {
-				// copy the current step to the paste buffer, bring it
-				// into view and show info
-				layer.set_paste_buffer(step);
-				set_scroll_for(layer, step);
-				if(!layer.is_mod_mode()) {
-					step_info(layer, step);
-				}
+			// copy the current step to the paste buffer, bring it
+			// into view and show info
+			layer.set_paste_buffer(step);
+			layer.paste_step(m_cursor);
+			layer.set_scroll_for(step.m_value);
+			if(!layer.is_mod_mode()) {
+				step_info(layer, step);
 			}
 			break;
 		////////////////////////////////////////////////
@@ -217,7 +211,7 @@ class CSequenceEditor {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
-					set_scroll_for(layer, step);
+					layer.set_scroll_for(step.m_value);
 					step.m_is_data_point = 1;
 					layer.set_paste_buffer(step);
 					layer.paste_step(m_cursor);
@@ -260,10 +254,10 @@ class CSequenceEditor {
 				step.set_gate(CSequenceStep::GATE_RETRIG);
 				layer.set_paste_buffer(step);					// value is placed in paste buffer
 				layer.paste_step(m_cursor);
-				set_scroll_for(layer, step);
-				if(!layer.is_mod_mode()) {
+				layer.set_scroll_for(step.m_value);
+				//if(!layer.is_mod_mode()) {
 					step_info(layer, step);
-				}
+				//}
 				break;
 			}
 			break;
@@ -604,48 +598,9 @@ public:
 				++c;
 			}
 
-			CSequenceStep step = layer.get_step(i);
+			CSequenceStep& step = layer.get_step(i);
 
-			// Display the sequencer steps
-			switch(layer.get_mode()) {
-/*			case V_SQL_SEQ_MODE_CHROMATIC:
-			case V_SQL_SEQ_MODE_SCALE:
-				if(step.is_gate_open()) {
-					n = step.m_value;
-					n = 12 - n + layer.get_scroll_ofs();
-					if(n >= 0 && n <= 12) {
-						if(i == layer.get_pos() && g_sequencer.is_running()) {
-							g_ui.hilite(n) |= mask;
-							g_ui.raster(n) |= mask;
-						}
-						else  {
-							g_ui.raster(n) |= mask;
-							g_ui.hilite(n) &= ~mask;
-						}
-					}
-				}
-				break;*/
-			case V_SQL_SEQ_MODE_CHROMATIC:
-			case V_SQL_SEQ_MODE_SCALE:
-			case V_SQL_SEQ_MODE_TRANSPOSE:
-				n = step.m_value;
-				n = 12 - n + layer.get_scroll_ofs();
-				if(n >= 0 && n <= 12) {
-					if(i == layer.get_pos() && g_sequencer.is_running()) {
-						g_ui.hilite(n) |= mask;
-						g_ui.raster(n) |= mask;
-					}
-					else if(step.m_is_data_point) {
-						g_ui.raster(n) |= mask;
-						g_ui.hilite(n) &= ~mask;
-					}
-					else {
-						g_ui.hilite(n) |= mask;
-						g_ui.raster(n) &= ~mask;
-					}
-				}
-				break;
-			case V_SQL_SEQ_MODE_MOD:
+			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 				n = 12 - step.m_value/10;
 				if(n<0) {
 					n=0;
@@ -663,20 +618,46 @@ public:
 					g_ui.hilite(n) |= mask;
 					g_ui.raster(n) &= ~mask;
 				}
-				break;
+			}
+			else {
+				n = step.m_value;
+				if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
+					n = layer.get_scale().note_to_index(n);
+				}
+				n = 12 - n + layer.get_scroll_ofs();
+				if(n >= 0 && n <= 12) {
+					if(i == layer.get_pos() && g_sequencer.is_running()) {
+						g_ui.hilite(n) |= mask;
+						g_ui.raster(n) |= mask;
+					}
+					else if(step.m_is_data_point) {
+						g_ui.raster(n) |= mask;
+						g_ui.hilite(n) &= ~mask;
+					}
+					else {
+						g_ui.hilite(n) |= mask;
+						g_ui.raster(n) &= ~mask;
+					}
+				}
 			}
 
 
 			// DISPLAY THE GATE INFO
-			if(step.is_accent()) {
-				g_ui.raster(14) |= mask;
-				g_ui.hilite(14) |= mask;
-			}
-			else if(step.is_trigger()) {
-				g_ui.raster(14) |= mask;
-			}
-			else if(step.is_gate_open()) {
-				g_ui.hilite(14) |= mask;
+			if(step.is_gate_open()) {
+				if(i == layer.get_pos() && g_sequencer.is_running()) {
+					g_ui.raster(14) |= mask;
+					g_ui.hilite(14) |= mask;
+				}
+				else if(step.is_accent()) {
+					g_ui.raster(14) |= mask;
+					g_ui.hilite(14) |= mask;
+				}
+				else if(step.is_trigger()) {
+					g_ui.raster(14) |= mask;
+				}
+				else {
+					g_ui.hilite(14) |= mask;
+				}
 			}
 
 			mask>>=1;

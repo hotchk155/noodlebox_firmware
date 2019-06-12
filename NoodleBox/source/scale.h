@@ -17,45 +17,62 @@
 #ifndef SCALE_H_
 #define SCALE_H_
 
+
 /////////////////////////////////////////////////////////////////
 // Scale class represents a musical scale that covers all the
 // MIDI note range 0-127
 class CScale {
-
-	byte m_index_to_note[8];
-	byte m_note_to_index[12];
-	byte m_max_index;
 	enum {
-		DEFAULT_NOTE = 36
+		DEFAULT_NOTE = 36,
+		MAX_NOTE = 128,
+		MAX_INDEX = ((7*MAX_NOTE)/12)
 	};
+	byte m_index_to_note[MAX_INDEX];
+	byte m_note_to_index[MAX_NOTE];
+	byte m_max_index;
+	V_SQL_SCALE_TYPE m_type;
+	V_SQL_SCALE_ROOT m_root;
 public:
 	///////////////////////////////////////////////////////////////////////////////
 	// constructor
-	CScale() : m_max_index(0) {
+	CScale()  {
+		m_max_index = 0;
+		build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline V_SQL_SCALE_TYPE get_type() {
+		return m_type;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline V_SQL_SCALE_ROOT get_root() {
+		return m_root;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// build the note mapping tables for the selected scale type and root
 	void build(V_SQL_SCALE_TYPE scale_type, V_SQL_SCALE_ROOT scale_root) {
 		byte interval[7] = {
-			1, 1, 0, 1, 1, 1, 0
+			2, 2, 1, 2, 2, 2, 1
 		};
 		byte ofs = (int)scale_type; // 0 = ionian
-		byte i2n_value = scale_root;
+		byte note_number = scale_root;
 		byte n2i_index = 0;
-		for(int i=0; i<8; ++i) {
-			m_index_to_note[i] = i2n_value++;
-			m_note_to_index[n2i_index++] = i;
-			if(interval[ofs]) {
-				i2n_value++;
-				m_note_to_index[n2i_index++] = i;
+		m_type = scale_type;
+		m_root = scale_root;
+		m_max_index = 0;
+		while(note_number < MAX_NOTE && m_max_index < MAX_INDEX) {
+			m_index_to_note[m_max_index] = note_number;
+			while(n2i_index <= note_number) {
+				m_note_to_index[n2i_index++] = m_max_index; // sharpen out of key notes to next note
 			}
+			note_number += interval[ofs];
 			if(++ofs >= 7) {
 				ofs = 0;
 			}
+			++m_max_index;
 		}
-
-		m_max_index = note_to_index(127);
 	}
 
 	/////////////////////////////////////////////////////////////////
@@ -79,42 +96,23 @@ public:
 
 	/////////////////////////////////////////////////////////////////
 	// convert scale index to MIDI note
-	byte index_to_note(int index) {
-		int octave = index/7;
-		int note_in_scale = m_index_to_note[index%7];
-		int note = 12*octave + note_in_scale;
-		if (note < 0 || note > 127) {
-			return 0;
-		}
-		return note;
+	inline byte index_to_note(byte index) {
+		//TODO assert() ??
+		return m_index_to_note[index];
 	}
 
 	/////////////////////////////////////////////////////////////////
 	// convert MIDI note to scale index
-	byte note_to_index(int note) {
-		int octave = note/12;
-		int note_in_scale = m_note_to_index[note%12];
-		int index = 7*octave + note_in_scale;
-		if (index < 0 || index > 127) {
-			return 0;
-		}
-		return index;
+	inline byte note_to_index(byte note) {
+		//TODO assert() ??
+		return m_note_to_index[note];
 	}
 
 	/////////////////////////////////////////////////////////////////
 	// force a MIDI note to valid MIDI note in scale, sharpening if needed
-	byte force_to_scale(byte note) {
-		int octave = note/12;
-		int note_in_scale = m_note_to_index[note%12];
-		if(note_in_scale > 11) {
-			note_in_scale -= 12;
-			++octave;
-		}
-		int result = 12 * octave + m_index_to_note[note_in_scale];
-		if (result < 0 || result > 127) {
-			return 0;
-		}
-		return result;
+	inline byte force_to_scale(byte note) {
+		byte index = m_note_to_index[note];
+		return m_index_to_note[index];
 	}
 };
 

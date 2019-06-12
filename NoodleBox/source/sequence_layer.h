@@ -19,6 +19,16 @@
 ///////////////////////////////////////////////////////////////////////////////
 // This class holds all the info for a single layer/part
 class CSequenceLayer {
+public:
+	typedef enum {
+		VIEW_PITCH_CHROMATIC,
+		VIEW_PITCH_SCALED,
+		VIEW_PITCH_OFFSET,
+		VIEW_MODULATION
+	} VIEW_TYPE;
+
+private:
+
 	enum {
 		MAX_STEPS = 32,					// number of steps in the layer
 		MAX_PLAYING_NOTES = 8,
@@ -62,6 +72,7 @@ class CSequenceLayer {
 
 
 	typedef struct {
+		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
 		CSequenceStep m_step_value;			// the last value output by sequencer
 		byte m_stepped;						// stepped flag
@@ -262,6 +273,8 @@ public:
 	CSequenceLayer(CScale &scale) : m_scale(scale) {
 		init_config();
 		init_state();
+		set_mode(V_SQL_SEQ_MODE_SCALE);
+		recalc_data_points();
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline CScale& get_scale() {
@@ -299,6 +312,7 @@ public:
 		m_state.m_midi_note = 0;
 //		m_state.m_last_velocity = 0;
 		m_state.m_paste_step.reset_all();
+		m_state.m_view = VIEW_PITCH_SCALED;
 		//memset(m_state.m_playing,0,sizeof(m_state.m_playing));
 		reset();
 	}
@@ -348,6 +362,8 @@ public:
 		case P_SQL_MIDI_VEL_ACCENT: m_cfg.m_midi_vel_accent = value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
 		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points(); break;
+		case P_SQL_SCALE_TYPE: m_scale.build((V_SQL_SCALE_TYPE)value, m_scale.get_root()); break;
+		case P_SQL_SCALE_ROOT: m_scale.build(m_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		default: break;
 		}
 	}
@@ -369,6 +385,8 @@ public:
 		case P_SQL_MIDI_VEL_ACCENT: return m_cfg.m_midi_vel_accent;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
 		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
+		case P_SQL_SCALE_TYPE: return m_scale.get_type();
+		case P_SQL_SCALE_ROOT: return m_scale.get_root();
 		default:return 0;
 		}
 	}
@@ -382,8 +400,30 @@ public:
 		case P_SQL_CVSCALE: return !(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_TRAN_TRIG:
 		case P_SQL_TRAN_ACC: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
-		default: return 1;
+		case P_SQL_SCALE_TYPE:
+		case P_SQL_SCALE_ROOT:
+			switch(m_state.m_view) {
+			case VIEW_PITCH_CHROMATIC:
+			case VIEW_PITCH_OFFSET:
+				return m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON;
+			case VIEW_PITCH_SCALED:
+				return 1;
+			}
+			break;
+		case P_SQL_MIDI_VEL:
+		case P_SQL_MIDI_VEL_ACCENT:
+			switch(m_cfg.m_mode) {
+			case V_SQL_SEQ_MODE_CHROMATIC:
+			case V_SQL_SEQ_MODE_TRANSPOSE:
+			case V_SQL_SEQ_MODE_SCALE:
+				return 1;
+			case V_SQL_SEQ_MODE_MOD:
+				return 0;
+			default:
+				break;
+			}
 		}
+		return 1;
 	}
 
 	//
@@ -430,11 +470,25 @@ public:
 	//	return m_state.m_paste_step;
 	//}
 
+	void set_scroll_for(byte value) {
+		if(m_state.m_view == VIEW_PITCH_SCALED) {
+			value = m_scale.note_to_index(value);
+		}
+		if(value<m_state.m_scroll_ofs) {
+			m_state.m_scroll_ofs = value;
+		}
+		else if(value>m_state.m_scroll_ofs+12) {
+			m_state.m_scroll_ofs = value-12;
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	// paste data from the "clipboard" into selected stop
 	void paste_step(byte index) {
 		if(is_paste_step_available()) {	// make sure something is in the buffer
-			switch(m_cfg.m_mode) {
+			m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
+
+/*			switch(m_cfg.m_mode) {
 			case V_SQL_SEQ_MODE_SCALE:
 			case V_SQL_SEQ_MODE_CHROMATIC:
 				m_cfg.m_step[index] = m_state.m_paste_step;	// paste all data
@@ -443,15 +497,31 @@ public:
 			case V_SQL_SEQ_MODE_MOD:
 				m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
 				break;
-			}
+			}*/
 			recalc_data_points();
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change the mode
-// TODO preserve data between pitch and mod modes?
 	void set_mode(V_SQL_SEQ_MODE value) {
+		switch (value) {
+		case V_SQL_SEQ_MODE_SCALE:
+			m_state.m_view = VIEW_TYPE::VIEW_PITCH_SCALED;
+			break;
+		case V_SQL_SEQ_MODE_CHROMATIC:
+			m_state.m_view = VIEW_TYPE::VIEW_PITCH_CHROMATIC;
+			break;
+		case V_SQL_SEQ_MODE_TRANSPOSE:
+			m_state.m_view = VIEW_TYPE::VIEW_PITCH_OFFSET;
+			break;
+		case V_SQL_SEQ_MODE_MOD:
+			m_state.m_view = VIEW_TYPE::VIEW_MODULATION;
+			break;
+		}
+		m_cfg.m_mode = value;
+
+/*
 		switch (value) {
 		case V_SQL_SEQ_MODE_CHROMATIC:
 			if(m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE) {
@@ -497,18 +567,19 @@ public:
 		default:
 			break;
 		}
-		m_cfg.m_mode = value;
+*/
 
 		// clear the paste buffer, since the data type has changed
-		m_state.m_paste_step.reset_all();
+		//m_state.m_paste_step.reset_all();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void inc_step_value(CSequenceStep& step, int delta, byte fine) {
-		int value = step.m_value;
+		int value;
 		int max_value = 127;
-		switch(m_cfg.m_mode) {
-		case V_SQL_SEQ_MODE_MOD:
+		value = step.m_value;
+		switch(m_state.m_view) {
+		case VIEW_MODULATION:
 			if(fine) {
 				value += delta;
 			}
@@ -516,12 +587,14 @@ public:
 				value = 10*(value/10 + delta);
 			}
 			break;
-		case V_SQL_SEQ_MODE_SCALE:
+		case VIEW_PITCH_SCALED:
+			value = m_scale.note_to_index(value);
 			value += delta;
+			value = m_scale.index_to_note(value);
 			max_value = m_scale.max_index();
 			break;
-		case V_SQL_SEQ_MODE_CHROMATIC:
-		case V_SQL_SEQ_MODE_TRANSPOSE:
+		case VIEW_PITCH_CHROMATIC:
+		case VIEW_PITCH_OFFSET:
 		default:
 			value += delta;
 			break;
@@ -580,6 +653,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	inline V_SQL_SEQ_MODE get_mode() {
 		return m_cfg.m_mode;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline VIEW_TYPE get_view() {
+		return m_state.m_view;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	byte get_enabled() {

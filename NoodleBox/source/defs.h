@@ -97,7 +97,6 @@ typedef enum:byte {
 	V_SQL_SEQ_MODE_MAX
 } V_SQL_SEQ_MODE;
 
-
 typedef enum:byte {
 	V_SQL_SCALE_TYPE_IONIAN,
 	V_SQL_SCALE_TYPE_DORIAN,

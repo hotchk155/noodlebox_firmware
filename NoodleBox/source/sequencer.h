@@ -28,10 +28,7 @@ class CSequencer {
 
 	// Config info that forms part of the patch
 	typedef struct {
-		V_SQL_SCALE_TYPE 	m_scale_type;
-		V_SQL_SCALE_ROOT 	m_scale_root;
-//		byte 				m_midi_vel_accent;
-//		byte 				m_midi_vel;
+		byte 				dummy;
 	} CONFIG;
 	CONFIG m_cfg;
 
@@ -54,9 +51,6 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// initialise the saved configuration
 	void init_config() {
-		m_cfg.m_scale_type = V_SQL_SCALE_TYPE_IONIAN;
-		m_cfg.m_scale_root = V_SQL_SCALE_ROOT_C;
-		m_scale.build(m_cfg.m_scale_type, m_cfg.m_scale_root);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -80,57 +74,18 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// config setter
 	void set(PARAM_ID param, int value) {
-		switch(param) {
-		case P_SQL_SCALE_TYPE: m_cfg.m_scale_type = (V_SQL_SCALE_TYPE)value; m_scale.build(m_cfg.m_scale_type, m_cfg.m_scale_root); break;
-		case P_SQL_SCALE_ROOT: m_cfg.m_scale_root = (V_SQL_SCALE_ROOT)value; m_scale.build(m_cfg.m_scale_type, m_cfg.m_scale_root); break;
-		default: m_layers[m_cur_layer].set(param,value);
-		}
+		m_layers[m_cur_layer].set(param,value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// config getter
 	int get(PARAM_ID param) {
-		switch(param) {
-		case P_SQL_SCALE_TYPE: return m_cfg.m_scale_type;
-		case P_SQL_SCALE_ROOT: return m_cfg.m_scale_root;
-		default: return m_layers[m_cur_layer].get(param);
-		}
+		return m_layers[m_cur_layer].get(param);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// config validator
 	int is_valid_param(PARAM_ID param) {
-		switch(param) {
-		case P_SQL_SCALE_TYPE:
-		case P_SQL_SCALE_ROOT:
-			switch(cur_layer().get_mode()) {
-			case V_SQL_SEQ_MODE_CHROMATIC:
-			case V_SQL_SEQ_MODE_TRANSPOSE:
-				return cur_layer().get(P_SQL_FORCE_SCALE) == V_SQL_FORCE_SCALE_ON;
-			case V_SQL_SEQ_MODE_SCALE:
-				return 1;
-			case V_SQL_SEQ_MODE_MOD:
-				return 0;
-			default:
-				break;
-			}
-			break;
-		case P_SQL_MIDI_VEL:
-		case P_SQL_MIDI_VEL_ACCENT:
-			switch(cur_layer().get_mode()) {
-			case V_SQL_SEQ_MODE_CHROMATIC:
-			case V_SQL_SEQ_MODE_TRANSPOSE:
-			case V_SQL_SEQ_MODE_SCALE:
-				return 1;
-			case V_SQL_SEQ_MODE_MOD:
-				return 0;
-			default:
-				break;
-			}
-			break;
-		default:
-			break;
-		}
 		return cur_layer().is_valid_param(param);
 	}
 
