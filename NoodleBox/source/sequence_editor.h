@@ -608,7 +608,7 @@ public:
 
 			// Display the sequencer steps
 			switch(layer.get_mode()) {
-			case V_SQL_SEQ_MODE_CHROMATIC:
+/*			case V_SQL_SEQ_MODE_CHROMATIC:
 			case V_SQL_SEQ_MODE_SCALE:
 				if(step.is_gate_open()) {
 					n = step.m_value;
@@ -624,7 +624,9 @@ public:
 						}
 					}
 				}
-				break;
+				break;*/
+			case V_SQL_SEQ_MODE_CHROMATIC:
+			case V_SQL_SEQ_MODE_SCALE:
 			case V_SQL_SEQ_MODE_TRANSPOSE:
 				n = step.m_value;
 				n = 12 - n + layer.get_scroll_ofs();

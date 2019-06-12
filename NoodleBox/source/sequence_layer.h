@@ -50,7 +50,7 @@ class CSequenceLayer {
 		V_SQL_TRAN_ACC	m_tran_acc;
 		byte 			m_midi_vel_accent;
 		byte 			m_midi_vel;
-
+		byte			m_interpolate;
 	} CONFIG;
 
 
@@ -153,7 +153,7 @@ class CSequenceLayer {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// create interpolated points between all user data points in pattern
-	void impl_interpolate()
+	void impl_interpolate(byte value)
 	{
 		int i;
 		int first_waypoint = -1;
@@ -173,7 +173,7 @@ class CSequenceLayer {
 		if(first_waypoint < 0) {
 			// no waypoints defined
 			for(i=0; i<MAX_STEPS; ++i) {
-				m_cfg.m_step[i].m_value = 0;
+				m_cfg.m_step[i].m_value = value;
 			}
 		}
 		else if(prev_waypoint == first_waypoint) {
@@ -216,19 +216,27 @@ class CSequenceLayer {
 	///////////////////////////////////////////////////////////////////////////////
 	// called when there is a change to a data point
 	void recalc_data_points() {
+		byte def_cv;
 		switch(m_cfg.m_mode) {
-			case V_SQL_SEQ_MODE_MOD:
-				impl_interpolate();
-				break;
 			case V_SQL_SEQ_MODE_TRANSPOSE:
-				fill_data_points(64);
+				def_cv = 64;
 				break;
 			case V_SQL_SEQ_MODE_SCALE:
-				fill_data_points(m_scale.default_note_scaled());
+				def_cv = m_scale.default_note_scaled();
 				break;
 			case V_SQL_SEQ_MODE_CHROMATIC:
-				fill_data_points(m_scale.default_note_chromatic());
+				def_cv = m_scale.default_note_chromatic();
 				break;
+			case V_SQL_SEQ_MODE_MOD:
+			default:
+				def_cv = 0;
+				break;
+		}
+		if(m_cfg.m_interpolate) {
+			impl_interpolate(def_cv);
+		}
+		else {
+			fill_data_points(def_cv);
 		}
 	}
 
@@ -281,6 +289,7 @@ public:
 		m_cfg.m_tran_acc = V_SQL_TRAN_ACC_ACCENT;
 		m_cfg.m_midi_vel_accent = 127;
 		m_cfg.m_midi_vel = 100;
+		m_cfg.m_interpolate = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -338,6 +347,7 @@ public:
 		case P_SQL_TRAN_ACC: m_cfg.m_tran_acc = (V_SQL_TRAN_ACC)value; break;
 		case P_SQL_MIDI_VEL_ACCENT: m_cfg.m_midi_vel_accent = value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
+		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points(); break;
 		default: break;
 		}
 	}
@@ -358,6 +368,7 @@ public:
 		case P_SQL_TRAN_ACC: return m_cfg.m_tran_acc;
 		case P_SQL_MIDI_VEL_ACCENT: return m_cfg.m_midi_vel_accent;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
+		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
 		default:return 0;
 		}
 	}

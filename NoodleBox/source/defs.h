@@ -51,6 +51,7 @@ typedef enum:byte {
 	P_NONE = 0,
 
 	P_SQL_SEQ_MODE,
+	P_SQL_INTERPOLATE,
 	P_SQL_STEP_RATE,
 	P_SQL_NOTE_DUR,
 	P_SQL_MIDI_CHAN,
