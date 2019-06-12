@@ -47,7 +47,8 @@
 //#define KEY_L7	(1U<<17)
 //#define KEY_L8	(1U<<16)
 
-// key scan bits for bottom side buttons
+// key scan bits for bottom buttons
+/*
 #define KEY_B1	(1U<<9)
 #define KEY_B2	(1U<<8)
 #define KEY_B3	(1U<<10)
@@ -56,16 +57,20 @@
 #define KEY_B6	(1U<<13)
 #define KEY_B7	(1U<<14)
 #define KEY_B8	(1U<<15)
+*/
+#define KEY_B1	(1U<<1)
+#define KEY_B2	(1U<<0)
+#define KEY_B3	(1U<<2)
+#define KEY_B4	(1U<<3)
+#define KEY_B5	(1U<<4)
+#define KEY_B6	(1U<<5)
+#define KEY_B7	(1U<<6)
+#define KEY_B8	(1U<<7)
 
 // key scan bits for right side buttons (reserved for future use)
-#define KEY_R1	(1U<<7)
-#define KEY_R2	(1U<<6)
-#define KEY_R3	(1U<<5)
-#define KEY_R4	(1U<<4)
-#define KEY_R5	(1U<<20)
-#define KEY_R6	(1U<<21)
-#define KEY_R7	(1U<<22)
-#define KEY_R8	(1U<<23)
+#define KEY_R1	(1U<<13)
+#define KEY_R2	(1U<<14)
+#define KEY_R3	(1U<<15)
 
 // maximum key scan bit
 #define KEY_MAXBIT	(1U<<23)
@@ -333,7 +338,7 @@ public:
 			////////////////////////////////////////////////
 			// SCAN KEYBOARD ROW
 			if(!READ_GPIOA(BIT_KEYSCAN1)) {
-				m_acc_key1 |= (1U<<m_cathode);
+				m_acc_key1 |= (1U<<(m_cathode-8));
 			}
 			if(!READ_GPIOA(BIT_KEYSCAN2)) {
 				m_acc_key2 |= (1U<<m_cathode);
