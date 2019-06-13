@@ -81,7 +81,7 @@
 #define KEY_CLONE		KEY_B3
 #define KEY_CLEAR		KEY_B4
 #define KEY_LOOP		KEY_B5
-#define KEY_STORE		KEY_B6
+#define KEY_PAGE		KEY_B6
 #define KEY_RUN			KEY_B7
 #define KEY_MENU		KEY_B8
 

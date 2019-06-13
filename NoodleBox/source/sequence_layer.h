@@ -34,6 +34,7 @@ private:
 
 	enum {
 		MAX_STEPS = 32,					// number of steps in the layer
+		MAX_PAGES = 4,					// number of pages
 		MAX_PLAYING_NOTES = 8,
 		DEFAULT_SCROLL_OFS = 24
 	};
@@ -42,11 +43,15 @@ private:
 //	static const byte c_tick_rates[V_SQL_STEP_RATE_MAX];
 //	static const byte c_step_duration[V_SQL_STEP_DUR_MAX];
 
+	typedef struct {
+		CSequenceStep		m_step[MAX_STEPS];	// data value and gate for each step
+	} SEQ_PAGE;
+
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
+		SEQ_PAGE 		m_page[MAX_PAGES];	// sequencer page
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_FORCE_SCALE	m_force_scale;	// force to scale
-		CSequenceStep		m_step[MAX_STEPS];	// data value and gate for each step
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
 		byte 			m_loop_from;		// loop start point
 		byte 			m_loop_to;			// loop end point
@@ -85,6 +90,7 @@ private:
 		byte m_last_tick_lsb;
 		//CSequenceStep m_paste_step;
 		uint32_t m_gate_timeout;
+		byte m_page_no;
 	} STATE;
 
 	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -97,51 +103,35 @@ private:
 	// PRIVATE METHODS
 	//
 
+
+
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern to the left
-	void shift_left(byte with_gates) {
-		CSequenceStep step = m_cfg.m_step[0];
+	void shift_left() {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		CSequenceStep step = page.m_step[0];
 		for(int i = 0; i<MAX_STEPS-1; ++i) {
-			if(with_gates) {
-				m_cfg.m_step[i] = m_cfg.m_step[i+1];
-			}
-			else {
-				m_cfg.m_step[i].copy_data_point(m_cfg.m_step[i+1]);
-			}
+			page.m_step[i] = page.m_step[i+1];
 		}
-		if(with_gates) {
-			m_cfg.m_step[MAX_STEPS-1] = step;
-		}
-		else {
-			m_cfg.m_step[MAX_STEPS-1].copy_data_point(step);
-		}
+		page.m_step[MAX_STEPS-1] = step;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern to the right
-	void shift_right(byte with_gates) {
-
-		CSequenceStep step = m_cfg.m_step[MAX_STEPS-1];
+	void shift_right() {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		CSequenceStep step = page.m_step[MAX_STEPS-1];
 		for(int i = MAX_STEPS-1; i>0; --i) {
-			if(with_gates) {
-				m_cfg.m_step[i] = m_cfg.m_step[i-1];
-			}
-			else {
-				m_cfg.m_step[i].copy_data_point(m_cfg.m_step[i-1]);
-			}
+			page.m_step[i] = page.m_step[i-1];
 		}
-		if(with_gates) {
-			m_cfg.m_step[0] = step;
-		}
-		else {
-			m_cfg.m_step[0].copy_data_point(step);
-		}
+		page.m_step[0] = step;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Create interpolated points between two waypoints
 	void impl_interpolate_section(int pos, int end)
 	{
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		// calculate the number of new points that we will need to
 		// crate during the interpolation
 		int num_points = end - pos;
@@ -151,15 +141,15 @@ private:
 		if(num_points > 0) {
 
 			// starting point and gradient
-			double value =  m_cfg.m_step[pos].get_value();
-			double gradient = (m_cfg.m_step[end].get_value() - value)/num_points;
+			double value =  page.m_step[pos].get_value();
+			double gradient = (page.m_step[end].get_value() - value)/num_points;
 			while(--num_points > 0) {
 				// wrap around the column
 				if(++pos >= MAX_STEPS) {
 					pos = 0;
 				}
 				value += gradient;
-				m_cfg.m_step[pos].set_value((byte)(value+0.5));
+				page.m_step[pos].set_value((byte)(value+0.5));
 			}
 		}
 	}
@@ -171,8 +161,9 @@ private:
 		int i;
 		int first_waypoint = -1;
 		int prev_waypoint = -1;
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(page.m_step[i].is_data_point()) {
 				if(prev_waypoint < 0) {
 					first_waypoint = i;
 				}
@@ -186,14 +177,14 @@ private:
 		if(first_waypoint < 0) {
 			// no waypoints defined
 			for(i=0; i<MAX_STEPS; ++i) {
-				m_cfg.m_step[i].set_value(value);
+				page.m_step[i].set_value(value);
 			}
 		}
 		else if(prev_waypoint == first_waypoint) {
 			// only one waypoint defined
 			for(i=0; i<MAX_STEPS; ++i) {
 				if(i!=prev_waypoint) {
-					m_cfg.m_step[i].set_value(m_cfg.m_step[first_waypoint].get_value());
+					page.m_step[i].set_value(page.m_step[first_waypoint].get_value());
 				}
 			}
 		}
@@ -208,20 +199,21 @@ private:
 	{
 		int i;
 		int first_data_point = -1;
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(page.m_step[i].is_data_point()) {
 				if(first_data_point < 0) {
 					first_data_point = i;
 				}
-				value = m_cfg.m_step[i].get_value();
+				value = page.m_step[i].get_value();
 			}
 			else {
-				m_cfg.m_step[i].set_value(value);
+				page.m_step[i].set_value(value);
 			}
 		}
 		if(first_data_point >= 0) {
 			for(i=0; i<first_data_point; ++i) {
-				m_cfg.m_step[i].set_value(value);
+				page.m_step[i].set_value(value);
 			}
 		}
 	}
@@ -310,6 +302,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
+		m_state.m_page_no = 0;
 		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
@@ -436,24 +429,26 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// preserve trigs but clear all data
 	void reset_data_points(byte value) {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		for(int i=0; i<MAX_STEPS; ++i) {
-			m_cfg.m_step[i].reset_data_point(value);
+			page.m_step[i].reset_data_point(value);
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 // TODO reset data_point
 	void clear_step_value(byte index) {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		switch(m_cfg.m_mode) {
 		case V_SQL_SEQ_MODE_SCALE:
 		case V_SQL_SEQ_MODE_CHROMATIC:
-			m_cfg.m_step[index].reset_all(); // clear gate and note
+			page.m_step[index].reset_all(); // clear gate and note
 			break;
 		case V_SQL_SEQ_MODE_TRANSPOSE:
-			m_cfg.m_step[index].reset_data_point(OFFSET_ZERO); // preserve gate into, set data to midpoint
+			page.m_step[index].reset_data_point(OFFSET_ZERO); // preserve gate into, set data to midpoint
 			break;
 		case V_SQL_SEQ_MODE_MOD:
-			m_cfg.m_step[index].reset_data_point(0); // preserve gate into, set data to zero
+			page.m_step[index].reset_data_point(0); // preserve gate into, set data to zero
 			break;
 		}
 		recalc_data_points();
@@ -461,16 +456,22 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte index) {
-		m_cfg.m_step[index].reset_all();
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		page.m_step[index].reset_all();
 		recalc_data_points();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte index, CSequenceStep& step) {
-		m_cfg.m_step[index] = step;
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		page.m_step[index] = step;
 		recalc_data_points();
 	}
 
+	inline CSequenceStep& get_step(int index) {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		return page.m_step[index];
+	}
 
 	/*
 	///////////////////////////////////////////////////////////////////////////////
@@ -638,10 +639,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
 	byte shift_vertical(int dir) {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		// first make sure that the shift will not exceed the bounds at
 		// the top of the bottom of the pattern
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			int new_value = (int)m_cfg.m_step[i].get_value() + dir;
+			int new_value = (int)page.m_step[i].get_value() + dir;
 			if(new_value < 0 || new_value > 127) {
 				return 0;
 			}
@@ -649,7 +651,7 @@ public:
 
 		// perform the actual shift of all the data points
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			m_cfg.m_step[i].set_value(dir + (int)m_cfg.m_step[i].get_value());
+			page.m_step[i].set_value(dir + (int)page.m_step[i].get_value());
 		}
 
 		// perform any recalculation needed in the pattern
@@ -662,10 +664,10 @@ public:
 	// shift pattern horizontally by one step
 	void shift_horizontal(int dir) {
 		if(dir<0) {
-			shift_left(is_note_mode());
+			shift_left();
 		}
 		else {
-			shift_right(is_note_mode());
+			shift_right();
 		}
 		recalc_data_points();
 	}
@@ -747,9 +749,9 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline CSequenceStep& get_step(int index) {
-		return m_cfg.m_step[index];
-	}
+//	inline CSequenceStep& get_step(int index) {
+	//	return m_cfg.m_step[index];
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
@@ -789,6 +791,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void tick(uint32_t ticks, byte parts_tick) {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
 			if(m_state.m_play_pos == m_cfg.m_loop_to) {
@@ -800,7 +803,7 @@ public:
 				}
 			}
 
-			m_state.m_step_value = m_cfg.m_step[m_state.m_play_pos];
+			m_state.m_step_value = page.m_step[m_state.m_play_pos];
 			m_state.m_stepped = 1;
 		}
 		else {
@@ -1205,10 +1208,12 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
-		byte value1 = m_cfg.m_step[m_state.m_play_pos].get_value();
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+
+		byte value1 = page.m_step[m_state.m_play_pos].get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {
 			int next = next_step_index(m_state.m_play_pos);
-			byte value2 = m_cfg.m_step[next].get_value();
+			byte value2 = page.m_step[next].get_value();
 			int ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			g_cv_gate.mod_cv(which, value1, m_cfg.m_cv_range, value2, ms);
 		}
