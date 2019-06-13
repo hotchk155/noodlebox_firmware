@@ -225,10 +225,11 @@ int main(void) {
     //g_storage.test();
 
 
-    /* Enter an infinite loop, just incrementing a counter.
-     * */
+
     g_ui.init();
     //g_sequencer.m_layers[0].test();
+
+    g_sequencer.init();
 
     byte i2c_priority = 0;
     while(1) {

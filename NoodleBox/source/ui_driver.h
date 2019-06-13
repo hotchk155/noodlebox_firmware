@@ -78,7 +78,7 @@
 // define aliases for specific key bits based on their function
 #define KEY_CV			KEY_B1
 #define KEY_GATE		KEY_B2
-#define KEY_PASTE		KEY_B3
+#define KEY_CLONE		KEY_B3
 #define KEY_CLEAR		KEY_B4
 #define KEY_LOOP		KEY_B5
 #define KEY_STORE		KEY_B6

@@ -27,6 +27,9 @@ public:
 		VIEW_MODULATION
 	} VIEW_TYPE;
 
+	enum {
+		OFFSET_ZERO = 64
+	};
 private:
 
 	enum {
@@ -80,7 +83,7 @@ private:
 		//byte m_last_velocity;
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
-		CSequenceStep m_paste_step;
+		//CSequenceStep m_paste_step;
 		uint32_t m_gate_timeout;
 	} STATE;
 
@@ -224,27 +227,27 @@ private:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// called when there is a change to a data point
-	void recalc_data_points() {
-		byte def_cv;
+	byte get_default_value() {
 		switch(m_cfg.m_mode) {
 			case V_SQL_SEQ_MODE_TRANSPOSE:
-				def_cv = 64;
-				break;
+				return OFFSET_ZERO;
 			case V_SQL_SEQ_MODE_SCALE:
 			case V_SQL_SEQ_MODE_CHROMATIC:
-				def_cv = m_scale.default_note();
-				break;
+				return m_scale.default_note();
 			case V_SQL_SEQ_MODE_MOD:
 			default:
-				def_cv = 0;
-				break;
+				return 0;
 		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// called when there is a change to a data point
+	void recalc_data_points() {
 		if(m_cfg.m_interpolate) {
-			impl_interpolate(def_cv);
+			impl_interpolate(get_default_value());
 		}
 		else {
-			fill_data_points(def_cv);
+			fill_data_points(get_default_value());
 		}
 	}
 
@@ -267,11 +270,16 @@ private:
 
 public:
 	///////////////////////////////////////////////////////////////////////////////
-	CSequenceLayer(CScale &scale) : m_scale(scale) {
+	CSequenceLayer(CScale &scale) : m_scale(scale) {}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void init() {
 		init_config();
 		init_state();
 		set_mode(V_SQL_SEQ_MODE_SCALE);
 		recalc_data_points();
+		set_scroll_for(m_scale.default_note());
+
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline CScale& get_scale() {
@@ -306,7 +314,7 @@ public:
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
 //		m_state.m_last_velocity = 0;
-		m_state.m_paste_step.reset_all();
+//		m_state.m_paste_step.reset_all();
 		m_state.m_view = VIEW_PITCH_SCALED;
 		//memset(m_state.m_playing,0,sizeof(m_state.m_playing));
 		reset();
@@ -442,7 +450,7 @@ public:
 			m_cfg.m_step[index].reset_all(); // clear gate and note
 			break;
 		case V_SQL_SEQ_MODE_TRANSPOSE:
-			m_cfg.m_step[index].reset_data_point(64); // preserve gate into, set data to midpoint
+			m_cfg.m_step[index].reset_data_point(OFFSET_ZERO); // preserve gate into, set data to midpoint
 			break;
 		case V_SQL_SEQ_MODE_MOD:
 			m_cfg.m_step[index].reset_data_point(0); // preserve gate into, set data to zero
@@ -452,6 +460,20 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void clear_step(byte index) {
+		m_cfg.m_step[index].reset_all();
+		recalc_data_points();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_step(byte index, CSequenceStep& step) {
+		m_cfg.m_step[index] = step;
+		recalc_data_points();
+	}
+
+
+	/*
+	///////////////////////////////////////////////////////////////////////////////
 	void set_paste_buffer(CSequenceStep step) {
 		m_state.m_paste_step = step;
 		m_state.m_paste_step.set_data_point(1);
@@ -459,30 +481,37 @@ public:
 	byte is_paste_step_available() {
 		return m_state.m_paste_step.is_data_point();
 	}
+	*/
+
 	///////////////////////////////////////////////////////////////////////////////
 	//CSequenceStep &paste_buffer() {
 	//	m_state.m_paste_step
 	//	return m_state.m_paste_step;
 	//}
 
-	void set_scroll_for(CSequenceStep &step) {
+	void set_scroll_for(int value, byte centre=0) {
+		const int MARGIN = 1;
+
 		if(m_state.m_view == VIEW_PITCH_SCALED) {
-			step.set_value(m_scale.note_to_index(step.get_value()));
+			value = m_scale.note_to_index(value);
 		}
-		if(step.get_value()<m_state.m_scroll_ofs) {
-			m_state.m_scroll_ofs = step.get_value();
+		if(centre) {
+			m_state.m_scroll_ofs = value-6;
 		}
-		else if(step.get_value()>m_state.m_scroll_ofs+12) {
-			m_state.m_scroll_ofs = ((int)step.get_value())-12;
+		else if((value-MARGIN)<m_state.m_scroll_ofs) {
+			m_state.m_scroll_ofs = value-MARGIN;
+		}
+		else if((value+MARGIN)>m_state.m_scroll_ofs+12) {
+			m_state.m_scroll_ofs = value-12+MARGIN;
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// paste data from the "clipboard" into selected stop
-	void paste_step(byte index) {
+/*	void paste_step(byte index) {
 		if(is_paste_step_available()) {	// make sure something is in the buffer
 			m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
-
+*/
 /*			switch(m_cfg.m_mode) {
 			case V_SQL_SEQ_MODE_SCALE:
 			case V_SQL_SEQ_MODE_CHROMATIC:
@@ -493,9 +522,11 @@ public:
 				m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
 				break;
 			}*/
+/*
 			recalc_data_points();
 		}
 	}
+*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change the mode
@@ -720,7 +751,6 @@ public:
 		return m_cfg.m_step[index];
 	}
 
-
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
@@ -831,7 +861,7 @@ public:
 		int transposed;
 		switch(m_cfg.m_mode) {
 		case V_SQL_SEQ_MODE_TRANSPOSE_ALL:
-			transposed = (int)step_for_transpose.m_value + m_state.m_step_value.m_value - 64;
+			transposed = (int)step_for_transpose.m_value + m_state.m_step_value.m_value - OFFSET_ZERO;
 			if(transposed >= 0 && transposed < 128) {
 				step = step_for_transpose;
 				step.m_value = transposed;
@@ -839,7 +869,7 @@ public:
 			break;
 		case V_SQL_SEQ_MODE_TRANSPOSE_LOCK:
 			 if(step_for_transpose.m_is_accent) {
-				 transposed = (int)step_for_transpose.m_value + m_state.m_step_value.m_value - 64;
+				 transposed = (int)step_for_transpose.m_value + m_state.m_step_value.m_value - OFFSET_ZERO;
 				 if(transposed >= 0 && transposed < 128) {
 					step = step_for_transpose;
 					step.m_value = transposed;
@@ -1028,7 +1058,7 @@ public:
 			// actually perform the transposition if still needed. Do not transpose values that
 			// would be out of range of MIDI notes
 			if(do_transpose) {
-				int transposed = (int)step_for_transpose.get_value() + (int)m_state.m_step_value.get_value() - 64;
+				int transposed = (int)step_for_transpose.get_value() + (int)m_state.m_step_value.get_value() - OFFSET_ZERO;
 				if(transposed >= 0 && transposed <= 127) {
 					step.set_value(transposed);
 				}
@@ -1065,7 +1095,7 @@ public:
 		}
 
 		// the CV will only be applied if there is an open gate
-		if(step.is_gate_open()) {
+		if(step.is_gate()) {
 
 			// get the note we need to play, taking into account being
 			// forced into a scale
@@ -1078,9 +1108,9 @@ public:
 			}
 
 			// is there a trigger at this step?
-			if(step.is_trigger()) {
+			if(step.is_gate()) {
 
-				CSequenceStep next_step;
+				//CSequenceStep next_step;
 
 				// set the note pitch
 				g_cv_gate.pitch_cv(which, note, m_cfg.m_cv_scale, 0);
@@ -1117,8 +1147,9 @@ public:
 					break;
 				default: // other enumerations have integer values 0-10
 					// check whether the next step is open gate without a trigger,
-					next_step = m_cfg.m_step[next_step_index(m_state.m_play_pos)];
-					if(next_step.is_gate_open() && !next_step.is_trigger()) {
+					//next_step = m_cfg.m_step[next_step_index(m_state.m_play_pos)];
+					//if(next_step.is_gate() && !next_step.is_trigger()) {
+					if(step.is_tied()) {
 						// this will extend the current note to a full step
 						m_state.m_gate_timeout = 0;
 					}
@@ -1190,10 +1221,10 @@ public:
 	// Play the gate for a step
 	void action_step_gate(byte which) {
 		CSequenceStep step = m_state.m_step_value;
-		if(step.is_trigger()) {
+		if(step.is_gate()) {
 			g_cv_gate.gate(which, CCVGate::GATE_RETRIG);
 		}
-		else if(step.is_gate_open()) {
+		else if(step.is_tied()) {
 			g_cv_gate.gate(which, CCVGate::GATE_OPEN);
 		}
 		else {

@@ -41,7 +41,7 @@ class CSequenceEditor {
 
 	enum {
 		GATE_VIEW_GATE,
-		GATE_VIEW_GLIDE,
+		GATE_VIEW_TIE,
 		GATE_VIEW_PROB,
 		GATE_VIEW_MAX = GATE_VIEW_PROB
 	};
@@ -53,18 +53,27 @@ class CSequenceEditor {
 		BRIGHT_HIGH
 	};
 
+	enum {
+		CLONE_NONE,
+		CLONE_MARKED,
+		CLONE_ACTIONED
+	};
+
 	//
 	// MEMBER VARIABLES
 	//
 	ACTION m_action;			// the action being performed by the user
 	uint32_t m_action_key;		// the key to which the action applies
+	uint32_t m_last_action_key;
 	uint32_t m_edit_keys;		// keys pressed in conjunction with edit shift
 	byte m_encoder_moved;		// whether encoder has been moved since action was in progress
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
-	byte m_gate_view;
+	byte m_gate_view;			// which gate layer is being viewed
+	int m_clone_source;			// column from which to clone data
+	byte m_clone_status;
 
 	//
 	// PRIVATE METHODS
@@ -75,6 +84,7 @@ class CSequenceEditor {
 	void init_state() {
 		m_action = ACTION_NONE;
 		m_action_key = 0;
+		m_last_action_key = 0;
 		m_edit_keys = 0;
 		m_encoder_moved = 0;
 		m_cursor = 0;
@@ -82,19 +92,40 @@ class CSequenceEditor {
 		m_sel_from = -1;
 		m_sel_to = -1;
 		m_gate_view = GATE_VIEW_GATE;
+		m_clone_source = 0;
+		m_clone_status = CLONE_NONE;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_view() {
 		switch(m_gate_view) {
 		case GATE_VIEW_GATE:
-			g_popup.text("GATE", 4);
+			g_popup.text("GAT", 3);
 			break;
-		case GATE_VIEW_GLIDE:
-			g_popup.text("GLID", 4);
+		case GATE_VIEW_TIE:
+			g_popup.text("TIE", 3);
 			break;
 		case GATE_VIEW_PROB:
-			g_popup.text("PROB", 4);
+			g_popup.text("RND", 3);
+			break;
+		}
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_gate_prob(int value) {
+		switch(value) {
+		case CSequenceStep::PROB_OFF:
+			g_popup.text("ALL", 3);
+			break;
+		case CSequenceStep::PROB_HIGH:
+			g_popup.text("HI", 2);
+			break;
+		case CSequenceStep::PROB_MED:
+			g_popup.text("MED", 3);
+			break;
+		case CSequenceStep::PROB_LOW:
+			g_popup.text("LOW", 3);
 			break;
 		}
 		g_popup.avoid(m_cursor);
@@ -102,15 +133,14 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
-	void step_info(CSequenceLayer& layer, CSequenceStep step) {
-		byte value = step.get_value();
+	void show_step_value(CSequenceLayer& layer, int value) {
 		switch(layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH_SCALED:
 		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 			g_popup.note_name(value);
 			break;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
-			g_popup.show_offset(((int)value)-64);
+			g_popup.show_offset(value-CSequenceLayer::OFFSET_ZERO);
 			break;
 		case CSequenceLayer::VIEW_MODULATION:
 			g_popup.num3digits(value);
@@ -154,6 +184,7 @@ class CSequenceEditor {
 	// get info for the graticule/grid for display
 	byte get_graticule(CSequenceLayer& layer, int *baseline, int *spacing) {
 		int n;
+		int notes_per_octave;
 		switch (layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
@@ -162,13 +193,14 @@ class CSequenceEditor {
 			*spacing = 12;
 			return 1;
 		case CSequenceLayer::VIEW_PITCH_SCALED:
+			notes_per_octave = layer.get_scale().get_notes_per_octave();
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
-			n = 7*(n/7); // C at bottom of that octave
+			n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
 			*baseline = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-			*spacing = 7;
+			*spacing = notes_per_octave;
 			return 1;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
-			*baseline = 64;
+			*baseline = CSequenceLayer::OFFSET_ZERO;
 			*spacing = 0;
 			return 1;
 		case CSequenceLayer::VIEW_MODULATION:
@@ -194,16 +226,22 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Move cursor left / right for encoder event
-	void cursor_action(CSequenceLayer& layer, ACTION what) {
+	void cursor_action(CSequenceLayer& layer, ACTION what, int& cursor, byte wrap=0) {
 		switch(what) {
 		case ACTION_ENC_RIGHT:
-			if(m_cursor < GRID_WIDTH-1) {
-				++m_cursor;
+			if(cursor < GRID_WIDTH-1) {
+				++cursor;
+			}
+			else if(wrap) {
+				cursor = 0;
 			}
 			break;
 		case ACTION_ENC_LEFT:
-			if(m_cursor > 0) {
-				--m_cursor;
+			if(cursor > 0) {
+				--cursor;
+			}
+			else if(wrap) {
+				cursor = GRID_WIDTH-1;
 			}
 			break;
 		default:
@@ -218,11 +256,10 @@ class CSequenceEditor {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
-			// copy the current step to the paste buffer, bring it
-			// into view and show info
-			layer.set_paste_buffer(step);
-			layer.set_scroll_for(step);
-			step_info(layer, step);
+			// when button first pressed, current step
+			// scrolled into view and described
+			//layer.set_scroll_for(step.get_value());
+			show_step_value(layer, step.get_value());
 			break;
 		////////////////////////////////////////////////
 		case ACTION_HOLD:
@@ -230,22 +267,24 @@ class CSequenceEditor {
 			g_popup.layer(g_sequencer.get_cur_layer(), layer.get_enabled());
 			break;
 		////////////////////////////////////////////////
+		case ACTION_CLICK:
+			layer.set_scroll_for(step.get_value(),1);
+			break;
+		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			switch(m_edit_keys) {
-
-
 				// fine edit in mod mode
 			case KEY_CV|KEY1_FINE:
 				if(layer.is_mod_mode()) {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
-					layer.set_scroll_for(step);
 					step.set_data_point(1);
-					layer.set_paste_buffer(step);
-					layer.paste_step(m_cursor);
-					step_info(layer, step);
+					layer.set_step(m_cursor, step);
+					layer.set_scroll_for(step.get_value());
+					show_step_value(layer, step.get_value());
+
 				}
 				break;
 			case KEY_CV|KEY1_MOVE_VERT:
@@ -287,10 +326,9 @@ class CSequenceEditor {
 					value_action(layer, step, what, 0);				// change the value
 				}
 				// editing a step value
-				layer.set_paste_buffer(step);					// value is placed in paste buffer
-				layer.paste_step(m_cursor);
-				layer.set_scroll_for(step);
-				step_info(layer, step);
+				layer.set_step(m_cursor, step);
+				layer.set_scroll_for(step.get_value());
+				show_step_value(layer, step.get_value());
 				break;
 			}
 			break;
@@ -298,7 +336,7 @@ class CSequenceEditor {
 		case ACTION_EDIT_KEYS:
 			switch(m_edit_keys) {
 
-			case KEY_CV|KEY_PASTE:
+/*			case KEY_CV|KEY_PASTE:
 				// EDIT + PASTE - advance cursor and copy the current step
 				if(layer.is_paste_step_available()) {
 					if(++m_cursor >= GRID_WIDTH-1) {
@@ -306,7 +344,7 @@ class CSequenceEditor {
 					}
 					layer.paste_step(m_cursor);
 				}
-				break;
+				break;*/
 /*			case KEY_CV|KEY_CLEAR:
 				if(layer.is_note_mode()) {
 					// EDIT + CLEAR - insert rest and advance cursor
@@ -336,23 +374,38 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// PASTE BUTTON
-	void paste_action(CSequenceLayer& layer, ACTION what) {
+	void clone_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			// a single click pastes a copy of the last edited note
-			layer.paste_step(m_cursor);
+			if(m_clone_status == CLONE_NONE) {
+				m_clone_source = m_cursor;
+				m_clone_status = CLONE_MARKED;
+			}
+			else {
+				m_clone_status = CLONE_NONE;
+			}
 			break;
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			// hold-turn copies the current step into the paste buffer
-			// then pastes it over multiple steps
-			if(!m_encoder_moved) {
-				layer.set_paste_buffer(layer.get_step(m_cursor));
+			if(m_clone_status == CLONE_NONE) {
+				CSequenceStep& source =	layer.get_step(m_cursor);
+				cursor_action(layer, what, m_cursor, 1);
+				layer.set_step(m_cursor, source);
 			}
-			cursor_action(layer, what);
-			layer.paste_step(m_cursor);
+			else {
+				CSequenceStep& source =	layer.get_step(m_clone_source);
+				layer.set_step(m_cursor, source);
+				cursor_action(layer, what, m_cursor, 1);
+				cursor_action(layer, what, m_clone_source, 1);
+				m_clone_status = CLONE_ACTIONED;
+			}
+			break;
+		case ACTION_END:
+			if(m_clone_status == CLONE_ACTIONED) {
+				m_clone_status = CLONE_NONE;
+			}
 			break;
 		default:
 			break;
@@ -365,16 +418,13 @@ class CSequenceEditor {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			// a click erases a step, copying it to paste buffer
-			layer.set_paste_buffer(layer.get_step(m_cursor));
-			layer.clear_step_value(m_cursor);
+			layer.clear_step(m_cursor);
 			break;
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			// hold-turn erases multiple notes
-			layer.clear_step_value(m_cursor);
-			cursor_action(layer, what);
+			layer.clear_step(m_cursor);
+			cursor_action(layer, what, m_cursor);
 			break;
 		default:
 			break;
@@ -406,13 +456,14 @@ class CSequenceEditor {
 			CSequenceStep& step = layer.get_step(m_cursor);
 			switch(m_gate_view) {
 			case GATE_VIEW_GATE:
-				step.inc_gate();
+				step.toggle_gate();
 				break;
-			case GATE_VIEW_GLIDE:
-				step.inc_glide();
+			case GATE_VIEW_TIE:
+				step.toggle_tie();
 				break;
 			case GATE_VIEW_PROB:
 				step.inc_prob();
+				show_gate_prob(step.get_prob());
 				break;
 			}
 			break;
@@ -431,7 +482,7 @@ class CSequenceEditor {
 			if(m_sel_from < 0) {
 				m_sel_from = m_cursor;
 			}
-			cursor_action(layer, what);
+			cursor_action(layer, what, m_cursor);
 			m_sel_to = m_cursor;
 			break;
 		////////////////////////////////////////////////
@@ -482,7 +533,7 @@ class CSequenceEditor {
 	void action(CSequenceLayer& layer, ACTION what) {
 		switch(m_action_key) {
 		case KEY_CV: edit_action(layer, what); break;
-		case KEY_PASTE: paste_action(layer, what); break;
+		case KEY_CLONE: clone_action(layer, what); break;
 		case KEY_CLEAR: clear_action(layer, what); break;
 		case KEY_GATE: gate_action(layer, what); break;
 		case KEY_LOOP: loop_action(layer, what); break;
@@ -511,7 +562,7 @@ public:
 			if(!m_action_key) {
 				switch(param) {
 				case KEY_CV:
-				case KEY_PASTE:
+				case KEY_CLONE:
 				case KEY_CLEAR:
 				case KEY_GATE:
 				case KEY_LOOP:
@@ -546,29 +597,18 @@ public:
 			}
 			break;
 		case EV_ENCODER:
-			if(m_action_key) {
-				if((int)param<0) {
-					action(layer, ACTION_ENC_LEFT);
+			{
+				ACTION what = (((int)param)<0)? ACTION_ENC_LEFT: ACTION_ENC_RIGHT;
+				if(m_action_key) {
+					action(layer, what);
+					m_encoder_moved = 1;
 				}
 				else {
-					action(layer, ACTION_ENC_RIGHT);
+					cursor_action(layer, what, m_cursor);
+					g_popup.avoid(m_cursor);
 				}
-				m_encoder_moved = 1;
+				break;
 			}
-			else {
-				if((int)param < 0) {
-					if(m_cursor > 0) {
-						--m_cursor;
-					}
-				}
-				else {
-					if(++m_cursor >=  GRID_WIDTH-1) {
-						m_cursor = GRID_WIDTH-1;
-					}
-				}
-				g_popup.avoid(m_cursor);
-			}
-			break;
 		}
 	}
 
@@ -578,6 +618,7 @@ public:
 		CSequenceLayer& layer = g_sequencer.cur_layer();
 		int i;
 		uint32_t mask;
+
 
 		// Clear the display
 		g_ui.clear();
@@ -601,11 +642,20 @@ public:
 			}
 		}
 
+
 		// displaying the cursor
 		mask = g_ui.bit(m_cursor);
 		for(i=0; i<=12; ++i) {
 			g_ui.raster(i) &= ~mask;
 			g_ui.hilite(i) |= mask;
+		}
+
+
+		// decide if clone source will be shown on row 13
+		if(m_clone_status != CLONE_NONE) {
+			mask = g_ui.bit(m_clone_source);
+			g_ui.raster(13) |= mask;
+			g_ui.hilite(13) |= mask;
 		}
 
 		// show the play position on the lowest row
@@ -699,29 +749,27 @@ public:
 			byte bri = BRIGHT_OFF;
 			switch(m_gate_view) {
 				case GATE_VIEW_GATE:
-					if(step.is_trigger()) {
+					if(step.is_gate()) {
 						bri = BRIGHT_MED;
 					}
-					else if(step.is_gate_open()){
+					else if(step.is_tied()){
 						bri = BRIGHT_LOW;
 					}
 					break;
-				case GATE_VIEW_GLIDE:
-					if(step.is_glide()) {
+				case GATE_VIEW_TIE:
+					if(step.is_gate()) {
+						bri = BRIGHT_LOW;
+					}
+					else if(step.is_tied()){
 						bri = BRIGHT_MED;
 					}
 					break;
 				case GATE_VIEW_PROB:
-					switch(step.get_prob()) {
-						case CSequenceStep::PROB_HIGH:
-							bri = BRIGHT_HIGH;
-							break;
-						case CSequenceStep::PROB_MED:
-							bri = BRIGHT_MED;
-							break;
-						case CSequenceStep::PROB_LOW:
-							bri = BRIGHT_LOW;
-							break;
+					if(step.get_prob() != CSequenceStep::PROB_OFF) {
+						bri = BRIGHT_MED;
+					}
+					else if(step.is_gate() || step.is_tied()){
+						bri = BRIGHT_LOW;
 					}
 					break;
 			}

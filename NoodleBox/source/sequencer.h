@@ -42,11 +42,17 @@ public:
 	// constructor
 	CSequencer() : m_layers{m_scale,m_scale,m_scale,m_scale}
 	{
+	}
+
+	void init() {
+		m_scale.build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
 		init_config();
 		m_is_running = 0;
 		m_cur_layer = 0;
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i].init();
+		}
 	}
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	// initialise the saved configuration
