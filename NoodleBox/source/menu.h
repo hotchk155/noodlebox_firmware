@@ -114,7 +114,7 @@ public:
 			}
 			break;
 		case EV_KEY_PRESS:
-			if(param == KEY_EDIT) {
+			if(param == KEY_CV) {
 				m_value = CParams::get(m_opts[m_item].param);
 				m_action = ACTION_VALUE_SELECTED;
 			}

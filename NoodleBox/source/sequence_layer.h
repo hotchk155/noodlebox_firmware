@@ -32,7 +32,6 @@ private:
 	enum {
 		MAX_STEPS = 32,					// number of steps in the layer
 		MAX_PLAYING_NOTES = 8,
-		DEFAULT_NOTE = 36,
 		DEFAULT_SCROLL_OFS = 24
 	};
 
@@ -149,15 +148,15 @@ private:
 		if(num_points > 0) {
 
 			// starting point and gradient
-			double value =  m_cfg.m_step[pos].m_value;
-			double gradient = (m_cfg.m_step[end].m_value - value)/num_points;
+			double value =  m_cfg.m_step[pos].get_value();
+			double gradient = (m_cfg.m_step[end].get_value() - value)/num_points;
 			while(--num_points > 0) {
 				// wrap around the column
 				if(++pos >= MAX_STEPS) {
 					pos = 0;
 				}
 				value += gradient;
-				m_cfg.m_step[pos].m_value = (byte)(value+0.5);
+				m_cfg.m_step[pos].set_value((byte)(value+0.5));
 			}
 		}
 	}
@@ -170,7 +169,7 @@ private:
 		int first_waypoint = -1;
 		int prev_waypoint = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].m_is_data_point) {
+			if(m_cfg.m_step[i].is_data_point()) {
 				if(prev_waypoint < 0) {
 					first_waypoint = i;
 				}
@@ -184,14 +183,14 @@ private:
 		if(first_waypoint < 0) {
 			// no waypoints defined
 			for(i=0; i<MAX_STEPS; ++i) {
-				m_cfg.m_step[i].m_value = value;
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 		else if(prev_waypoint == first_waypoint) {
 			// only one waypoint defined
 			for(i=0; i<MAX_STEPS; ++i) {
 				if(i!=prev_waypoint) {
-					m_cfg.m_step[i].m_value = m_cfg.m_step[first_waypoint].m_value;
+					m_cfg.m_step[i].set_value(m_cfg.m_step[first_waypoint].get_value());
 				}
 			}
 		}
@@ -207,19 +206,19 @@ private:
 		int i;
 		int first_data_point = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].m_is_data_point) {
+			if(m_cfg.m_step[i].is_data_point()) {
 				if(first_data_point < 0) {
 					first_data_point = i;
 				}
-				value = m_cfg.m_step[i].m_value;
+				value = m_cfg.m_step[i].get_value();
 			}
 			else {
-				m_cfg.m_step[i].m_value = value;
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 		if(first_data_point >= 0) {
 			for(i=0; i<first_data_point; ++i) {
-				m_cfg.m_step[i].m_value = value;
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 	}
@@ -233,10 +232,8 @@ private:
 				def_cv = 64;
 				break;
 			case V_SQL_SEQ_MODE_SCALE:
-				def_cv = m_scale.default_note_scaled();
-				break;
 			case V_SQL_SEQ_MODE_CHROMATIC:
-				def_cv = m_scale.default_note_chromatic();
+				def_cv = m_scale.default_note();
 				break;
 			case V_SQL_SEQ_MODE_MOD:
 			default:
@@ -282,9 +279,7 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
-		for(int i=0; i<MAX_STEPS; ++i) {
-			m_cfg.m_step[i].reset_all(DEFAULT_NOTE);
-		}
+		reset_data_points(m_scale.default_note());
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_SCALE;
 		m_cfg.m_force_scale = V_SQL_FORCE_SCALE_OFF;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
@@ -459,10 +454,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_paste_buffer(CSequenceStep step) {
 		m_state.m_paste_step = step;
-		m_state.m_paste_step.m_is_data_point = 1;
+		m_state.m_paste_step.set_data_point(1);
 	}
 	byte is_paste_step_available() {
-		return m_state.m_paste_step.m_is_data_point;
+		return m_state.m_paste_step.is_data_point();
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	//CSequenceStep &paste_buffer() {
@@ -470,15 +465,15 @@ public:
 	//	return m_state.m_paste_step;
 	//}
 
-	void set_scroll_for(byte value) {
+	void set_scroll_for(CSequenceStep &step) {
 		if(m_state.m_view == VIEW_PITCH_SCALED) {
-			value = m_scale.note_to_index(value);
+			step.set_value(m_scale.note_to_index(step.get_value()));
 		}
-		if(value<m_state.m_scroll_ofs) {
-			m_state.m_scroll_ofs = value;
+		if(step.get_value()<m_state.m_scroll_ofs) {
+			m_state.m_scroll_ofs = step.get_value();
 		}
-		else if(value>m_state.m_scroll_ofs+12) {
-			m_state.m_scroll_ofs = value-12;
+		else if(step.get_value()>m_state.m_scroll_ofs+12) {
+			m_state.m_scroll_ofs = ((int)step.get_value())-12;
 		}
 	}
 
@@ -577,7 +572,7 @@ public:
 	void inc_step_value(CSequenceStep& step, int delta, byte fine) {
 		int value;
 		int max_value = 127;
-		value = step.m_value;
+		value = step.get_value();
 		switch(m_state.m_view) {
 		case VIEW_MODULATION:
 			if(fine) {
@@ -605,8 +600,8 @@ public:
 		else if(value>max_value) {
 			value = max_value;
 		}
-		step.m_value = value;
-		step.m_is_data_point = 1;	// the data point has been set by user
+		step.set_value(value);
+		step.set_data_point(1);	// the data point has been set by user
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -615,21 +610,15 @@ public:
 		// first make sure that the shift will not exceed the bounds at
 		// the top of the bottom of the pattern
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			CSequenceStep step = m_cfg.m_step[i];
-			if(step.m_is_data_point) {
-				int new_value = (int)step.m_value + dir;
-				if(new_value < 0 || new_value > 127) {
-					return 0;
-				}
+			int new_value = (int)m_cfg.m_step[i].get_value() + dir;
+			if(new_value < 0 || new_value > 127) {
+				return 0;
 			}
 		}
 
 		// perform the actual shift of all the data points
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			CSequenceStep step = m_cfg.m_step[i];
-			if(step.m_is_data_point) {
-				m_cfg.m_step[i].m_value += dir;
-			}
+			m_cfg.m_step[i].set_value(dir + (int)m_cfg.m_step[i].get_value());
 		}
 
 		// perform any recalculation needed in the pattern
@@ -1027,24 +1016,25 @@ public:
 			// allow transposition to be "locked out" by selected steps
 			byte do_transpose = 1;
 			if(m_cfg.m_tran_acc == V_SQL_TRAN_ACC_LOCK) {
-				if(step.is_accent()) {
+/*				if(step.is_accent()) {
 					// this this mode the accent flag is used to mean that this
 					// step should not be transposed. It should not be treated
 					// as an accent
 					do_transpose = 0;
 					step.clear_accent();
-				}
+				}*/
 			}
 
 			// actually perform the transposition if still needed. Do not transpose values that
 			// would be out of range of MIDI notes
 			if(do_transpose) {
-				int transposed = (int)step_for_transpose.m_value + m_state.m_step_value.m_value - 64;
+				int transposed = (int)step_for_transpose.get_value() + (int)m_state.m_step_value.get_value() - 64;
 				if(transposed >= 0 && transposed <= 127) {
-					step.m_value = transposed;
+					step.set_value(transposed);
 				}
 			}
 
+			/*
 			// set the trigger information on the step
 			switch(m_cfg.m_tran_trig) {
 			case V_SQL_TRAN_TRIG_AND:
@@ -1063,7 +1053,10 @@ public:
 			default:
 				step.set_gate(m_state.m_step_value.get_gate());
 				break;
-			}
+			}*/
+
+			step.copy_gate(m_state.m_step_value);
+
 		}
 		else {
 
@@ -1076,7 +1069,7 @@ public:
 
 			// get the note we need to play, taking into account being
 			// forced into a scale
-			byte note = step.m_value;
+			byte note = step.get_value();
 			if(m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE) {
 				note = m_scale.index_to_note(note);
 			}
@@ -1101,7 +1094,8 @@ public:
 				}
 				// send the new one
 				if(note) {
-					send_midi_note(note, step.is_accent() ? m_cfg.m_midi_vel_accent : m_cfg.m_midi_vel);
+					send_midi_note(note, m_cfg.m_midi_vel);
+					//send_midi_note(note, step.is_accent() ? m_cfg.m_midi_vel_accent : m_cfg.m_midi_vel);
 				}
 				// stop the previous MIDI note after new note (if legato mode)
 				if(m_state.m_midi_note && m_cfg.m_note_dur == V_SQL_NOTE_DUR_LEGA) {
@@ -1141,7 +1135,8 @@ public:
 
 				// send the new one
 				if(note) {
-					send_midi_note(note, step.is_accent() ? m_cfg.m_midi_vel_accent : m_cfg.m_midi_vel);
+//					send_midi_note(note, step.is_accent() ? m_cfg.m_midi_vel_accent : m_cfg.m_midi_vel);
+					send_midi_note(note, m_cfg.m_midi_vel);
 				}
 				// stop the previous MIDI note after new note
 				if(m_state.m_midi_note) {
@@ -1179,10 +1174,10 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
-		byte value1 = m_cfg.m_step[m_state.m_play_pos].m_value;
+		byte value1 = m_cfg.m_step[m_state.m_play_pos].get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {
 			int next = next_step_index(m_state.m_play_pos);
-			byte value2 = m_cfg.m_step[next].m_value;
+			byte value2 = m_cfg.m_step[next].get_value();
 			int ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			g_cv_gate.mod_cv(which, value1, m_cfg.m_cv_range, value2, ms);
 		}

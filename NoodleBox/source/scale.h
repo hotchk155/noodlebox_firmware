@@ -83,17 +83,18 @@ public:
 
 	/////////////////////////////////////////////////////////////////
 	// return default note value forced to scale
-	byte default_note_chromatic() {
+	byte default_note() {
 		return force_to_scale(DEFAULT_NOTE);
 	}
 
+	/*
 	/////////////////////////////////////////////////////////////////
 	// return default note value forced to scale and converted
 	// to index within the current scale
 	byte default_note_scaled() {
 		return note_to_index(default_note_chromatic());
 	}
-
+*/
 	/////////////////////////////////////////////////////////////////
 	// convert scale index to MIDI note
 	inline byte index_to_note(byte index) {

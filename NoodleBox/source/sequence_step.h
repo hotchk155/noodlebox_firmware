@@ -25,32 +25,47 @@
 // layer type
 //
 class CSequenceStep {
+
+	byte m_gate_open:1;
+	byte m_retrig:1;
+	byte m_glide:1;
+	byte m_prob:2;			// probabitity 0=Always, 1,2,3 = high medium low
+	byte m_is_data_point:1; // is the CV value user defined rather than auto filled
+
+	byte m_value;	// CV value
 public:
 	enum {
-		GATE_NONE = 0,
-		GATE_OPEN = 0x01,
-		GATE_RETRIG = 0x03,
-		GATE_ACCENT = 0x07
+		PROB_OFF,
+		PROB_HIGH,
+		PROB_MED,
+		PROB_LOW
 	};
-
-	byte m_is_data_point:1; // is this a "user" data point rather than an automatic one?
-	byte m_gate_type:3;
-	byte m_value;
-
-	void set_gate(int gate) {
-		m_gate_type = gate;
+	inline byte get_value() {
+		return m_value;
 	}
-	int get_gate() {
-		return m_gate_type;
+	inline void set_value(byte value) {
+		m_value = value;
 	}
+
+	inline byte is_data_point() {
+		return m_is_data_point;
+	}
+	inline void set_data_point(byte value) {
+		m_is_data_point = !!value;
+	}
+
 	inline int is_gate_open() {
-		return (m_gate_type & 0x01);
+		return m_gate_open;
 	}
 	inline byte is_trigger() {
-		return (m_gate_type & 0x02);
+		return m_retrig;
 	}
-	inline byte is_accent() {
-		return (m_gate_type & 0x04);
+
+	inline byte is_glide() {
+		return m_glide;
+	}
+	inline byte get_prob() {
+		return m_prob;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -60,10 +75,21 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
+	void copy_gate(CSequenceStep &other) {
+		m_gate_open = other.m_gate_open;
+		m_retrig = other.m_retrig;
+		m_glide = other.m_glide;
+		m_prob = other.m_prob;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
 	// clear data point and gates
 	void reset_all(byte value = 0) {
+		m_gate_open = 0;
+		m_retrig = 0;
+		m_glide = 0;
+		m_prob = 0;
 		m_is_data_point = 0;
-		m_gate_type = GATE_NONE;
 		m_value = value;
 	}
 
@@ -75,36 +101,40 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	void clear_accent() {
-		m_gate_type &= ~0x04;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
+	// order here is OFF->TRIG->OPEN->OFF
 	void inc_gate() {
-		switch(m_gate_type) {
-		case GATE_NONE: m_gate_type = GATE_OPEN; break;
-		case GATE_OPEN: m_gate_type = GATE_RETRIG; break;
-		case GATE_RETRIG: m_gate_type = GATE_ACCENT; break;
+		if(m_retrig) {
+			// TRIG -> OPEN
+			m_gate_open = 1;
+			m_retrig = 0;
+		}
+		else if(m_gate_open) {
+			// OPEN -> OFF
+			m_gate_open = 0;
+		}
+		else {
+			// OFF->TRIG
+			m_gate_open = 1;
+			m_retrig = 1;
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	void dec_gate() {
-		switch(m_gate_type) {
-		case GATE_RETRIG: m_gate_type = GATE_OPEN; break;
-		case GATE_ACCENT: m_gate_type = GATE_RETRIG; break;
-		case GATE_OPEN: m_gate_type = GATE_NONE; break;
-		}
+	///////////////////////////////////////////////////////////////////////////////////
+	// glide is simply a toggle
+	void inc_glide() {
+		m_glide = !m_glide;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	void toggle_gate() {
-		switch(m_gate_type) {
-		case GATE_NONE: m_gate_type = GATE_RETRIG; break;
-		default:m_gate_type = GATE_NONE; break;
+	///////////////////////////////////////////////////////////////////////////////////
+	// Prob order is OFF->HIGH->MED->LOW->OFF
+	void inc_prob() {
+		if(!m_prob) {
+			m_prob = PROB_HIGH;
+		}
+		else {
+			--m_prob;
 		}
 	}
-
 };
 
 #endif /* SEQUENCE_STEP_H_ */

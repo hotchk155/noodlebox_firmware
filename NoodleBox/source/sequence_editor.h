@@ -39,6 +39,20 @@ class CSequenceEditor {
 		ACTION_END			// end of an action, when button is released
 	} ACTION;
 
+	enum {
+		GATE_VIEW_GATE,
+		GATE_VIEW_GLIDE,
+		GATE_VIEW_PROB,
+		GATE_VIEW_MAX = GATE_VIEW_PROB
+	};
+
+	enum {
+		BRIGHT_OFF,
+		BRIGHT_LOW,
+		BRIGHT_MED,
+		BRIGHT_HIGH
+	};
+
 	//
 	// MEMBER VARIABLES
 	//
@@ -50,6 +64,7 @@ class CSequenceEditor {
 	int m_edit_value;			// the value being edited (e.g. shift offset)
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
+	byte m_gate_view;
 
 	//
 	// PRIVATE METHODS
@@ -66,12 +81,29 @@ class CSequenceEditor {
 		m_edit_value = 0;
 		m_sel_from = -1;
 		m_sel_to = -1;
+		m_gate_view = GATE_VIEW_GATE;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_gate_view() {
+		switch(m_gate_view) {
+		case GATE_VIEW_GATE:
+			g_popup.text("GATE", 4);
+			break;
+		case GATE_VIEW_GLIDE:
+			g_popup.text("GLID", 4);
+			break;
+		case GATE_VIEW_PROB:
+			g_popup.text("PROB", 4);
+			break;
+		}
+		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
 	void step_info(CSequenceLayer& layer, CSequenceStep step) {
-		byte value = step.m_value;
+		byte value = step.get_value();
 		switch(layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH_SCALED:
 		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
@@ -189,11 +221,8 @@ class CSequenceEditor {
 			// copy the current step to the paste buffer, bring it
 			// into view and show info
 			layer.set_paste_buffer(step);
-			layer.paste_step(m_cursor);
-			layer.set_scroll_for(step.m_value);
-			if(!layer.is_mod_mode()) {
-				step_info(layer, step);
-			}
+			layer.set_scroll_for(step);
+			step_info(layer, step);
 			break;
 		////////////////////////////////////////////////
 		case ACTION_HOLD:
@@ -205,20 +234,21 @@ class CSequenceEditor {
 		case ACTION_ENC_RIGHT:
 			switch(m_edit_keys) {
 
+
 				// fine edit in mod mode
-			case KEY_EDIT|KEY_CLEAR:
+			case KEY_CV|KEY1_FINE:
 				if(layer.is_mod_mode()) {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
-					layer.set_scroll_for(step.m_value);
-					step.m_is_data_point = 1;
+					layer.set_scroll_for(step);
+					step.set_data_point(1);
 					layer.set_paste_buffer(step);
 					layer.paste_step(m_cursor);
 					step_info(layer, step);
 				}
 				break;
-			case KEY_EDIT|KEY_GATE:
+			case KEY_CV|KEY1_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
 					if(layer.shift_vertical(-1)) {
@@ -232,7 +262,7 @@ class CSequenceEditor {
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
-			case KEY_EDIT|KEY_LOOP:
+			case KEY_CV|KEY1_MOVE_HORZ:
 				// action to shift all points left or right
 				if(what == ACTION_ENC_LEFT) {
 					if(--m_edit_value <= -(GRID_WIDTH-1)) {
@@ -249,22 +279,26 @@ class CSequenceEditor {
 				g_popup.show_offset(m_edit_value);
 				break;
 			default:
+				if(!step.is_data_point()) {
+					// the first turn sets as a data point
+					step.set_data_point(1);
+				}
+				else {
+					value_action(layer, step, what, 0);				// change the value
+				}
 				// editing a step value
-				value_action(layer, step, what, 0);				// change the value
-				step.set_gate(CSequenceStep::GATE_RETRIG);
 				layer.set_paste_buffer(step);					// value is placed in paste buffer
 				layer.paste_step(m_cursor);
-				layer.set_scroll_for(step.m_value);
-				//if(!layer.is_mod_mode()) {
-					step_info(layer, step);
-				//}
+				layer.set_scroll_for(step);
+				step_info(layer, step);
 				break;
 			}
 			break;
 		////////////////////////////////////////////////
 		case ACTION_EDIT_KEYS:
 			switch(m_edit_keys) {
-			case KEY_EDIT|KEY_PASTE:
+
+			case KEY_CV|KEY_PASTE:
 				// EDIT + PASTE - advance cursor and copy the current step
 				if(layer.is_paste_step_available()) {
 					if(++m_cursor >= GRID_WIDTH-1) {
@@ -273,7 +307,7 @@ class CSequenceEditor {
 					layer.paste_step(m_cursor);
 				}
 				break;
-			case KEY_EDIT|KEY_CLEAR:
+/*			case KEY_CV|KEY_CLEAR:
 				if(layer.is_note_mode()) {
 					// EDIT + CLEAR - insert rest and advance cursor
 					layer.clear_step_value(m_cursor);
@@ -281,13 +315,13 @@ class CSequenceEditor {
 						m_cursor = 0;
 					}
 				}
-				break;
-			case KEY_EDIT|KEY_GATE:
+				break;*/
+			case KEY_CV|KEY1_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT", 4);
 				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
-			case KEY_EDIT|KEY_LOOP:
+			case KEY_CV|KEY1_MOVE_HORZ:
 				m_edit_value = 0;
 				g_popup.text("HORZ", 4);
 				g_popup.align(CPopup::ALIGN_RIGHT);
@@ -354,16 +388,35 @@ class CSequenceEditor {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
-			layer.get_step(m_cursor).dec_gate();
+			if(m_gate_view) {
+				--m_gate_view;
+			}
+			show_gate_view();
 			break;
 		////////////////////////////////////////////////
 		case ACTION_ENC_RIGHT:
-			layer.get_step(m_cursor).inc_gate();
+			if(m_gate_view < GATE_VIEW_MAX) {
+				++m_gate_view;
+			}
+			show_gate_view();
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			layer.get_step(m_cursor).toggle_gate();
+		{
+			CSequenceStep& step = layer.get_step(m_cursor);
+			switch(m_gate_view) {
+			case GATE_VIEW_GATE:
+				step.inc_gate();
+				break;
+			case GATE_VIEW_GLIDE:
+				step.inc_glide();
+				break;
+			case GATE_VIEW_PROB:
+				step.inc_prob();
+				break;
+			}
 			break;
+		}
 		default:
 			break;
 		}
@@ -428,7 +481,7 @@ class CSequenceEditor {
 	// key has been pressed
 	void action(CSequenceLayer& layer, ACTION what) {
 		switch(m_action_key) {
-		case KEY_EDIT: edit_action(layer, what); break;
+		case KEY_CV: edit_action(layer, what); break;
 		case KEY_PASTE: paste_action(layer, what); break;
 		case KEY_CLEAR: clear_action(layer, what); break;
 		case KEY_GATE: gate_action(layer, what); break;
@@ -457,7 +510,7 @@ public:
 		case EV_KEY_PRESS:
 			if(!m_action_key) {
 				switch(param) {
-				case KEY_EDIT:
+				case KEY_CV:
 				case KEY_PASTE:
 				case KEY_CLEAR:
 				case KEY_GATE:
@@ -468,7 +521,7 @@ public:
 					action(layer, ACTION_BEGIN);
 				}
 			}
-			else if(m_action_key == KEY_EDIT) {
+			else if(m_action_key == KEY_CV) {
 				m_edit_keys = param;
 				action(layer, ACTION_EDIT_KEYS);
 			}
@@ -601,7 +654,7 @@ public:
 			CSequenceStep& step = layer.get_step(i);
 
 			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
-				n = 12 - step.m_value/10;
+				n = 12 - step.get_value()/10;
 				if(n<0) {
 					n=0;
 				}
@@ -609,7 +662,7 @@ public:
 					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) |= mask;
 				}
-				else if(step.m_is_data_point) {
+				else if(step.is_data_point()) {
 					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) &= ~mask;
 
@@ -620,7 +673,7 @@ public:
 				}
 			}
 			else {
-				n = step.m_value;
+				n = step.get_value();
 				if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
 					n = layer.get_scale().note_to_index(n);
 				}
@@ -630,7 +683,7 @@ public:
 						g_ui.hilite(n) |= mask;
 						g_ui.raster(n) |= mask;
 					}
-					else if(step.m_is_data_point) {
+					else if(step.is_data_point()) {
 						g_ui.raster(n) |= mask;
 						g_ui.hilite(n) &= ~mask;
 					}
@@ -642,22 +695,52 @@ public:
 			}
 
 
-			// DISPLAY THE GATE INFO
-			if(step.is_gate_open()) {
-				if(i == layer.get_pos() && g_sequencer.is_running()) {
-					g_ui.raster(14) |= mask;
-					g_ui.hilite(14) |= mask;
-				}
-				else if(step.is_accent()) {
-					g_ui.raster(14) |= mask;
-					g_ui.hilite(14) |= mask;
-				}
-				else if(step.is_trigger()) {
-					g_ui.raster(14) |= mask;
-				}
-				else {
-					g_ui.hilite(14) |= mask;
-				}
+
+			byte bri = BRIGHT_OFF;
+			switch(m_gate_view) {
+				case GATE_VIEW_GATE:
+					if(step.is_trigger()) {
+						bri = BRIGHT_MED;
+					}
+					else if(step.is_gate_open()){
+						bri = BRIGHT_LOW;
+					}
+					break;
+				case GATE_VIEW_GLIDE:
+					if(step.is_glide()) {
+						bri = BRIGHT_MED;
+					}
+					break;
+				case GATE_VIEW_PROB:
+					switch(step.get_prob()) {
+						case CSequenceStep::PROB_HIGH:
+							bri = BRIGHT_HIGH;
+							break;
+						case CSequenceStep::PROB_MED:
+							bri = BRIGHT_MED;
+							break;
+						case CSequenceStep::PROB_LOW:
+							bri = BRIGHT_LOW;
+							break;
+					}
+					break;
+			}
+
+			if(bri != BRIGHT_OFF && i == layer.get_pos() && g_sequencer.is_running()) {
+					bri = BRIGHT_HIGH;
+			}
+
+			switch(bri) {
+			case BRIGHT_LOW:
+				g_ui.hilite(14) |= mask;
+				break;
+			case BRIGHT_MED:
+				g_ui.raster(14) |= mask;
+				break;
+			case BRIGHT_HIGH:
+				g_ui.raster(14) |= mask;
+				g_ui.hilite(14) |= mask;
+				break;
 			}
 
 			mask>>=1;

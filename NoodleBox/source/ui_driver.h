@@ -76,14 +76,20 @@
 #define KEY_MAXBIT	(1U<<23)
 
 // define aliases for specific key bits based on their function
-#define KEY_EDIT		KEY_B1
-#define KEY_PASTE		KEY_B2
-#define KEY_CLEAR		KEY_B3
-#define KEY_GATE		KEY_B4
+#define KEY_CV			KEY_B1
+#define KEY_GATE		KEY_B2
+#define KEY_PASTE		KEY_B3
+#define KEY_CLEAR		KEY_B4
 #define KEY_LOOP		KEY_B5
 #define KEY_STORE		KEY_B6
 #define KEY_RUN			KEY_B7
 #define KEY_MENU		KEY_B8
+
+// define key combinations with button 1 (CV)
+#define KEY1_FINE		KEY_B2
+#define KEY1_MOVE_HORZ	KEY_B4
+#define KEY1_MOVE_VERT	KEY_B5
+
 #define KEY2_LAYER1		KEY_B1
 #define KEY2_LAYER2		KEY_B2
 #define KEY2_LAYER3		KEY_B3
@@ -374,7 +380,7 @@ public:
 	// combined keypress
 	void key_down(uint32_t key) {
 		m_button_hold_timeout = 0;
-		if(key & (KEY_EDIT|KEY_MENU)) { // a shift key pressed
+		if(key & (KEY_CV|KEY_MENU)) { // a shift key pressed
 			if(!m_key) {	// only valid if pressed when no other keys held
 				if(m_shift) {
 					m_key = key;
