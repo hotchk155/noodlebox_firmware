@@ -35,7 +35,7 @@ class CSequenceEditor {
 		ACTION_ENC_RIGHT,   // encoder is turned clockwise
 		ACTION_HOLD,		// button has been held down for a certain period with no encoder turn
 		ACTION_CLICK,		// button pressed and release without encoder turn
-		ACTION_EDIT_KEYS,	// button is pressed with EDIT key used as shift
+		ACTION_KEY_COMBO,	// button is pressed with EDIT key used as shift
 		ACTION_END			// end of an action, when button is released
 	} ACTION;
 
@@ -65,7 +65,7 @@ class CSequenceEditor {
 	ACTION m_action;			// the action being performed by the user
 	uint32_t m_action_key;		// the key to which the action applies
 	uint32_t m_last_action_key;
-	uint32_t m_edit_keys;		// keys pressed in conjunction with edit shift
+	uint32_t m_key_combo;		// keys pressed in conjunction with edit shift
 	byte m_encoder_moved;		// whether encoder has been previously moved since action was in progress
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
@@ -85,7 +85,7 @@ class CSequenceEditor {
 		m_action = ACTION_NONE;
 		m_action_key = 0;
 		m_last_action_key = 0;
-		m_edit_keys = 0;
+		m_key_combo = 0;
 		m_encoder_moved = 0;
 		m_cursor = 0;
 		m_edit_value = 0;
@@ -126,6 +126,25 @@ class CSequenceEditor {
 			break;
 		case CSequenceStep::PROB_LOW:
 			g_popup.text("LOW", 3);
+			break;
+		}
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_page_no(int value) {
+		switch(value) {
+		case 0:
+			g_popup.text("A", 1);
+			break;
+		case 1:
+			g_popup.text("B", 1);
+			break;
+		case 2:
+			g_popup.text("C", 1);
+			break;
+		case 3:
+			g_popup.text("D", 1);
 			break;
 		}
 		g_popup.avoid(m_cursor);
@@ -304,9 +323,9 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			switch(m_edit_keys) {
+			switch(m_key_combo) {
 				// fine edit in mod mode
-			case KEY_CV|KEY1_FINE:
+			case KEY_CV|KEY2_CV_FINE:
 				if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
@@ -318,7 +337,7 @@ class CSequenceEditor {
 
 				}
 				break;
-			case KEY_CV|KEY1_MOVE_VERT:
+			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
 					if(layer.shift_vertical(-1)) {
@@ -332,7 +351,7 @@ class CSequenceEditor {
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
-			case KEY_CV|KEY1_MOVE_HORZ:
+			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				// action to shift all points left or right
 				if(what == ACTION_ENC_LEFT) {
 					if(--m_edit_value <= -(GRID_WIDTH-1)) {
@@ -364,8 +383,8 @@ class CSequenceEditor {
 			}
 			break;
 		////////////////////////////////////////////////
-		case ACTION_EDIT_KEYS:
-			switch(m_edit_keys) {
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
 
 /*			case KEY_CV|KEY_PASTE:
 				// EDIT + PASTE - advance cursor and copy the current step
@@ -385,12 +404,12 @@ class CSequenceEditor {
 					}
 				}
 				break;*/
-			case KEY_CV|KEY1_MOVE_VERT:
+			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT", 4);
 				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
-			case KEY_CV|KEY1_MOVE_HORZ:
+			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				m_edit_value = 0;
 				g_popup.text("HORZ", 4);
 				g_popup.align(CPopup::ALIGN_RIGHT);
@@ -562,6 +581,24 @@ class CSequenceEditor {
 			}
 			show_page_list(m_edit_value);
 			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_PAGE|KEY2_PAGE_A:
+				layer.set_page_no(0);
+				break;
+			case KEY_PAGE|KEY2_PAGE_B:
+				layer.set_page_no(1);
+				break;
+			case KEY_PAGE|KEY2_PAGE_C:
+				layer.set_page_no(2);
+				break;
+			case KEY_PAGE|KEY2_PAGE_D:
+				layer.set_page_no(3);
+				break;
+			}
+			m_edit_value = layer.get_max_page_no();
+			show_page_no(layer.get_page_no());
+			break;
 		case ACTION_END:
 			if(m_edit_value < 0) {
 				layer.set_max_page_no(0);
@@ -641,14 +678,14 @@ public:
 					action(layer, ACTION_BEGIN);
 				}
 			}
-			else if(m_action_key == KEY_CV) {
-				m_edit_keys = param;
-				action(layer, ACTION_EDIT_KEYS);
+			else {
+				m_key_combo = param;
+				action(layer, ACTION_KEY_COMBO);
 			}
 			break;
 		case EV_KEY_RELEASE:
-			if(param & m_edit_keys) {
-				m_edit_keys = 0;
+			if(param & m_key_combo) {
+				m_key_combo = 0;
 			}
 			if(param == m_action_key) {
 				action(layer, ACTION_END);

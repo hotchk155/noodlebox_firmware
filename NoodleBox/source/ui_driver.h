@@ -86,15 +86,21 @@
 #define KEY_MENU		KEY_B8
 
 // define key combinations with button 1 (CV)
-#define KEY1_FINE		KEY_B2
-#define KEY1_MOVE_HORZ	KEY_B4
-#define KEY1_MOVE_VERT	KEY_B5
+#define KEY2_CV_FINE		KEY_B2
+#define KEY2_CV_MOVE_HORZ	KEY_B4
+#define KEY2_CV_MOVE_VERT	KEY_B5
 
-#define KEY2_LAYER1		KEY_B1
-#define KEY2_LAYER2		KEY_B2
-#define KEY2_LAYER3		KEY_B3
-#define KEY2_LAYER4		KEY_B4
-#define KEY2_LAYER_MUTE	KEY_B7
+#define KEY2_PAGE_A		KEY_B1
+#define KEY2_PAGE_B		KEY_B2
+#define KEY2_PAGE_C		KEY_B3
+#define KEY2_PAGE_D		KEY_B4
+
+
+#define KEY2_MENU_LAYER1		KEY_B1
+#define KEY2_MENU_LAYER2		KEY_B2
+#define KEY2_MENU_LAYER3		KEY_B3
+#define KEY2_MENU_LAYER4		KEY_B4
+#define KEY2_MENU_LAYER_MUTE	KEY_B7
 
 
 // debounce times (ms)
@@ -379,6 +385,20 @@ public:
 
 	// combined keypress
 	void key_down(uint32_t key) {
+
+		m_button_hold_timeout = 0;
+		if(!m_key) {	// only valid if pressed when no other keys held
+			if(m_shift) {
+				m_key = key;
+			}
+			else {
+				m_shift = key;
+			}
+			fire_event(EV_KEY_PRESS, m_shift|m_key);
+			m_button_hold_timeout = LONG_PRESS_TIME;
+		}
+
+		/*
 		m_button_hold_timeout = 0;
 		if(key & (KEY_CV|KEY_MENU)) { // a shift key pressed
 			if(!m_key) {	// only valid if pressed when no other keys held
@@ -399,6 +419,7 @@ public:
 				m_button_hold_timeout = LONG_PRESS_TIME;
 			}
 		}
+		*/
 	}
 	void key_up(uint32_t key) {
 		if(key == m_shift) { // has the current shift key been released?
