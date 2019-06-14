@@ -68,6 +68,7 @@ private:
 		byte 			m_midi_vel_accent;
 		byte 			m_midi_vel;
 		byte			m_interpolate;
+		byte 			m_max_page_no;
 	} CONFIG;
 
 
@@ -298,6 +299,7 @@ public:
 		m_cfg.m_midi_vel_accent = 127;
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_interpolate = 0;
+		m_cfg.m_max_page_no = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -426,6 +428,14 @@ public:
 	// EDIT FUNCTIONS
 	//
 
+	///////////////////////////////////////////////////////////////////////////////
+	void clear_all() {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		byte value = get_default_value();
+		for(int i=0; i<MAX_STEPS; ++i) {
+			page.m_step[i].reset_all(value);
+		}
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	// preserve trigs but clear all data
 	void reset_data_points(byte value) {
@@ -672,6 +682,50 @@ public:
 		recalc_data_points();
 	}
 
+
+	///////////////////////////////////////////////////////////////////////////////
+	void append_page() {
+		if(m_cfg.m_max_page_no < MAX_PAGES-1) {
+			m_cfg.m_page[m_cfg.m_max_page_no+1] = m_cfg.m_page[m_cfg.m_max_page_no];
+			++m_cfg.m_max_page_no;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_page_no(int page_no) {
+		if(page_no<0 || page_no>=MAX_PAGES) {
+			return;
+		}
+		while(page_no>m_cfg.m_max_page_no) {
+			append_page();
+		}
+		m_state.m_page_no = page_no;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline int get_max_page_no() {
+		return m_cfg.m_max_page_no;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline int get_max_pages() {
+		return MAX_PAGES;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_max_page_no(int max_page_no) {
+		if(max_page_no<0 || max_page_no>=MAX_PAGES) {
+			return;
+		}
+		if(max_page_no < m_cfg.m_max_page_no) {
+			m_cfg.m_max_page_no = max_page_no;
+			m_state.m_page_no = max_page_no;
+		}
+		while(max_page_no>m_cfg.m_max_page_no) {
+			append_page();
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	inline V_SQL_SEQ_MODE get_mode() {
 		return m_cfg.m_mode;
@@ -739,14 +793,14 @@ public:
 		return m_state.m_play_pos;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	inline byte is_mod_mode() {
-		return(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
-	}
+	//inline byte is_mod_mode() {
+//		return(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline byte is_note_mode() {
-		return(m_cfg.m_mode == V_SQL_SEQ_MODE_CHROMATIC || m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE);
-	}
+	//inline byte is_note_mode() {
+		//return(m_cfg.m_mode == V_SQL_SEQ_MODE_CHROMATIC || m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE);
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 //	inline CSequenceStep& get_step(int index) {

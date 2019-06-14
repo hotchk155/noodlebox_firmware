@@ -66,7 +66,7 @@ class CSequenceEditor {
 	uint32_t m_action_key;		// the key to which the action applies
 	uint32_t m_last_action_key;
 	uint32_t m_edit_keys;		// keys pressed in conjunction with edit shift
-	byte m_encoder_moved;		// whether encoder has been moved since action was in progress
+	byte m_encoder_moved;		// whether encoder has been previously moved since action was in progress
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
 	int m_sel_from;				// start of selection range
@@ -132,6 +132,28 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_page_list(int value) {
+		switch(value) {
+		case 3:
+			g_popup.text("ABCD", 4);
+			break;
+		case 2:
+			g_popup.text("ABC", 4);
+			break;
+		case 1:
+			g_popup.text("AB", 4);
+			break;
+		case 0:
+			g_popup.text("A", 4);
+			break;
+		case -1:
+			g_popup.text(" ", 4);
+			break;
+		}
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
 	void show_step_value(CSequenceLayer& layer, int value) {
 		switch(layer.get_view()) {
@@ -152,16 +174,25 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// scroll display up or down
 	void scroll(CSequenceLayer& layer, int dir) {
-		if(!layer.is_mod_mode()) {
-			int scroll_ofs = layer.get_scroll_ofs();
-			scroll_ofs += dir;
-			if(scroll_ofs < 0) {
-				scroll_ofs = 0;
+		switch(layer.get_view()) {
+		case CSequenceLayer::VIEW_PITCH_SCALED:
+		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+		case CSequenceLayer::VIEW_PITCH_OFFSET:
+			{
+				int scroll_ofs = layer.get_scroll_ofs();
+				scroll_ofs += dir;
+				if(scroll_ofs < 0) {
+					scroll_ofs = 0;
+				}
+				else if(scroll_ofs > 114) {
+					scroll_ofs = 114;
+				}
+				layer.set_scroll_ofs(scroll_ofs);
+				break;
 			}
-			else if(scroll_ofs > 114) {
-				scroll_ofs = 114;
-			}
-			layer.set_scroll_ofs(scroll_ofs);
+		case CSequenceLayer::VIEW_MODULATION:
+		default:
+			break;
 		}
 	}
 
@@ -276,7 +307,7 @@ class CSequenceEditor {
 			switch(m_edit_keys) {
 				// fine edit in mod mode
 			case KEY_CV|KEY1_FINE:
-				if(layer.is_mod_mode()) {
+				if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
@@ -511,6 +542,42 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+
+
+	void page_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+		////////////////////////////////////////////////
+		case ACTION_BEGIN:
+			m_edit_value = layer.get_max_page_no();
+			break;
+		case ACTION_ENC_LEFT:
+			if(m_encoder_moved && m_edit_value >= 0) {
+				--m_edit_value;
+			}
+			show_page_list(m_edit_value);
+			break;
+		case ACTION_ENC_RIGHT:
+			if(m_encoder_moved && m_edit_value < layer.get_max_pages()-1) {
+				++m_edit_value;
+			}
+			show_page_list(m_edit_value);
+			break;
+		case ACTION_END:
+			if(m_edit_value < 0) {
+				layer.set_max_page_no(0);
+				layer.clear_all();
+			}
+			else {
+				layer.set_max_page_no(m_edit_value);
+			}
+			g_popup.hide();
+			break;
+		default:
+			break;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// MENU BUTTON
 	void menu_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
@@ -537,6 +604,7 @@ class CSequenceEditor {
 		case KEY_CLEAR: clear_action(layer, what); break;
 		case KEY_GATE: gate_action(layer, what); break;
 		case KEY_LOOP: loop_action(layer, what); break;
+		case KEY_PAGE: page_action(layer, what); break;
 		case KEY_MENU: menu_action(layer, what); break;
 		}
 	}
@@ -566,6 +634,7 @@ public:
 				case KEY_CLEAR:
 				case KEY_GATE:
 				case KEY_LOOP:
+				case KEY_PAGE:
 				case KEY_MENU:
 					m_action_key = param;
 					m_encoder_moved = 0;
