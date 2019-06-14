@@ -68,7 +68,7 @@ private:
 		byte 			m_midi_vel_accent;
 		byte 			m_midi_vel;
 		byte			m_interpolate;
-		byte 			m_max_page_no;
+		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 	} CONFIG;
 
 
@@ -82,6 +82,10 @@ private:
 	typedef struct {
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
+		byte m_view_page_no;				// the page number being viewed
+		byte m_play_page_no;				// the page number being played
+
+
 		CSequenceStep m_step_value;			// the last value output by sequencer
 		byte m_stepped;						// stepped flag
 		int m_play_pos;
@@ -91,7 +95,6 @@ private:
 		byte m_last_tick_lsb;
 		//CSequenceStep m_paste_step;
 		uint32_t m_gate_timeout;
-		byte m_page_no;
 	} STATE;
 
 	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -109,7 +112,7 @@ private:
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern to the left
 	void shift_left() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		CSequenceStep step = page.m_step[0];
 		for(int i = 0; i<MAX_STEPS-1; ++i) {
 			page.m_step[i] = page.m_step[i+1];
@@ -120,7 +123,7 @@ private:
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern to the right
 	void shift_right() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		CSequenceStep step = page.m_step[MAX_STEPS-1];
 		for(int i = MAX_STEPS-1; i>0; --i) {
 			page.m_step[i] = page.m_step[i-1];
@@ -132,7 +135,7 @@ private:
 	// Create interpolated points between two waypoints
 	void impl_interpolate_section(int pos, int end)
 	{
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		// calculate the number of new points that we will need to
 		// crate during the interpolation
 		int num_points = end - pos;
@@ -162,7 +165,7 @@ private:
 		int i;
 		int first_waypoint = -1;
 		int prev_waypoint = -1;
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		for(i=0; i<MAX_STEPS; ++i) {
 			if(page.m_step[i].is_data_point()) {
 				if(prev_waypoint < 0) {
@@ -200,7 +203,7 @@ private:
 	{
 		int i;
 		int first_data_point = -1;
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		for(i=0; i<MAX_STEPS; ++i) {
 			if(page.m_step[i].is_data_point()) {
 				if(first_data_point < 0) {
@@ -304,7 +307,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
-		m_state.m_page_no = 0;
+		m_state.m_view_page_no = 0;
 		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
@@ -323,6 +326,7 @@ public:
 		m_state.m_play_pos = 0;
 		m_state.m_next_tick = 0;
 		m_state.m_gate_timeout = 0;
+		m_state.m_play_page_no = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -429,8 +433,8 @@ public:
 	//
 
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_all() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+	void clear_page() {
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		byte value = get_default_value();
 		for(int i=0; i<MAX_STEPS; ++i) {
 			page.m_step[i].reset_all(value);
@@ -439,7 +443,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// preserve trigs but clear all data
 	void reset_data_points(byte value) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		for(int i=0; i<MAX_STEPS; ++i) {
 			page.m_step[i].reset_data_point(value);
 		}
@@ -448,7 +452,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 // TODO reset data_point
 	void clear_step_value(byte index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		switch(m_cfg.m_mode) {
 		case V_SQL_SEQ_MODE_SCALE:
 		case V_SQL_SEQ_MODE_CHROMATIC:
@@ -466,20 +470,20 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		page.m_step[index].reset_all();
 		recalc_data_points();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte index, CSequenceStep& step) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		page.m_step[index] = step;
 		recalc_data_points();
 	}
 
 	inline CSequenceStep& get_step(int index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		return page.m_step[index];
 	}
 
@@ -649,7 +653,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
 	byte shift_vertical(int dir) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		// first make sure that the shift will not exceed the bounds at
 		// the top of the bottom of the pattern
 		for(int i = 0; i<MAX_STEPS; ++i) {
@@ -692,19 +696,24 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_page_no(int page_no) {
+	void set_view_page(int page_no) {
 		if(page_no<0 || page_no>=MAX_PAGES) {
 			return;
 		}
 		while(page_no>m_cfg.m_max_page_no) {
 			append_page();
 		}
-		m_state.m_page_no = page_no;
+		m_state.m_view_page_no = page_no;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline int get_page_no() {
-		return m_state.m_page_no;
+	inline int get_view_page() {
+		return m_state.m_view_page_no;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline int get_play_page() {
+		return m_state.m_play_page_no;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -724,7 +733,7 @@ public:
 		}
 		if(max_page_no < m_cfg.m_max_page_no) {
 			m_cfg.m_max_page_no = max_page_no;
-			m_state.m_page_no = max_page_no;
+			m_state.m_view_page_no = max_page_no;
 		}
 		while(max_page_no>m_cfg.m_max_page_no) {
 			append_page();
@@ -850,7 +859,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void tick(uint32_t ticks, byte parts_tick) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
 			if(m_state.m_play_pos == m_cfg.m_loop_to) {
@@ -1267,7 +1276,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_page_no];
+		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
 
 		byte value1 = page.m_step[m_state.m_play_pos].get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {

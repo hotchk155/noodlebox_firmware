@@ -584,25 +584,25 @@ class CSequenceEditor {
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
 			case KEY_PAGE|KEY2_PAGE_A:
-				layer.set_page_no(0);
+				layer.set_view_page(0);
 				break;
 			case KEY_PAGE|KEY2_PAGE_B:
-				layer.set_page_no(1);
+				layer.set_view_page(1);
 				break;
 			case KEY_PAGE|KEY2_PAGE_C:
-				layer.set_page_no(2);
+				layer.set_view_page(2);
 				break;
 			case KEY_PAGE|KEY2_PAGE_D:
-				layer.set_page_no(3);
+				layer.set_view_page(3);
 				break;
 			}
 			m_edit_value = layer.get_max_page_no();
-			show_page_no(layer.get_page_no());
+			show_page_no(layer.get_view_page());
 			break;
 		case ACTION_END:
 			if(m_edit_value < 0) {
 				layer.set_max_page_no(0);
-				layer.clear_all();
+				layer.clear_page();
 			}
 			else {
 				layer.set_max_page_no(m_edit_value);
@@ -809,12 +809,13 @@ public:
 
 			CSequenceStep& step = layer.get_step(i);
 
+			byte show_active_pos = (i == layer.get_pos()) && (g_sequencer.is_running()) && (layer.get_play_page() == layer.get_view_page());
 			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 				n = 12 - step.get_value()/10;
 				if(n<0) {
 					n=0;
 				}
-				if(i == layer.get_pos() && g_sequencer.is_running()) {
+				if(show_active_pos) {
 					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) |= mask;
 				}
@@ -835,7 +836,7 @@ public:
 				}
 				n = 12 - n + layer.get_scroll_ofs();
 				if(n >= 0 && n <= 12) {
-					if(i == layer.get_pos() && g_sequencer.is_running()) {
+					if(show_active_pos) {
 						g_ui.hilite(n) |= mask;
 						g_ui.raster(n) |= mask;
 					}
@@ -880,7 +881,7 @@ public:
 					break;
 			}
 
-			if(bri != BRIGHT_OFF && i == layer.get_pos() && g_sequencer.is_running()) {
+			if(bri != BRIGHT_OFF && show_active_pos) {
 					bri = BRIGHT_HIGH;
 			}
 
