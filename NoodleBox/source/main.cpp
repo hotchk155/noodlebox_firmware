@@ -65,8 +65,8 @@
 #include "sequence_step.h"
 #include "sequence_page.h"
 #include "sequence_layer.h"
+#include "sequence.h"
 #include "popup.h"
-#include "sequencer.h"
 #include "sequence_editor.h"
 #include "params.h"
 #include "menu.h"
@@ -158,7 +158,7 @@ void fire_event(int event, uint32_t param) {
 	case EV_KEY_PRESS:
 		switch(param) {
 		case KEY_RUN:
-			fire_event(g_sequencer.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
+			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
 			break;
 		default:
 			dispatch_event(event, param);
@@ -167,7 +167,7 @@ void fire_event(int event, uint32_t param) {
 		break;
 	///////////////////////////////////
 	case EV_SEQ_STOP:
-		g_sequencer.stop();
+		g_sequence.stop();
 		g_cv_gate.close_all_gates();
 		g_popup.text("STOP", 4);
 		g_popup.align(CPopup::ALIGN_RIGHT);
@@ -177,19 +177,19 @@ void fire_event(int event, uint32_t param) {
 		g_popup.text("RST", 3);
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		g_clock.on_restart();
-		g_sequencer.reset();
-		g_sequencer.start();
+		g_sequence.reset();
+		g_sequence.start();
 		break;
 	///////////////////////////////////
 	case EV_SEQ_START:
-		g_sequencer.start();
+		g_sequence.start();
 		g_popup.text("RUN", 3);
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
 	///////////////////////////////////
 	case EV_CLOCK_RESET:
 		g_clock.on_restart();
-		g_sequencer.reset();
+		g_sequence.reset();
 		break;
 	default:
 		dispatch_event(event, param);
@@ -232,7 +232,7 @@ int main(void) {
     g_ui.init();
     //g_sequencer.m_layers[0].test();
 
-    g_sequencer.init();
+    g_sequence.init();
 
     byte i2c_priority = 0;
     while(1) {
@@ -243,7 +243,7 @@ int main(void) {
     		g_popup.run();
         	g_cv_gate.run();
         	g_midi.run();
-       		g_sequencer.run(g_clock.get_ticks(), g_clock.get_part_ticks());
+       		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
         	g_ui.run();
 
 

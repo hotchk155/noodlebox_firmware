@@ -14,12 +14,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef SEQUENCER_H_
-#define SEQUENCER_H_
+#ifndef SEQUENCE_H_
+#define SEQUENCE_H_
 
 ///////////////////////////////////////////////////////////////////////////////
 // SEQUENCER CLASS
-class CSequencer {
+class CSequence {
 
 	enum {
 		NUM_LAYERS = 4,	// number of layers in the sequence
@@ -28,79 +28,39 @@ class CSequencer {
 
 	// Config info that forms part of the patch
 	typedef struct {
-		byte 				dummy;
+		CScale& m_scale;
+		CSequenceLayer m_layers[NUM_LAYERS];
 	} CONFIG;
 	CONFIG m_cfg;
 
 	byte m_is_running;
-	//int m_cur_layer;			// this is the current layer being viewed/edited
-	CSequenceLayer m_layers[NUM_LAYERS];
-	CScale m_scale;
 public:
 
-	///////////////////////////////////////////////////////////////////////////////
-	// constructor
-	CSequencer() : m_layers{m_scale,m_scale,m_scale,m_scale} {}
+	CSequence() : m_cfg {g_scale} {}
 
 	void init() {
-		m_scale.build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
 		init_config();
 		m_is_running = 0;
-		//m_cur_layer = 0;
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].init();
-		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// initialise the saved configuration
 	void init_config() {
+		m_cfg.m_scale.build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_cfg.m_layers[i].init();
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// get a reference to the current layer object
-	//inline CSequenceLayer& cur_layer() {
-		//return m_layers[m_cur_layer];
-	//}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// return current layer index 0-3
-	//inline int get_cur_layer() {
-	//	return m_cur_layer;
-	//}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// change current layer
-	//void set_cur_layer(int layer) {
-	//	m_cur_layer = layer;
-	//}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// config setter
-	//void set(PARAM_ID param, int value) {
-//		m_layers[m_cur_layer].set(param,value);
-//	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// config getter
-//	int get(PARAM_ID param) {
-//		return m_layers[m_cur_layer].get(param);
-//	}
-
-	///////////////////////////////////////////////////////////////////////////////
-//	// config validator
-	//int is_valid_param(PARAM_ID param) {
-		//return cur_layer().is_valid_param(param);
-	//}
-
 	CSequenceLayer& get_layer(int index) {
-		return m_layers[index];
+		return m_cfg.m_layers[index];
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void start() {
 		m_is_running = 1;
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].start(g_clock.get_ticks(), g_clock.get_part_ticks());
+			m_cfg.m_layers[i].start(g_clock.get_ticks(), g_clock.get_part_ticks());
 		}
 	}
 
@@ -108,14 +68,14 @@ public:
 	void stop() {
 		m_is_running = 0;
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].stop_all_notes();
+			m_cfg.m_layers[i].stop_all_notes();
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void reset() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].reset();
+			m_cfg.m_layers[i].reset();
 		}
 	}
 
@@ -129,20 +89,20 @@ public:
 	void run(uint32_t ticks, byte parts_tick) {
 
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].ms_tick(i);
+			m_cfg.m_layers[i].ms_tick(i);
 		}
 		// ensure the sequencer is running
 		if(m_is_running) {
 
 			// tick each layer
 			for(int i=0; i<NUM_LAYERS; ++i) {
-				m_layers[i].tick(ticks, parts_tick);
+				m_cfg.m_layers[i].tick(ticks, parts_tick);
 			}
 
 
 			// process each layer
 			for(int i=0; i<NUM_LAYERS; ++i) {
-				CSequenceLayer& layer = m_layers[i];
+				CSequenceLayer& layer = m_cfg.m_layers[i];
 				if(layer.is_stepped() && layer.get_enabled()) {
 					switch(layer.get_mode()) {
 
@@ -170,7 +130,7 @@ public:
 
 							// note layers pass note information to subsequent transpose/velocity layers
 							for(int j=i+1; j<NUM_LAYERS; ++j) {
-								CSequenceLayer& other_layer = m_layers[j];
+								CSequenceLayer& other_layer = m_cfg.m_layers[j];
 								if(other_layer.get_mode() == V_SQL_SEQ_MODE_SCALE ||
 									other_layer.get_mode() == V_SQL_SEQ_MODE_CHROMATIC) {
 									// another note layer found - stops current note layer providing any
@@ -205,6 +165,6 @@ public:
 	}
 };
 
-CSequencer g_sequencer;
+CSequence g_sequence;
 
-#endif /* SEQUENCER_H_ */
+#endif /* SEQUENCE_H_ */

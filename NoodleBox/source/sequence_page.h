@@ -1,12 +1,22 @@
-/*
- * sequence_page.h
- *
- *  Created on: 14 Jun 2019
- *      Author: jason
- */
-
+///////////////////////////////////////////////////////////////////////////////////
+//
+//                                  ~~  ~~             ~~
+//  ~~~~~~    ~~~~~    ~~~~~    ~~~~~~  ~~     ~~~~~   ~~~~~~    ~~~~~   ~~    ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~   ~~  ~~   ~~  ~~   ~~   ~~  ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~~~~~~  ~~   ~~  ~~   ~~     ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~       ~~   ~~  ~~   ~~   ~~  ~~
+//  ~~   ~~   ~~~~~    ~~~~~    ~~~~~~   ~~~   ~~~~~   ~~~~~~    ~~~~~   ~~    ~~
+//
+//  Serendipity Sequencer                                   CC-NC-BY-SA
+//  hotchk155/2019                                          Sixty-four pixels ltd
+//
+//  SEQUENCE PAGE
+//
+///////////////////////////////////////////////////////////////////////////////////
 #ifndef SEQUENCE_PAGE_H_
 
+// Holds a single page of the sequence
+// Has methods which act on entire page
 class CSequencePage {
 public:
 	enum {
@@ -41,20 +51,6 @@ private:
 		}
 	}
 
-
-
-public:
-
-	///////////////////////////////////////////////////////////////////////////////
-	inline CSequenceStep& get_step(int index) {
-		return m_step[index];
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step) {
-		m_step[index] = step;
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// create interpolated points between all user data points in pattern
@@ -96,7 +92,7 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void fill_out(byte value)
+	void fill(byte value)
 	{
 		int i;
 		int first_data_point = -1;
@@ -118,13 +114,37 @@ public:
 		}
 	}
 
+public:
+
 	///////////////////////////////////////////////////////////////////////////////
-	void clear() {
-		for(int i=0; i<MAX_STEPS; ++i) {
-			m_step[i].clear();
+	void recalc(byte interpolation, byte default_value) {
+		if(interpolation) {
+			interpolate(default_value);
+		}
+		else {
+			fill(default_value);
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	inline CSequenceStep get_step(int index) {
+		return m_step[index];
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_step(byte index, CSequenceStep& step, byte interpolate, byte default_value) {
+		m_step[index] = step;
+		recalc(interpolate, default_value);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void clear(byte default_value) {
+		for(int i=0; i<MAX_STEPS; ++i) {
+			m_step[i].clear();
+		}
+		recalc(0, default_value);
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
@@ -170,9 +190,5 @@ public:
 };
 
 #define SEQUENCE_PAGE_H_
-
-
-
-
 
 #endif /* SEQUENCE_PAGE_H_ */

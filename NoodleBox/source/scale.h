@@ -120,5 +120,6 @@ public:
 		return m_index_to_note[index];
 	}
 };
+CScale g_scale;
 
 #endif /* SCALE_H_ */

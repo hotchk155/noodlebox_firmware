@@ -24,7 +24,8 @@ class CSequenceEditor {
 	enum {
 		GRID_WIDTH = 32,	// number of columns in the grid
 		GRID_HEIGHT = 16,	// number of rows in the grid
-		POPUP_MS = 2000		// how long popup window is to be displayed
+		POPUP_MS = 2000,		// how long popup window is to be displayed
+		PPI_MS = 100		// play page indicator timeout
 	};
 
 	// enumeration of the "gestures" or actions that the user can perform
@@ -77,6 +78,8 @@ class CSequenceEditor {
 
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
+
+	byte m_ppi_timeout;			// play page indicator timeout
 	//
 	// PRIVATE METHODS
 	//
@@ -160,7 +163,7 @@ class CSequenceEditor {
 		char text[2];
 		text[0] = '1' + m_cur_layer;
 		text[1] = 'A' + m_cur_page;
-		if(!g_sequencer.get_layer(m_cur_layer).get_enabled()) {
+		if(!g_sequence.get_layer(m_cur_layer).get_enabled()) {
 			text[2] = '$';
 			g_popup.text(text, 3);
 		}
@@ -323,8 +326,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// STUFF WHAT THE EDIT BUTTON DOES...
 	byte edit_action(CSequenceLayer& layer, ACTION what) {
-		CSequencePage& page = layer.get_page(m_cur_page);
-		CSequenceStep& step = page.get_step(m_cursor);
+		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
@@ -352,8 +354,7 @@ class CSequenceEditor {
 					// fine adjustment of value. show the new value and copy
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
-					step.set_data_point(1);
-					page.set_step(m_cursor, step);
+					layer.set_step(m_cur_page, m_cursor, step);
 					layer.set_scroll_for(step.get_value());
 					show_step_value(layer, step.get_value());
 
@@ -362,12 +363,12 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
-					if(page.shift_vertical(-1)) {
+					if(layer.shift_vertical(m_cur_page, -1)) {
 						--m_edit_value;
 					}
 				}
 				else {
-					if(page.shift_vertical(+1)) {
+					if(layer.shift_vertical(m_cur_page, +1)) {
 						++m_edit_value;
 					}
 				}
@@ -379,13 +380,13 @@ class CSequenceEditor {
 					if(--m_edit_value <= -(GRID_WIDTH-1)) {
 						m_edit_value = -(GRID_WIDTH-1);
 					}
-					page.shift_horizontal(-1);
+					layer.shift_horizontal(m_cur_page, -1);
 				}
 				else {
 					if(++m_edit_value >= GRID_WIDTH-1) {
 						m_edit_value = 0;
 					}
-					page.shift_horizontal(+1);
+					layer.shift_horizontal(m_cur_page, +1);
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
@@ -398,7 +399,7 @@ class CSequenceEditor {
 					value_action(layer, step, what, 0);				// change the value
 				}
 				// editing a step value
-				page.set_step(m_cursor, step);
+				layer.set_step(m_cur_page, m_cursor, step);
 				layer.set_scroll_for(step.get_value());
 				show_step_value(layer, step.get_value());
 				break;
@@ -447,7 +448,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// PASTE BUTTON
 	void clone_action(CSequenceLayer& layer, ACTION what) {
-		CSequencePage& page = layer.get_page(m_cur_page);
+		//CSequencePage& page = layer.get_page(m_cur_page);
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
@@ -463,13 +464,13 @@ class CSequenceEditor {
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			if(m_clone_status == CLONE_NONE) {
-				CSequenceStep& source =	page.get_step(m_cursor);
+				CSequenceStep source =	layer.get_step(m_cur_page, m_cursor);
 				cursor_action(layer, what, m_cursor, 1);
-				page.set_step(m_cursor, source);
+				layer.set_step(m_cur_page, m_cursor, source);
 			}
 			else {
-				CSequenceStep& source =	page.get_step(m_clone_source);
-				page.set_step(m_cursor, source);
+				CSequenceStep source =	layer.get_step(m_cur_page, m_clone_source);
+				layer.set_step(m_cur_page, m_cursor, source);
 				cursor_action(layer, what, m_cursor, 1);
 				cursor_action(layer, what, m_clone_source, 1);
 				m_clone_status = CLONE_ACTIONED;
@@ -488,19 +489,16 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// CLEAR BUTTON
 	void clear_action(CSequenceLayer& layer, ACTION what) {
-		CSequencePage& page = layer.get_page(m_cur_page);
-		CSequenceStep& step = page.get_step(m_cursor);
+		CSequenceStep blank;
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			step.clear();
-			layer.recalc_data_points(page);
+			layer.set_step(m_cur_page, m_cursor, blank);
 			break;
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			step.clear();
-			layer.recalc_data_points(page);
+			layer.set_step(m_cur_page, m_cursor, blank);
 			cursor_action(layer, what, m_cursor);
 			break;
 		default:
@@ -530,8 +528,8 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
 		{
-			CSequencePage& page = layer.get_page(m_cur_page);
-			CSequenceStep& step = page.get_step(m_cursor);
+			//CSequencePage& page = layer.get_page(m_cur_page);
+			CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 			switch(m_gate_view) {
 			case GATE_VIEW_GATE:
 				step.toggle_gate();
@@ -544,6 +542,7 @@ class CSequenceEditor {
 				show_gate_prob(step.get_prob());
 				break;
 			}
+			layer.set_step(m_cur_page, m_cursor, step);
 			break;
 		}
 		default:
@@ -597,7 +596,7 @@ class CSequenceEditor {
 			show_page_list(m_edit_value);
 			break;
 		case ACTION_ENC_RIGHT:
-			if(m_encoder_moved && m_edit_value < layer.get_max_pages()-1) {
+			if(m_encoder_moved && m_edit_value < CSequenceLayer::MAX_PAGES-1) {
 				++m_edit_value;
 			}
 			show_page_list(m_edit_value);
@@ -619,15 +618,20 @@ class CSequenceEditor {
 			}
 			layer.prepare_page(m_cur_page);
 			m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
+			layer.set_next_page_no(m_cur_page);
 			show_layer_page();
 			break;
 		case ACTION_END:
 			if(m_edit_value < 0) {
-				layer.get_page(0).clear();
+				layer.clear_page(0);
 				layer.set_max_page_no(0);
+				m_cur_page = 0;
 			}
 			else {
 				layer.set_max_page_no(m_edit_value);
+				if(m_edit_value < m_cur_page) {
+					m_cur_page = m_edit_value;
+				}
 			}
 			g_popup.hide();
 			break;
@@ -711,27 +715,27 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// config setter
 	void set(PARAM_ID param, int value) {
-		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
 		layer.set(param,value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// config getter
 	int get(PARAM_ID param) {
-		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
 		return layer.get(param);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
-		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
 		return layer.is_valid_param(param);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// handle an event
 	void event(int evt, uint32_t param) {
-		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
 		switch(evt) {
 		case EV_KEY_PRESS:
 			if(!m_action_key) {
@@ -791,8 +795,8 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// draw the display
 	void repaint() {
-		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
-		CSequencePage& page = layer.get_page(m_cur_page);
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
+		//CSequencePage& page = layer.get_page(m_cur_page);
 		int i;
 		uint32_t mask;
 
@@ -885,9 +889,9 @@ public:
 				}
 			}
 
-			CSequenceStep& step = page.get_step(i);
+			CSequenceStep step = layer.get_step(m_cur_page,i);
 
-			byte show_active_pos = (i == layer.get_pos()) && (g_sequencer.is_running()) && (layer.get_play_page() == m_cur_page);
+			byte show_active_pos = (i == layer.get_pos()) && (g_sequence.is_running()) && (layer.get_play_page() == m_cur_page);
 			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 				n = 12 - step.get_value()/10;
 				if(n<0) {
@@ -942,11 +946,11 @@ public:
 					}
 					break;
 				case GATE_VIEW_TIE:
-					if(step.is_gate()) {
-						bri = BRIGHT_LOW;
-					}
-					else if(step.is_tied()){
+					if(step.is_tied()){
 						bri = BRIGHT_MED;
+					}
+					else if(step.is_gate()) {
+						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_PROB:
@@ -977,6 +981,35 @@ public:
 			}
 
 			mask>>=1;
+		}
+
+
+		if(layer.is_page_advanced()) {
+			m_ppi_timeout = PPI_MS;
+		}
+		else if(m_ppi_timeout) {
+			--m_ppi_timeout;
+		}
+
+		if(m_ppi_timeout) {
+			g_ui.hilite(14) |= 0b11;
+			g_ui.hilite(15) |= 0b11;
+			g_ui.raster(14) &= ~0b11;
+			g_ui.raster(15) &= ~0b11;
+			switch(layer.get_play_page()) {
+				case 0:
+					g_ui.raster(14) |= 0b10;
+					break;
+				case 1:
+					g_ui.raster(14) |= 0b01;
+					break;
+				case 2:
+					g_ui.raster(15) |= 0b01;
+					break;
+				case 3:
+					g_ui.raster(15) |= 0b10;
+					break;
+			}
 		}
 	}
 };
