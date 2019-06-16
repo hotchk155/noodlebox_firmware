@@ -569,16 +569,9 @@ class CSequenceEditor {
 				layer.set_pos(m_cursor);
 			}
 			else {
-				if(m_sel_to >= m_sel_from) {
-					layer.set_loop_from(m_sel_from);
-					layer.set_loop_to(m_sel_to);
-					layer.set_pos(m_sel_from);
-				}
-				else {
-					layer.set_loop_from(m_sel_to);
-					layer.set_loop_to(m_sel_from);
-					layer.set_pos(m_sel_to);
-				}
+				layer.set_loop_from(m_sel_from);
+				layer.set_loop_to(m_sel_to);
+				layer.set_pos(m_sel_from);
 				m_sel_to = -1;
 				m_sel_from = -1;
 			}
@@ -856,14 +849,8 @@ public:
 		int ruler_from;
 		int ruler_to;
 		if(m_sel_from >= 0) {
-			if(m_sel_to >= m_sel_from) {
-				ruler_from = m_sel_from;
-				ruler_to = m_sel_to;
-			}
-			else {
-				ruler_to = m_sel_from;
-				ruler_from = m_sel_to;
-			}
+			ruler_from = m_sel_from;
+			ruler_to = m_sel_to;
 		}
 		else {
 			ruler_from = layer.get_loop_from();
@@ -875,14 +862,27 @@ public:
 		for(i=0; i<32; ++i) {
 
 			// show the "ruler" at the bottom of screen
-			if(i >= ruler_from && i <= ruler_to) {
-				if(!(c & 0x03)) { // steps 0, 4, 8 etc
-					g_ui.raster(15) |= mask;
+			if(ruler_from > ruler_to) { // playing backwards
+				if(i >= ruler_to && i <= ruler_from) {
+					if(!(c & 0x03)) { // steps 0, 4, 8 etc
+						g_ui.raster(15) |= mask;
+					}
+					else {
+						g_ui.hilite(15) |= mask;
+					}
+					--c;
 				}
-				else {
-					g_ui.hilite(15) |= mask;
+			}
+			else {
+				if(i >= ruler_from && i <= ruler_to) {
+					if(!(c & 0x03)) { // steps 0, 4, 8 etc
+						g_ui.raster(15) |= mask;
+					}
+					else {
+						g_ui.hilite(15) |= mask;
+					}
+					++c;
 				}
-				++c;
 			}
 
 			CSequenceStep& step = page.get_step(i);

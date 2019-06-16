@@ -585,22 +585,31 @@ public:
 		}*/
 	}
 
-
-	///////////////////////////////////////////////////////////////////////////////
-	void tick(uint32_t ticks, byte parts_tick) {
-		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
-		if(ticks >= m_state.m_next_tick) {
-			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
-			if(m_state.m_play_pos == m_cfg.m_loop_to) {
-				m_state.m_play_pos = m_cfg.m_loop_from;
+	void next_step(CSequencePage& page) {
+		if(m_state.m_play_pos == m_cfg.m_loop_to) {
+			m_state.m_play_pos = m_cfg.m_loop_from;
+		}
+		else {
+			if(m_cfg.m_loop_to < m_cfg.m_loop_from) { // run backwards
+				if(--m_state.m_play_pos < 0) {
+					m_state.m_play_pos = CSequencePage::MAX_STEPS-1;
+				}
 			}
 			else {
 				if(++m_state.m_play_pos > CSequencePage::MAX_STEPS-1) {
 					m_state.m_play_pos = 0;
 				}
 			}
+		}
+		m_state.m_step_value = page.get_step(m_state.m_play_pos);
+	}
 
-			m_state.m_step_value = page.get_step(m_state.m_play_pos);
+	///////////////////////////////////////////////////////////////////////////////
+	void tick(uint32_t ticks, byte parts_tick) {
+		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
+		if(ticks >= m_state.m_next_tick) {
+			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
+			next_step(page);
 			m_state.m_stepped = 1;
 		}
 		else {
