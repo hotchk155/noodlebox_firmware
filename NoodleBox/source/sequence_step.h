@@ -85,19 +85,19 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// clear data point and gates
-	void reset_all(byte value = 0) {
+	void clear() {
 		m_gate = 0;
 		m_tie = 0;
 		m_prob = 0;
 		m_is_data_point = 0;
-		m_value = value;
+		m_value = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// clear data point but preserve gate
-	void reset_data_point(byte value = 0) {
+	void clear_data_point() {
 		m_is_data_point = 0;
-		m_value = value;
+		m_value = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////

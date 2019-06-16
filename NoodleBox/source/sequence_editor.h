@@ -75,6 +75,8 @@ class CSequenceEditor {
 	int m_clone_source;			// column from which to clone data
 	byte m_clone_status;
 
+	byte m_cur_layer;			// the layer number that is being viewed
+	byte m_cur_page;			// the page within the layer that is being viewed
 	//
 	// PRIVATE METHODS
 	//
@@ -94,6 +96,8 @@ class CSequenceEditor {
 		m_gate_view = GATE_VIEW_GATE;
 		m_clone_source = 0;
 		m_clone_status = CLONE_NONE;
+		m_cur_layer = 0;
+		m_cur_page = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -132,6 +136,7 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	/*
 	void show_page_no(int value) {
 		switch(value) {
 		case 0:
@@ -147,6 +152,22 @@ class CSequenceEditor {
 			g_popup.text("D", 1);
 			break;
 		}
+		g_popup.avoid(m_cursor);
+	}
+*/
+	///////////////////////////////////////////////////////////////////////////////
+	void show_layer_page() {
+		char text[2];
+		text[0] = '1' + m_cur_layer;
+		text[1] = 'A' + m_cur_page;
+		if(!g_sequencer.get_layer(m_cur_layer).get_enabled()) {
+			text[2] = '$';
+			g_popup.text(text, 3);
+		}
+		else {
+			g_popup.text(text, 2);
+		}
+
 		g_popup.avoid(m_cursor);
 	}
 
@@ -302,7 +323,8 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// STUFF WHAT THE EDIT BUTTON DOES...
 	byte edit_action(CSequenceLayer& layer, ACTION what) {
-		CSequenceStep step = layer.get_step(m_cursor);
+		CSequencePage& page = layer.get_page(m_cur_page);
+		CSequenceStep& step = page.get_step(m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
@@ -314,7 +336,7 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_HOLD:
 			// holding the button down shows the layer id
-			g_popup.layer(g_sequencer.get_cur_layer(), layer.get_enabled());
+			show_layer_page();
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
@@ -331,7 +353,7 @@ class CSequenceEditor {
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
 					step.set_data_point(1);
-					layer.set_step(m_cursor, step);
+					page.set_step(m_cursor, step);
 					layer.set_scroll_for(step.get_value());
 					show_step_value(layer, step.get_value());
 
@@ -340,12 +362,12 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
-					if(layer.shift_vertical(-1)) {
+					if(page.shift_vertical(-1)) {
 						--m_edit_value;
 					}
 				}
 				else {
-					if(layer.shift_vertical(+1)) {
+					if(page.shift_vertical(+1)) {
 						++m_edit_value;
 					}
 				}
@@ -357,13 +379,13 @@ class CSequenceEditor {
 					if(--m_edit_value <= -(GRID_WIDTH-1)) {
 						m_edit_value = -(GRID_WIDTH-1);
 					}
-					layer.shift_horizontal(-1);
+					page.shift_horizontal(-1);
 				}
 				else {
 					if(++m_edit_value >= GRID_WIDTH-1) {
 						m_edit_value = 0;
 					}
-					layer.shift_horizontal(+1);
+					page.shift_horizontal(+1);
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
@@ -376,7 +398,7 @@ class CSequenceEditor {
 					value_action(layer, step, what, 0);				// change the value
 				}
 				// editing a step value
-				layer.set_step(m_cursor, step);
+				page.set_step(m_cursor, step);
 				layer.set_scroll_for(step.get_value());
 				show_step_value(layer, step.get_value());
 				break;
@@ -425,6 +447,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// PASTE BUTTON
 	void clone_action(CSequenceLayer& layer, ACTION what) {
+		CSequencePage& page = layer.get_page(m_cur_page);
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
@@ -440,13 +463,13 @@ class CSequenceEditor {
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			if(m_clone_status == CLONE_NONE) {
-				CSequenceStep& source =	layer.get_step(m_cursor);
+				CSequenceStep& source =	page.get_step(m_cursor);
 				cursor_action(layer, what, m_cursor, 1);
-				layer.set_step(m_cursor, source);
+				page.set_step(m_cursor, source);
 			}
 			else {
-				CSequenceStep& source =	layer.get_step(m_clone_source);
-				layer.set_step(m_cursor, source);
+				CSequenceStep& source =	page.get_step(m_clone_source);
+				page.set_step(m_cursor, source);
 				cursor_action(layer, what, m_cursor, 1);
 				cursor_action(layer, what, m_clone_source, 1);
 				m_clone_status = CLONE_ACTIONED;
@@ -465,15 +488,19 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// CLEAR BUTTON
 	void clear_action(CSequenceLayer& layer, ACTION what) {
+		CSequencePage& page = layer.get_page(m_cur_page);
+		CSequenceStep& step = page.get_step(m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			layer.clear_step(m_cursor);
+			step.clear();
+			layer.recalc_data_points(page);
 			break;
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			layer.clear_step(m_cursor);
+			step.clear();
+			layer.recalc_data_points(page);
 			cursor_action(layer, what, m_cursor);
 			break;
 		default:
@@ -503,7 +530,8 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
 		{
-			CSequenceStep& step = layer.get_step(m_cursor);
+			CSequencePage& page = layer.get_page(m_cur_page);
+			CSequenceStep& step = page.get_step(m_cursor);
 			switch(m_gate_view) {
 			case GATE_VIEW_GATE:
 				step.toggle_gate();
@@ -584,25 +612,26 @@ class CSequenceEditor {
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
 			case KEY_PAGE|KEY2_PAGE_A:
-				layer.set_view_page(0);
+				m_cur_page = 0;
 				break;
 			case KEY_PAGE|KEY2_PAGE_B:
-				layer.set_view_page(1);
+				m_cur_page = 1;
 				break;
 			case KEY_PAGE|KEY2_PAGE_C:
-				layer.set_view_page(2);
+				m_cur_page = 2;
 				break;
 			case KEY_PAGE|KEY2_PAGE_D:
-				layer.set_view_page(3);
+				m_cur_page = 3;
 				break;
 			}
-			m_edit_value = layer.get_max_page_no();
-			show_page_no(layer.get_view_page());
+			layer.prepare_page(m_cur_page);
+			m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
+			show_layer_page();
 			break;
 		case ACTION_END:
 			if(m_edit_value < 0) {
+				layer.get_page(0).clear();
 				layer.set_max_page_no(0);
-				layer.clear_page();
 			}
 			else {
 				layer.set_max_page_no(m_edit_value);
@@ -624,6 +653,34 @@ class CSequenceEditor {
 			break;
 		case ACTION_ENC_RIGHT:
 			scroll(layer, +1);
+			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+				case KEY_MENU|KEY2_MENU_LAYER1:
+					m_cur_layer = 0;
+					m_cur_page = 0;
+					show_layer_page();
+					break;
+				case KEY_MENU|KEY2_MENU_LAYER2:
+					m_cur_layer = 1;
+					m_cur_page = 0;
+					show_layer_page();
+					break;
+				case KEY_MENU|KEY2_MENU_LAYER3:
+					m_cur_layer = 2;
+					m_cur_page = 0;
+					show_layer_page();
+					break;
+				case KEY_MENU|KEY2_MENU_LAYER4:
+					m_cur_layer = 3;
+					m_cur_page = 0;
+					show_layer_page();
+					break;
+				case KEY_MENU|KEY2_MENU_LAYER_MUTE:
+					layer.set_enabled(!layer.get_enabled());
+					show_layer_page();
+					break;
+			}
 			break;
 		default:
 			break;
@@ -658,10 +715,30 @@ public:
 		init_state();
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	// config setter
+	void set(PARAM_ID param, int value) {
+		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		layer.set(param,value);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// config getter
+	int get(PARAM_ID param) {
+		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		return layer.get(param);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int is_valid_param(PARAM_ID param) {
+		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		return layer.is_valid_param(param);
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// handle an event
 	void event(int evt, uint32_t param) {
-		CSequenceLayer& layer = g_sequencer.cur_layer();
+		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
 		switch(evt) {
 		case EV_KEY_PRESS:
 			if(!m_action_key) {
@@ -721,7 +798,8 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// draw the display
 	void repaint() {
-		CSequenceLayer& layer = g_sequencer.cur_layer();
+		CSequenceLayer& layer = g_sequencer.get_layer(m_cur_layer);
+		CSequencePage& page = layer.get_page(m_cur_page);
 		int i;
 		uint32_t mask;
 
@@ -807,9 +885,9 @@ public:
 				++c;
 			}
 
-			CSequenceStep& step = layer.get_step(i);
+			CSequenceStep& step = page.get_step(i);
 
-			byte show_active_pos = (i == layer.get_pos()) && (g_sequencer.is_running()) && (layer.get_play_page() == layer.get_view_page());
+			byte show_active_pos = (i == layer.get_pos()) && (g_sequencer.is_running()) && (layer.get_play_page() == m_cur_page);
 			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 				n = 12 - step.get_value()/10;
 				if(n<0) {

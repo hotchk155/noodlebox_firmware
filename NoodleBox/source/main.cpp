@@ -63,6 +63,7 @@
 #include "cv_gate.h"
 #include "scale.h"
 #include "sequence_step.h"
+#include "sequence_page.h"
 #include "sequence_layer.h"
 #include "popup.h"
 #include "sequencer.h"
@@ -106,12 +107,13 @@ void dispatch_event(int event, uint32_t param) {
 	}
 }
 
+/*
 void select_layer(byte layer) {
 	g_sequencer.set_cur_layer(layer);
-	g_popup.layer(layer, g_sequencer.cur_layer().get_enabled());
+	g_popup.layer_page(layer, g_sequencer.cur_layer().get_view_page(), g_sequencer.cur_layer().get_enabled());
 	force_full_repaint();
 }
-
+*/
 void fire_event(int event, uint32_t param) {
 
 	switch(event) {
@@ -128,6 +130,7 @@ void fire_event(int event, uint32_t param) {
 				g_menu.activate();
 			}
 			break;
+/*
 		case KEY_MENU|KEY2_MENU_LAYER1:
 			select_layer(0);
 			break;
@@ -142,10 +145,10 @@ void fire_event(int event, uint32_t param) {
 			break;
 		case KEY_MENU|KEY2_MENU_LAYER_MUTE:
 			g_sequencer.cur_layer().set_enabled(!g_sequencer.cur_layer().get_enabled());
-			g_popup.layer(g_sequencer.get_cur_layer(), g_sequencer.cur_layer().get_enabled());
+			g_popup.layer_page(g_sequencer.get_cur_layer(), g_sequencer.cur_layer().get_view_page(), g_sequencer.cur_layer().get_enabled());
 			force_full_repaint();
 			g_popup.align(CPopup::ALIGN_RIGHT);
-			break;
+			break;*/
 		default:
 			dispatch_event(event, param);
 			break;

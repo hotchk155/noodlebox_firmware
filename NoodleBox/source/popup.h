@@ -104,17 +104,18 @@ public:
 			m_render = 1;
 		}
 	}
-	void layer(byte layer, byte enabled) {
+	/*
+	void layer_page(byte layer, byte page, byte enabled) {
 		m_len = 0;
-		m_text[m_len++] = 'L';
 		m_text[m_len++] = '1' + layer;
+		m_text[m_len++] = 'A' + page;
 		if(!enabled) {
 			m_text[m_len++] = '$';
 		}
 		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 		m_render = 1;
-	}
+	}*/
 	// for popup showing note name
 	void note_name(byte note) {
 		m_len = 1;

@@ -33,23 +33,14 @@ public:
 private:
 
 	enum {
-		MAX_STEPS = 32,					// number of steps in the layer
 		MAX_PAGES = 4,					// number of pages
 		MAX_PLAYING_NOTES = 8,
 		DEFAULT_SCROLL_OFS = 24
 	};
 
-	// look up table of tick rates
-//	static const byte c_tick_rates[V_SQL_STEP_RATE_MAX];
-//	static const byte c_step_duration[V_SQL_STEP_DUR_MAX];
-
-	typedef struct {
-		CSequenceStep		m_step[MAX_STEPS];	// data value and gate for each step
-	} SEQ_PAGE;
-
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
-		SEQ_PAGE 		m_page[MAX_PAGES];	// sequencer page
+		CSequencePage 		m_page[MAX_PAGES];	// sequencer page
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_FORCE_SCALE	m_force_scale;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
@@ -72,17 +63,10 @@ private:
 	} CONFIG;
 
 
-	//typedef struct {
-		//byte note;
-		//byte count;
-	//} PLAYING_NOTE;
-
-
-
 	typedef struct {
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
-		byte m_view_page_no;				// the page number being viewed
+		//byte m_view_page_no;				// the page number being viewed
 		byte m_play_page_no;				// the page number being played
 
 
@@ -109,118 +93,6 @@ private:
 
 
 
-	///////////////////////////////////////////////////////////////////////////////
-	// shift pattern to the left
-	void shift_left() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		CSequenceStep step = page.m_step[0];
-		for(int i = 0; i<MAX_STEPS-1; ++i) {
-			page.m_step[i] = page.m_step[i+1];
-		}
-		page.m_step[MAX_STEPS-1] = step;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// shift pattern to the right
-	void shift_right() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		CSequenceStep step = page.m_step[MAX_STEPS-1];
-		for(int i = MAX_STEPS-1; i>0; --i) {
-			page.m_step[i] = page.m_step[i-1];
-		}
-		page.m_step[0] = step;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// Create interpolated points between two waypoints
-	void impl_interpolate_section(int pos, int end)
-	{
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		// calculate the number of new points that we will need to
-		// crate during the interpolation
-		int num_points = end - pos;
-		if(num_points < 0) {
-			num_points += MAX_STEPS;
-		}
-		if(num_points > 0) {
-
-			// starting point and gradient
-			double value =  page.m_step[pos].get_value();
-			double gradient = (page.m_step[end].get_value() - value)/num_points;
-			while(--num_points > 0) {
-				// wrap around the column
-				if(++pos >= MAX_STEPS) {
-					pos = 0;
-				}
-				value += gradient;
-				page.m_step[pos].set_value((byte)(value+0.5));
-			}
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// create interpolated points between all user data points in pattern
-	void impl_interpolate(byte value)
-	{
-		int i;
-		int first_waypoint = -1;
-		int prev_waypoint = -1;
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		for(i=0; i<MAX_STEPS; ++i) {
-			if(page.m_step[i].is_data_point()) {
-				if(prev_waypoint < 0) {
-					first_waypoint = i;
-				}
-				else {
-					impl_interpolate_section(prev_waypoint, i);
-				}
-				prev_waypoint = i;
-			}
-		}
-
-		if(first_waypoint < 0) {
-			// no waypoints defined
-			for(i=0; i<MAX_STEPS; ++i) {
-				page.m_step[i].set_value(value);
-			}
-		}
-		else if(prev_waypoint == first_waypoint) {
-			// only one waypoint defined
-			for(i=0; i<MAX_STEPS; ++i) {
-				if(i!=prev_waypoint) {
-					page.m_step[i].set_value(page.m_step[first_waypoint].get_value());
-				}
-			}
-		}
-		else {
-			// multiple waypoints defined
-			impl_interpolate_section(prev_waypoint, first_waypoint);
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void fill_data_points(byte value)
-	{
-		int i;
-		int first_data_point = -1;
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		for(i=0; i<MAX_STEPS; ++i) {
-			if(page.m_step[i].is_data_point()) {
-				if(first_data_point < 0) {
-					first_data_point = i;
-				}
-				value = page.m_step[i].get_value();
-			}
-			else {
-				page.m_step[i].set_value(value);
-			}
-		}
-		if(first_data_point >= 0) {
-			for(i=0; i<first_data_point; ++i) {
-				page.m_step[i].set_value(value);
-			}
-		}
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte get_default_value() {
@@ -236,16 +108,9 @@ private:
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	// called when there is a change to a data point
-	void recalc_data_points() {
-		if(m_cfg.m_interpolate) {
-			impl_interpolate(get_default_value());
-		}
-		else {
-			fill_data_points(get_default_value());
-		}
-	}
+
+
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// look up the index of the step that would play following the index provided
@@ -262,20 +127,42 @@ private:
 	}
 
 
+	void recalc_data_points_all_pages() {
+		for(int i=0; i<MAX_PAGES; ++i) {
+			CSequencePage& page = m_cfg.m_page[i];
+			recalc_data_points(page);
+		}
+	}
 
 
 public:
 	///////////////////////////////////////////////////////////////////////////////
-	CSequenceLayer(CScale &scale) : m_scale(scale) {}
+	CSequenceLayer(CScale &scale) :	m_scale(scale) {	}
+	///////////////////////////////////////////////////////////////////////////////
+	// called when there is a change to a data point
+	void recalc_data_points(CSequencePage& page) {
+		if(m_cfg.m_interpolate) {
+			page.interpolate(get_default_value());
+		}
+		else {
+			page.fill_out(get_default_value());
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void clear_data_point(byte page_no, byte index) {
+		CSequencePage& page = m_cfg.m_page[page_no];
+		page.get_step(index).clear();
+		recalc_data_points(page);
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init() {
 		init_config();
 		init_state();
 		set_mode(V_SQL_SEQ_MODE_SCALE);
-		recalc_data_points();
+		recalc_data_points_all_pages();
 		set_scroll_for(m_scale.default_note());
-
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline CScale& get_scale() {
@@ -283,7 +170,11 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
-		reset_data_points(m_scale.default_note());
+		for(int i=0; i<MAX_PAGES; ++i) {
+			CSequencePage& page = m_cfg.m_page[i];
+			page.clear();
+			recalc_data_points(page);
+		}
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_SCALE;
 		m_cfg.m_force_scale = V_SQL_FORCE_SCALE_OFF;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
@@ -307,21 +198,17 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
-		m_state.m_view_page_no = 0;
 		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
-//		m_state.m_last_velocity = 0;
-//		m_state.m_paste_step.reset_all();
 		m_state.m_view = VIEW_PITCH_SCALED;
-		//memset(m_state.m_playing,0,sizeof(m_state.m_playing));
 		reset();
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	void reset() {
-		m_state.m_step_value.reset_all();
+		m_state.m_step_value.clear();
 		m_state.m_stepped = 0;
 		m_state.m_play_pos = 0;
 		m_state.m_next_tick = 0;
@@ -340,7 +227,6 @@ public:
 
 		m_state = layer.m_state;
 		m_state.m_midi_note = 0;
-//		memset(m_state.m_playing,0,sizeof(m_state.m_playing));
 	}
 
 	//
@@ -363,7 +249,7 @@ public:
 		case P_SQL_TRAN_ACC: m_cfg.m_tran_acc = (V_SQL_TRAN_ACC)value; break;
 		case P_SQL_MIDI_VEL_ACCENT: m_cfg.m_midi_vel_accent = value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
-		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points(); break;
+		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points_all_pages(); break;
 		case P_SQL_SCALE_TYPE: m_scale.build((V_SQL_SCALE_TYPE)value, m_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: m_scale.build(m_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		default: break;
@@ -432,77 +318,6 @@ public:
 	// EDIT FUNCTIONS
 	//
 
-	///////////////////////////////////////////////////////////////////////////////
-	void clear_page() {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		byte value = get_default_value();
-		for(int i=0; i<MAX_STEPS; ++i) {
-			page.m_step[i].reset_all(value);
-		}
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	// preserve trigs but clear all data
-	void reset_data_points(byte value) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		for(int i=0; i<MAX_STEPS; ++i) {
-			page.m_step[i].reset_data_point(value);
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-// TODO reset data_point
-	void clear_step_value(byte index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		switch(m_cfg.m_mode) {
-		case V_SQL_SEQ_MODE_SCALE:
-		case V_SQL_SEQ_MODE_CHROMATIC:
-			page.m_step[index].reset_all(); // clear gate and note
-			break;
-		case V_SQL_SEQ_MODE_TRANSPOSE:
-			page.m_step[index].reset_data_point(OFFSET_ZERO); // preserve gate into, set data to midpoint
-			break;
-		case V_SQL_SEQ_MODE_MOD:
-			page.m_step[index].reset_data_point(0); // preserve gate into, set data to zero
-			break;
-		}
-		recalc_data_points();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void clear_step(byte index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		page.m_step[index].reset_all();
-		recalc_data_points();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		page.m_step[index] = step;
-		recalc_data_points();
-	}
-
-	inline CSequenceStep& get_step(int index) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		return page.m_step[index];
-	}
-
-	/*
-	///////////////////////////////////////////////////////////////////////////////
-	void set_paste_buffer(CSequenceStep step) {
-		m_state.m_paste_step = step;
-		m_state.m_paste_step.set_data_point(1);
-	}
-	byte is_paste_step_available() {
-		return m_state.m_paste_step.is_data_point();
-	}
-	*/
-
-	///////////////////////////////////////////////////////////////////////////////
-	//CSequenceStep &paste_buffer() {
-	//	m_state.m_paste_step
-	//	return m_state.m_paste_step;
-	//}
 
 	void set_scroll_for(int value, byte centre=0) {
 		const int MARGIN = 1;
@@ -522,28 +337,6 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// paste data from the "clipboard" into selected stop
-/*	void paste_step(byte index) {
-		if(is_paste_step_available()) {	// make sure something is in the buffer
-			m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
-*/
-/*			switch(m_cfg.m_mode) {
-			case V_SQL_SEQ_MODE_SCALE:
-			case V_SQL_SEQ_MODE_CHROMATIC:
-				m_cfg.m_step[index] = m_state.m_paste_step;	// paste all data
-				break;
-			case V_SQL_SEQ_MODE_TRANSPOSE:
-			case V_SQL_SEQ_MODE_MOD:
-				m_cfg.m_step[index].copy_data_point(m_state.m_paste_step);	// paste data point, leave gates unaffected
-				break;
-			}*/
-/*
-			recalc_data_points();
-		}
-	}
-*/
-
-	///////////////////////////////////////////////////////////////////////////////
 	// change the mode
 	void set_mode(V_SQL_SEQ_MODE value) {
 		switch (value) {
@@ -561,57 +354,6 @@ public:
 			break;
 		}
 		m_cfg.m_mode = value;
-
-/*
-		switch (value) {
-		case V_SQL_SEQ_MODE_CHROMATIC:
-			if(m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE) {
-				// changing from short scale to chromatic mode...
-				for(int i=0; i<MAX_STEPS; ++i) {
-					if(m_cfg.m_step[i].m_is_data_point) {
-						m_cfg.m_step[i].m_value = m_scale.index_to_note(m_cfg.m_step[i].m_value);
-					}
-				}
-				m_state.m_scroll_ofs = m_scale.index_to_note(m_state.m_scroll_ofs);
-			}
-			else {
-				reset_data_points(DEFAULT_NOTE);
-				m_state.m_scroll_ofs = DEFAULT_NOTE - 5;
-			}
-			break;
-
-		case V_SQL_SEQ_MODE_SCALE:
-			if(m_cfg.m_mode == V_SQL_SEQ_MODE_CHROMATIC) {
-				// changing from chromatic to short scale mode...
-				for(int i=0; i<MAX_STEPS; ++i) {
-					if(m_cfg.m_step[i].m_is_data_point) {
-						m_cfg.m_step[i].m_value = m_scale.note_to_index(m_cfg.m_step[i].m_value);
-					}
-				}
-				m_state.m_scroll_ofs = m_scale.note_to_index(m_state.m_scroll_ofs);
-			}
-			else {
-				int default_index = m_scale.note_to_index(DEFAULT_NOTE);
-				reset_data_points(default_index);
-				m_state.m_scroll_ofs = default_index - 5;
-			}
-			break;
-
-		case V_SQL_SEQ_MODE_TRANSPOSE:
-			reset_data_points(64);
-			m_state.m_scroll_ofs = 60;
-			break;
-
-		case V_SQL_SEQ_MODE_MOD:
-			reset_data_points(0);
-			break;
-		default:
-			break;
-		}
-*/
-
-		// clear the paste buffer, since the data type has changed
-		//m_state.m_paste_step.reset_all();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -650,41 +392,6 @@ public:
 		step.set_data_point(1);	// the data point has been set by user
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	// shift pattern vertically up or down by one space
-	byte shift_vertical(int dir) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
-		// first make sure that the shift will not exceed the bounds at
-		// the top of the bottom of the pattern
-		for(int i = 0; i<MAX_STEPS; ++i) {
-			int new_value = (int)page.m_step[i].get_value() + dir;
-			if(new_value < 0 || new_value > 127) {
-				return 0;
-			}
-		}
-
-		// perform the actual shift of all the data points
-		for(int i = 0; i<MAX_STEPS; ++i) {
-			page.m_step[i].set_value(dir + (int)page.m_step[i].get_value());
-		}
-
-		// perform any recalculation needed in the pattern
-		recalc_data_points();
-		return 1;
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	// shift pattern horizontally by one step
-	void shift_horizontal(int dir) {
-		if(dir<0) {
-			shift_left();
-		}
-		else {
-			shift_right();
-		}
-		recalc_data_points();
-	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -695,7 +402,11 @@ public:
 		}
 	}
 
+	inline CSequencePage& get_page(int index) {
+		return m_cfg.m_page[index];
+	}
 	///////////////////////////////////////////////////////////////////////////////
+	/*
 	void set_view_page(int page_no) {
 		if(page_no<0 || page_no>=MAX_PAGES) {
 			return;
@@ -710,7 +421,7 @@ public:
 	inline int get_view_page() {
 		return m_state.m_view_page_no;
 	}
-
+*/
 	///////////////////////////////////////////////////////////////////////////////
 	inline int get_play_page() {
 		return m_state.m_play_page_no;
@@ -727,17 +438,18 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_max_page_no(int max_page_no) {
-		if(max_page_no<0 || max_page_no>=MAX_PAGES) {
-			return;
+	//  make a page available
+	void prepare_page(int page) {
+		while(m_cfg.m_max_page_no < page) {
+			m_cfg.m_page[m_cfg.m_max_page_no+1] = m_cfg.m_page[m_cfg.m_max_page_no];
+			++m_cfg.m_max_page_no;
 		}
-		if(max_page_no < m_cfg.m_max_page_no) {
-			m_cfg.m_max_page_no = max_page_no;
-			m_state.m_view_page_no = max_page_no;
-		}
-		while(max_page_no>m_cfg.m_max_page_no) {
-			append_page();
-		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_max_page_no(int page) {
+		prepare_page(page);	// in case the number of pages has increased
+		m_cfg.m_max_page_no = page; // in case it has got less
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -822,6 +534,23 @@ public:
 	//}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void clear_step(CSequencePage& page, byte index) {
+		page.get_step(index).clear();
+		recalc_data_points(page);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_step(CSequencePage& page, byte index, CSequenceStep& step) {
+		page.set_step(index, step);
+		recalc_data_points(page);
+	}
+
+	void clear_step_value(CSequencePage& page, byte index) {
+		page.get_step(index).clear();
+		recalc_data_points(page);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	//
@@ -859,19 +588,19 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void tick(uint32_t ticks, byte parts_tick) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
+		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
 			if(m_state.m_play_pos == m_cfg.m_loop_to) {
 				m_state.m_play_pos = m_cfg.m_loop_from;
 			}
 			else {
-				if(++m_state.m_play_pos > MAX_STEPS-1) {
+				if(++m_state.m_play_pos > CSequencePage::MAX_STEPS-1) {
 					m_state.m_play_pos = 0;
 				}
 			}
 
-			m_state.m_step_value = page.m_step[m_state.m_play_pos];
+			m_state.m_step_value = page.get_step(m_state.m_play_pos);
 			m_state.m_stepped = 1;
 		}
 		else {
@@ -1276,12 +1005,12 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
-		SEQ_PAGE& page = m_cfg.m_page[m_state.m_view_page_no];
+		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
 
-		byte value1 = page.m_step[m_state.m_play_pos].get_value();
+		byte value1 = page.get_step(m_state.m_play_pos).get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {
 			int next = next_step_index(m_state.m_play_pos);
-			byte value2 = page.m_step[next].get_value();
+			byte value2 = page.get_step(next).get_value();
 			int ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			g_cv_gate.mod_cv(which, value1, m_cfg.m_cv_range, value2, ms);
 		}

@@ -33,22 +33,20 @@ class CSequencer {
 	CONFIG m_cfg;
 
 	byte m_is_running;
-	int m_cur_layer;			// this is the current layer being viewed/edited
+	//int m_cur_layer;			// this is the current layer being viewed/edited
 	CSequenceLayer m_layers[NUM_LAYERS];
 	CScale m_scale;
 public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// constructor
-	CSequencer() : m_layers{m_scale,m_scale,m_scale,m_scale}
-	{
-	}
+	CSequencer() : m_layers{m_scale,m_scale,m_scale,m_scale} {}
 
 	void init() {
 		m_scale.build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
 		init_config();
 		m_is_running = 0;
-		m_cur_layer = 0;
+		//m_cur_layer = 0;
 		for(int i=0; i<NUM_LAYERS; ++i) {
 			m_layers[i].init();
 		}
@@ -61,40 +59,43 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// get a reference to the current layer object
-	inline CSequenceLayer& cur_layer() {
-		return m_layers[m_cur_layer];
-	}
+	//inline CSequenceLayer& cur_layer() {
+		//return m_layers[m_cur_layer];
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// return current layer index 0-3
-	inline int get_cur_layer() {
-		return m_cur_layer;
-	}
+	//inline int get_cur_layer() {
+	//	return m_cur_layer;
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change current layer
-	void set_cur_layer(int layer) {
-		m_cur_layer = layer;
-	}
+	//void set_cur_layer(int layer) {
+	//	m_cur_layer = layer;
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// config setter
-	void set(PARAM_ID param, int value) {
-		m_layers[m_cur_layer].set(param,value);
-	}
+	//void set(PARAM_ID param, int value) {
+//		m_layers[m_cur_layer].set(param,value);
+//	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// config getter
-	int get(PARAM_ID param) {
-		return m_layers[m_cur_layer].get(param);
-	}
+//	int get(PARAM_ID param) {
+//		return m_layers[m_cur_layer].get(param);
+//	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// config validator
-	int is_valid_param(PARAM_ID param) {
-		return cur_layer().is_valid_param(param);
-	}
+//	// config validator
+	//int is_valid_param(PARAM_ID param) {
+		//return cur_layer().is_valid_param(param);
+	//}
 
+	CSequenceLayer& get_layer(int index) {
+		return m_layers[index];
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	void start() {
 		m_is_running = 1;
