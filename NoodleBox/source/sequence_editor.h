@@ -725,27 +725,27 @@ class CSequenceEditor {
 			break;
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
-				case KEY_MENU|KEY2_MENU_LAYER1:
+				case KEY_LAYER|KEY2_LAYER_1:
 					m_cur_layer = 0;
 					m_cur_page = 0;
 					show_layer_page();
 					break;
-				case KEY_MENU|KEY2_MENU_LAYER2:
+				case KEY_LAYER|KEY2_LAYER_2:
 					m_cur_layer = 1;
 					m_cur_page = 0;
 					show_layer_page();
 					break;
-				case KEY_MENU|KEY2_MENU_LAYER3:
+				case KEY_LAYER|KEY2_LAYER_3:
 					m_cur_layer = 2;
 					m_cur_page = 0;
 					show_layer_page();
 					break;
-				case KEY_MENU|KEY2_MENU_LAYER4:
+				case KEY_LAYER|KEY2_LAYER_4:
 					m_cur_layer = 3;
 					m_cur_page = 0;
 					show_layer_page();
 					break;
-				case KEY_MENU|KEY2_MENU_LAYER_MUTE:
+				case KEY_LAYER|KEY2_LAYER_MUTE:
 					layer.set_enabled(!layer.get_enabled());
 					show_layer_page();
 					break;
@@ -768,7 +768,7 @@ class CSequenceEditor {
 		case KEY_GATE: gate_action(layer, what); break;
 		case KEY_LOOP: loop_action(layer, what); break;
 		case KEY_PAGE: page_action(layer, what); break;
-		case KEY_MENU: menu_action(layer, what); break;
+		case KEY_LAYER: menu_action(layer, what); break;
 		}
 	}
 
@@ -818,7 +818,7 @@ public:
 				case KEY_GATE:
 				case KEY_LOOP:
 				case KEY_PAGE:
-				case KEY_MENU:
+				case KEY_LAYER:
 					m_action_key = param;
 					m_encoder_moved = 0;
 					action(layer, ACTION_BEGIN);

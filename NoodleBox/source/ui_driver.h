@@ -62,7 +62,7 @@
 #define KEY_CLEAR		KEY_B4
 #define KEY_LOOP		KEY_B6
 #define KEY_PAGE		KEY_B7
-#define KEY_MENU		KEY_B8
+#define KEY_LAYER		KEY_B8
 
 #define KEY_RUN			KEY_R3
 
@@ -80,11 +80,11 @@
 #define KEY2_PAGE_ADVANCE	KEY_B6
 
 
-#define KEY2_MENU_LAYER1		KEY_B1
-#define KEY2_MENU_LAYER2		KEY_B2
-#define KEY2_MENU_LAYER3		KEY_B3
-#define KEY2_MENU_LAYER4		KEY_B4
-#define KEY2_MENU_LAYER_MUTE	KEY_B7
+#define KEY2_LAYER_1		KEY_B1
+#define KEY2_LAYER_2		KEY_B2
+#define KEY2_LAYER_3		KEY_B3
+#define KEY2_LAYER_4		KEY_B4
+#define KEY2_LAYER_MUTE		KEY_B7
 
 
 // debounce times (ms)

@@ -184,6 +184,8 @@ public:
 			m_step[i].clear();
 		}
 		recalc(0, default_value);
+		m_loop_from = DEFAULT_LOOP_FROM;
+		m_loop_to = DEFAULT_LOOP_TO;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

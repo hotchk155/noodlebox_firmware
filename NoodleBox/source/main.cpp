@@ -120,7 +120,7 @@ void fire_event(int event, uint32_t param) {
 	///////////////////////////////////
 	case EV_KEY_CLICK:
 		switch(param) {
-		case KEY_MENU:
+		case KEY_LAYER:
 			if(g_view != VIEW_MENU) {
 				g_view = VIEW_MENU;
 				g_menu.activate();
