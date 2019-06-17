@@ -66,17 +66,18 @@ private:
 	} CONFIG;
 
 
+
 	typedef struct {
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
 		int m_play_page_no;				// the page number being played
 		int m_next_page_no;
+		int m_play_pos;
 
 
 		CSequenceStep m_step_value;			// the last value output by sequencer
 		byte m_stepped;						// stepped flag
 		byte m_page_advanced;
-		int m_play_pos;
 		byte m_midi_note; 					// last midi note played on channel
 		//byte m_last_velocity;
 		uint32_t m_next_tick;
@@ -95,7 +96,10 @@ private:
 	//
 
 
-
+	inline CSequencePage& get_page(byte page_no) {
+		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
+		return m_cfg.m_page[page_no];
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte get_default_value() {
@@ -111,11 +115,13 @@ private:
 		}
 	}
 
+//	calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_next_page_no);
+
 	///////////////////////////////////////////////////////////////////////////////
 	// Calculate the page and step
 	void calc_next_step(int &page_no, int &step_no, byte& page_switch, int &next_page_no) {
 
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		page_switch=0;
 		if(step_no == page.get_loop_to()) {
 
@@ -151,8 +157,8 @@ private:
 				}
 			}
 			// back to first step
-			page = m_cfg.m_page[page_no];
-			step_no = page.get_loop_from();
+			CSequencePage& new_page = get_page(page_no); // could be same page
+			step_no = new_page.get_loop_from();
 		}
 		else { // not reached end of loop yet
 
@@ -183,7 +189,7 @@ private:
 
 	void recalc_data_points_all_pages() {
 		for(int i=0; i<MAX_PAGES; ++i) {
-			CSequencePage& page = m_cfg.m_page[i];
+			CSequencePage& page = get_page(i);
 			page.recalc(m_cfg.m_interpolate, get_default_value());
 		}
 	}
@@ -192,7 +198,7 @@ private:
 public:
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_data_point(byte page_no, byte index) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		CSequenceStep step = page.get_step(index);
 		step.clear();
 		page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
@@ -213,7 +219,7 @@ public:
 	// the data that forms part of a saved sequence)
 	void init_config() {
 		for(int i=0; i<MAX_PAGES; ++i) {
-			CSequencePage& page = m_cfg.m_page[i];
+			CSequencePage& page = get_page(i);
 			page.clear(get_default_value());
 		}
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_SCALE;
@@ -408,75 +414,38 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	CSequenceStep get_step(byte page_no, byte index) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		return page.get_step(index);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte page_no, byte index, CSequenceStep& step) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte page_no, byte index) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		page.clear_step(index, m_cfg.m_interpolate, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void inc_step_value(CSequenceStep& step, int delta, byte fine) {
-		int value;
-		int max_value = 127;
-		value = step.get_value();
-		switch(m_state.m_view) {
-		case VIEW_MODULATION:
-			if(fine) {
-				value += delta;
-			}
-			else {
-				value = 10*(value/10 + delta);
-			}
-			break;
-		case VIEW_PITCH_SCALED:
-			value = g_scale.note_to_index(value);
-			value += delta;
-			value = g_scale.index_to_note(value);
-			max_value = g_scale.max_index();
-			break;
-		case VIEW_PITCH_CHROMATIC:
-		case VIEW_PITCH_OFFSET:
-		default:
-			value += delta;
-			break;
-		}
-		if(value<0) {
-			value = 0;
-		}
-		else if(value>max_value) {
-			value = max_value;
-		}
-		step.set_value(value);
-		step.set_data_point(1);	// the data point has been set by user
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
 	void clear_page(byte page_no) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		page.clear(get_default_value());
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	void shift_horizontal(byte page_no, int dir) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		page.shift_horizontal(dir);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte shift_vertical(byte page_no, int dir) {
-		CSequencePage& page = m_cfg.m_page[page_no];
+		CSequencePage& page = get_page(page_no);
 		if(m_state.m_view == VIEW_PITCH_SCALED) {
 			return page.shift_vertical(dir, &g_scale, m_cfg.m_interpolate, get_default_value());
 		}
@@ -500,7 +469,7 @@ public:
 	// pages are addeded, they are initialised from the last existing page
 	void prepare_page(int page) {
 		while(m_cfg.m_max_page_no < page) {
-			m_cfg.m_page[m_cfg.m_max_page_no+1] = m_cfg.m_page[m_cfg.m_max_page_no];
+			get_page(m_cfg.m_max_page_no+1) = get_page(m_cfg.m_max_page_no);
 			++m_cfg.m_max_page_no;
 		}
 	}
@@ -544,11 +513,11 @@ public:
 	void set_loop_from(byte page_no, int from) {
 		if(m_cfg.m_common_loop_points) {
 			for(int i=0; i<MAX_PAGES; ++i) {
-				m_cfg.m_page[i].set_loop_from(from);
+				get_page(i).set_loop_from(from);
 			}
 		}
 		else {
-			m_cfg.m_page[page_no].set_loop_from(from);
+			get_page(page_no).set_loop_from(from);
 		}
 	}
 
@@ -556,31 +525,31 @@ public:
 	void set_loop_to(byte page_no, int to) {
 		if(m_cfg.m_common_loop_points) {
 			for(int i=0; i<MAX_PAGES; ++i) {
-				m_cfg.m_page[i].set_loop_to(to);
+				get_page(i).set_loop_to(to);
 			}
 		}
 		else {
-			m_cfg.m_page[page_no].set_loop_to(to);
+			get_page(page_no).set_loop_to(to);
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_from(byte page_no) {
 		if(m_cfg.m_common_loop_points) {
-			return m_cfg.m_page[0].get_loop_from();
+			return get_page(0).get_loop_from();
 		}
 		else {
-			return m_cfg.m_page[page_no].get_loop_from();
+			return get_page(page_no).get_loop_from();
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_to(byte page_no) {
 		if(m_cfg.m_common_loop_points) {
-			return m_cfg.m_page[0].get_loop_to();
+			return get_page(0).get_loop_to();
 		}
 		else {
-			return m_cfg.m_page[page_no].get_loop_to();
+			return get_page(page_no).get_loop_to();
 		}
 	}
 
@@ -1106,7 +1075,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
-		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
+		CSequencePage& page = get_page(m_state.m_play_page_no);
 
 		byte value1 = page.get_step(m_state.m_play_pos).get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {

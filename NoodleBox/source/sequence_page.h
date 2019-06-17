@@ -138,25 +138,29 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline CSequenceStep get_step(int index) {
+		ASSERT(index>=0 && index < MAX_STEPS);
 		return m_step[index];
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte index, CSequenceStep& step, byte interpolate, byte default_value) {
+		ASSERT(index>=0 && index < MAX_STEPS);
 		m_step[index] = step;
 		recalc(interpolate, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte index, byte interpolate, byte default_value) {
+		ASSERT(index>=0 && index < MAX_STEPS);
 		m_step[index].clear();
 		recalc(0, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline void set_loop_from(byte value) {
-		m_loop_from = value;
+	inline void set_loop_from(byte index) {
+		ASSERT(index>=0 && index < MAX_STEPS);
+		m_loop_from = index;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -165,8 +169,9 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline void set_loop_to(byte value) {
-		m_loop_to = value;
+	inline void set_loop_to(byte index) {
+		ASSERT(index>=0 && index < MAX_STEPS);
+		m_loop_to = index;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

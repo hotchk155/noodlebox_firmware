@@ -195,6 +195,42 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void inc_step_value(CSequenceStep& step, int delta, byte fine, CSequenceLayer& layer) {
+		int value;
+		int max_value = 127;
+		value = step.get_value();
+		switch(layer.get_view()) {
+		case CSequenceLayer::VIEW_MODULATION:
+			if(fine) {
+				value += delta;
+			}
+			else {
+				value = 10*(value/10 + delta);
+			}
+			break;
+		case CSequenceLayer::VIEW_PITCH_SCALED:
+			value = g_scale.note_to_index(value);
+			value += delta;
+			value = g_scale.index_to_note(value);
+			max_value = g_scale.max_index();
+			break;
+		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+		case CSequenceLayer::VIEW_PITCH_OFFSET:
+		default:
+			value += delta;
+			break;
+		}
+		if(value<0) {
+			value = 0;
+		}
+		else if(value>max_value) {
+			value = max_value;
+		}
+		step.set_value(value);
+		step.set_data_point(1);	// the data point has been set by user
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// scroll display up or down
 	void scroll(CSequenceLayer& layer, int dir) {
 		switch(layer.get_view()) {
@@ -253,10 +289,10 @@ class CSequenceEditor {
 	void value_action(CSequenceLayer& layer, CSequenceStep& step, ACTION what, byte fine) {
 		switch(what) {
 		case ACTION_ENC_LEFT:
-			layer.inc_step_value(step, -1, fine);
+			inc_step_value(step, -1, fine, layer);
 			break;
 		case ACTION_ENC_RIGHT:
-			layer.inc_step_value(step, +1, fine);
+			inc_step_value(step, +1, fine, layer);
 			break;
 		default:
 			break;

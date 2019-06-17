@@ -246,19 +246,18 @@ int main(void) {
        		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
         	g_ui.run();
 
-
-    		g_ui.lock_for_update();
-    		switch(g_view) {
-    		case VIEW_SEQUENCER:
-    			g_sequence_editor.repaint();
-    			break;
-    		case VIEW_MENU:
-    			g_menu.repaint();
-    			break;
-    		case VIEW_SELECTOR:
-    			g_selector.repaint();
-    			break;
-    		}
+			g_ui.lock_for_update();
+			switch(g_view) {
+			case VIEW_SEQUENCER:
+				g_sequence_editor.repaint();
+				break;
+			case VIEW_MENU:
+				g_menu.repaint();
+				break;
+			case VIEW_SELECTOR:
+				g_selector.repaint();
+				break;
+			}
 			g_popup.repaint();
 			g_ui.unlock_for_update();
 

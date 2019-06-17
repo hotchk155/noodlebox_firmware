@@ -17,6 +17,12 @@
 #ifndef DEFS_H_
 #define DEFS_H_
 
+#if DEBUG
+	#define ASSERT(e) {if(!(e)) for(;;) {}}
+#else
+	#define ASSERT(e)
+#endif
+
 enum {
 	EV_NONE,
 	EV_ENCODER,
