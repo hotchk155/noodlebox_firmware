@@ -76,7 +76,7 @@ class CSequenceEditor {
 	byte m_gate_view;			// which gate layer is being viewed
 	int m_clone_source;			// column from which to clone data
 	byte m_clone_status;
-
+	byte m_confirm_pending;
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
 
@@ -102,6 +102,7 @@ class CSequenceEditor {
 		m_clone_status = CLONE_NONE;
 		m_cur_layer = 0;
 		m_cur_page = 0;
+		m_confirm_pending = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -498,6 +499,33 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void begin_confirm() {
+		g_popup.text("SURE?",5);
+		g_popup.no_hide();
+		m_confirm_pending = 1;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	byte confirm_ok(ACTION what) {
+		if(m_confirm_pending) {
+			m_confirm_pending = 0;
+			if(what==ACTION_ENC_RIGHT) {
+				g_popup.text("DONE",4);
+				return 1;
+			}
+			else {
+				g_popup.hide();
+			}
+		}
+		return 0;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void end_confirm() {
+		if(m_confirm_pending) {
+			m_confirm_pending = 0;
+			g_popup.hide();
+		}
+	}
+	///////////////////////////////////////////////////////////////////////////////
 	// CLEAR BUTTON
 	void clear_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
@@ -508,8 +536,33 @@ class CSequenceEditor {
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			layer.clear_step(m_cur_page, m_cursor);
-			cursor_action(layer, what, m_cursor);
+			switch(m_key_combo) {
+			case KEY_CLEAR|KEY2_CLEAR_PAGE:
+				if(confirm_ok(what)) {
+					layer.clear_page(m_cur_page);
+				}
+				break;
+			case KEY_CLEAR|KEY2_CLEAR_LAYER:
+				if(confirm_ok(what)) {
+					layer.clear();
+					m_cur_page = 0;
+				}
+				break;
+			default:
+				layer.clear_step(m_cur_page, m_cursor);
+				cursor_action(layer, what, m_cursor);
+			}
+			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_CLEAR|KEY2_CLEAR_PAGE:
+			case KEY_CLEAR|KEY2_CLEAR_LAYER:
+				begin_confirm();
+				break;
+			}
+			break;
+		case ACTION_END:
+			end_confirm();
 			break;
 		default:
 			break;
@@ -638,7 +691,7 @@ class CSequenceEditor {
 			show_layer_page();
 			break;
 		case ACTION_ENC_LEFT:
-			if(m_encoder_moved && m_edit_value >= 0) {
+			if(m_encoder_moved && m_edit_value > 0) {
 				--m_edit_value;
 			}
 			show_page_list(m_edit_value);
@@ -695,16 +748,9 @@ class CSequenceEditor {
 			}
 			break;
 		case ACTION_END:
-			if(m_edit_value < 0) {
-				layer.clear_page(0);
-				layer.set_max_page_no(0);
-				m_cur_page = 0;
-			}
-			else {
-				layer.set_max_page_no(m_edit_value);
-				if(m_edit_value < m_cur_page) {
-					m_cur_page = m_edit_value;
-				}
+			layer.set_max_page_no(m_edit_value);
+			if(m_edit_value < m_cur_page) {
+				m_cur_page = m_edit_value;
 			}
 			break;
 		default:

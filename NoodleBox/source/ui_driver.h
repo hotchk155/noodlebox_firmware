@@ -73,6 +73,9 @@
 #define KEY2_CV_MOVE_HORZ	KEY_B4
 #define KEY2_CV_MOVE_VERT	KEY_B5
 
+#define KEY2_CLEAR_PAGE		KEY_B7
+#define KEY2_CLEAR_LAYER	KEY_B8
+
 #define KEY2_PAGE_A			KEY_B1
 #define KEY2_PAGE_B			KEY_B2
 #define KEY2_PAGE_C			KEY_B3
@@ -513,6 +516,7 @@ public:
 
 		switch(ch) {
 		case '#': ch = CHAR4X5_HASH; break;
+		case '?': ch = CHAR4X5_QUESTION; break;
 		case '-': ch = CHAR4X5_MINUS; break;
 		case '+': ch = CHAR4X5_PLUS; break;
 		case '~': ch = CHAR4X5_BLOCK; break;

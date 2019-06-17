@@ -20,6 +20,7 @@
 extern const uint32_t char4x5[];
 #define CHAR4X5_ALPHA		0
 #define CHAR4X5_HASH		26
+#define CHAR4X5_QUESTION	27
 #define CHAR4X5_NUMERIC		32
 #define CHAR4X5_MINUS		42
 #define CHAR4X5_DOT			43
@@ -47,12 +48,12 @@ const uint32_t char4x5[30] = {
 		0xACE4AAA4U,
 		0xEA24AAEAU,
 		0xEAE4ECAAU,
-		// Y,Z#
-		0xAE200000U,
-		0xA2E00000U,
-		0x44E00000U,
+		// Y,Z,#,?
+		0xAE2E0000U,
+		0xA2E20000U,
+		0x44E40000U,
 		0x48800000U,
-		0x4E000000U,
+		0x4E040000U,
 		//0-7
 		0xECEEAEEEU,
 		0xA422A882U,

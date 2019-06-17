@@ -219,10 +219,6 @@ public:
 	// Assign valid default values to the sequence layer configuration (i.e.
 	// the data that forms part of a saved sequence)
 	void init_config() {
-		for(int i=0; i<MAX_PAGES; ++i) {
-			CSequencePage& page = get_page(i);
-			page.clear(get_default_value());
-		}
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_SCALE;
 		m_cfg.m_force_scale = V_SQL_FORCE_SCALE_OFF;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
@@ -246,6 +242,7 @@ public:
 		m_cfg.m_common_loop_points = 1;
 		m_cfg.m_page_list_count = 0;
 		set_mode(m_cfg.m_mode);
+		clear();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -437,6 +434,15 @@ public:
 		page.clear(get_default_value());
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void clear() {
+		for(int i=0; i<MAX_PAGES; ++i) {
+			CSequencePage& page = get_page(i);
+			page.clear(get_default_value());
+		}
+		m_cfg.m_max_page_no = 0;
+		m_cfg.m_page_list_count = 0;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void shift_horizontal(byte page_no, int dir) {
