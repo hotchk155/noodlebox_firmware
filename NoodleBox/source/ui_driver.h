@@ -37,27 +37,7 @@
 #define BIT_ENCODER1	MK_GPIOA_BIT(PORTD_BASE, 0)
 #define BIT_ENCODER2	MK_GPIOA_BIT(PORTD_BASE, 1)
 
-// key scan bits for left side buttons (reserved for future use)
-//#define KEY_L1	(1U<<0)
-//#define KEY_L2	(1U<<1)
-//#define KEY_L3	(1U<<2)
-//#define KEY_L4	(1U<<3)
-//#define KEY_L5	(1U<<19)
-//#define KEY_L6	(1U<<18)
-//#define KEY_L7	(1U<<17)
-//#define KEY_L8	(1U<<16)
-
 // key scan bits for bottom buttons
-/*
-#define KEY_B1	(1U<<9)
-#define KEY_B2	(1U<<8)
-#define KEY_B3	(1U<<10)
-#define KEY_B4	(1U<<11)
-#define KEY_B5	(1U<<12)
-#define KEY_B6	(1U<<13)
-#define KEY_B7	(1U<<14)
-#define KEY_B8	(1U<<15)
-*/
 #define KEY_B1	(1U<<1)
 #define KEY_B2	(1U<<0)
 #define KEY_B3	(1U<<2)
@@ -67,7 +47,7 @@
 #define KEY_B7	(1U<<6)
 #define KEY_B8	(1U<<7)
 
-// key scan bits for right side buttons (reserved for future use)
+// key scan bits for right side buttons
 #define KEY_R1	(1U<<13)
 #define KEY_R2	(1U<<14)
 #define KEY_R3	(1U<<15)
@@ -80,10 +60,12 @@
 #define KEY_GATE		KEY_B2
 #define KEY_CLONE		KEY_B3
 #define KEY_CLEAR		KEY_B4
-#define KEY_LOOP		KEY_B5
-#define KEY_PAGE		KEY_B6
-#define KEY_RUN			KEY_B7
+#define KEY_LOOP		KEY_B6
+#define KEY_PAGE		KEY_B7
 #define KEY_MENU		KEY_B8
+
+#define KEY_RUN			KEY_R3
+
 
 // define key combinations with button 1 (CV)
 #define KEY2_CV_FINE		KEY_B2

@@ -29,6 +29,7 @@ public:
 	} VIEW_TYPE;
 
 	enum {
+		SCROLL_MARGIN = 3,
 		OFFSET_ZERO = 64,		// step value for zero transpose offset
 		MAX_PAGES = 4					// number of pages
 	};
@@ -46,11 +47,8 @@ private:
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_FORCE_SCALE	m_force_scale;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
-		byte 			m_loop_from;		// loop start point
-		byte 			m_loop_to;			// loop end point
 		char			m_transpose;		// manual transpose amount for the layer
 		V_SQL_NOTE_DUR	m_note_dur;
-		byte 			m_enabled;
 		V_SQL_MIDI_CHAN m_midi_channel;		// MIDI channel
 		byte 			m_midi_cc;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
@@ -60,8 +58,10 @@ private:
 		V_SQL_TRAN_ACC	m_tran_acc;
 		byte 			m_midi_vel_accent;
 		byte 			m_midi_vel;
-		byte			m_interpolate;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
+		byte 			m_common_loop_points :1;
+		byte			m_interpolate :1;
+		byte 			m_enabled:1;
 		V_SQL_PAGE_ADVANCE m_page_adv;
 	} CONFIG;
 
@@ -69,7 +69,7 @@ private:
 	typedef struct {
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
-		byte m_play_page_no;				// the page number being played
+		int m_play_page_no;				// the page number being played
 		int m_next_page_no;
 
 
@@ -89,7 +89,6 @@ private:
 
 	CONFIG m_cfg;				// instance of config
 	STATE m_state;
-	//CScale& g_scale;
 
 	//
 	// PRIVATE METHODS
@@ -113,17 +112,72 @@ private:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// look up the index of the step that would play following the index provided
-	// as a parameter
-	int next_step_index(int index) {
-		++index;
-		if(index > m_cfg.m_loop_to) {
-			index -= m_cfg.m_loop_to;
+	// Calculate the page and step
+	void calc_next_step(int &page_no, int &step_no, byte& page_switch, int &next_page_no) {
+
+		CSequencePage& page = m_cfg.m_page[page_no];
+		page_switch=0;
+		if(step_no == page.get_loop_to()) {
+
+			// we have just played the last step on this page
+			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_OFF) {
+				// no page advance
+				next_page_no = -1;
+			}
+			else {
+				if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_AUTO) {
+					if(page_no < m_cfg.m_max_page_no) {
+						// automatic page advance to the next page
+						++page_no;
+						page_switch = 1;
+					}
+					else {
+						if(m_cfg.m_max_page_no > 0) {
+							// reached end of last page, going back to first
+							page_no = 0;
+							page_switch = 1;
+						}
+					}
+				}
+				else if(next_page_no >= 0) {
+					// a next page is cued up by user
+
+					if(next_page_no <= m_cfg.m_max_page_no) {
+						// still a valid page
+						page_no = next_page_no;
+						page_switch = 1;
+					}
+					next_page_no = -1;
+				}
+			}
+			// back to first step
+			page = m_cfg.m_page[page_no];
+			step_no = page.get_loop_from();
 		}
-		if(index < m_cfg.m_loop_from) {
-			index += m_cfg.m_loop_from;
+		else { // not reached end of loop yet
+
+			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_IMMEDIATE && next_page_no >= 0) {
+				// immediate page switch
+				if(next_page_no <= m_cfg.m_max_page_no) {
+					// still a valid page
+					page_no = next_page_no;
+					page_switch = 1;
+				}
+				next_page_no = -1;
+			}
+
+			// calculate next step within the loop window
+			if(page.get_loop_to() < page.get_loop_from()) { // run backwards
+				if(--step_no < 0) {
+					step_no = CSequencePage::MAX_STEPS-1;
+				}
+			}
+			else {
+				if(++step_no > CSequencePage::MAX_STEPS-1) {
+					step_no = 0;
+				}
+			}
 		}
-		return index;
 	}
 
 
@@ -166,8 +220,8 @@ public:
 		m_cfg.m_force_scale = V_SQL_FORCE_SCALE_OFF;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
 		m_cfg.m_note_dur	= V_SQL_NOTE_DUR_100;
-		m_cfg.m_loop_from	= 0;
-		m_cfg.m_loop_to		= 15;
+//		m_cfg.m_loop_from	= 0;
+//		m_cfg.m_loop_to		= 15;
 		m_cfg.m_transpose	= 0;
 		m_cfg.m_midi_channel 	= V_SQL_MIDI_CHAN_NONE;
 		m_cfg.m_midi_cc = 1;
@@ -182,6 +236,7 @@ public:
 		m_cfg.m_interpolate = 0;
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_page_adv = V_SQL_PAGE_ADVANCE_AUTO;
+		m_cfg.m_common_loop_points = 1;
 		set_mode(m_cfg.m_mode);
 	}
 
@@ -194,7 +249,7 @@ public:
 		m_state.m_midi_note = 0;
 		m_state.m_view = VIEW_PITCH_SCALED;
 		m_state.m_next_page_no = -1;
-		set_scroll_for(get_default_value());
+		set_scroll_for(get_default_value(),SCROLL_MARGIN);
 		reset();
 	}
 
@@ -235,6 +290,7 @@ public:
 		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_PAGE_ADVANCE: m_cfg.m_page_adv = (V_SQL_PAGE_ADVANCE)value; break;
+		case P_SQL_LOOP_SPEC: m_cfg.m_common_loop_points = !value; break;
 		default: break;
 		}
 	}
@@ -259,6 +315,7 @@ public:
 		case P_SQL_SCALE_TYPE: return g_scale.get_type();
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
 		case P_SQL_PAGE_ADVANCE: return m_cfg.m_page_adv;
+		case P_SQL_LOOP_SPEC: return !m_cfg.m_common_loop_points;
 		default:return 0;
 		}
 	}
@@ -304,21 +361,25 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_scroll_for(int value, byte centre=0) {
-		const int MARGIN = 1;
+	void set_scroll_for(int value, int margin = SCROLL_MARGIN) {
 
 		if(m_state.m_view == VIEW_PITCH_SCALED) {
 			value = g_scale.note_to_index(value);
 		}
-		if(centre) {
-			m_state.m_scroll_ofs = value-6;
+
+		int scroll_ofs = m_state.m_scroll_ofs;
+		if((value-margin)<scroll_ofs) {
+			scroll_ofs = value-margin;
 		}
-		else if((value-MARGIN)<m_state.m_scroll_ofs) {
-			m_state.m_scroll_ofs = value-MARGIN;
+		else if((value+margin)>scroll_ofs+12) {
+			scroll_ofs = value-12+margin;
 		}
-		else if((value+MARGIN)>m_state.m_scroll_ofs+12) {
-			m_state.m_scroll_ofs = value-12+MARGIN;
+
+		if(scroll_ofs < 0) {
+			scroll_ofs = 0;
 		}
+		m_state.m_scroll_ofs = scroll_ofs;
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -327,15 +388,19 @@ public:
 		switch (value) {
 		case V_SQL_SEQ_MODE_SCALE:
 			m_state.m_view = VIEW_TYPE::VIEW_PITCH_SCALED;
+			m_cfg.m_interpolate = 0;
 			break;
 		case V_SQL_SEQ_MODE_CHROMATIC:
 			m_state.m_view = VIEW_TYPE::VIEW_PITCH_CHROMATIC;
+			m_cfg.m_interpolate = 0;
 			break;
 		case V_SQL_SEQ_MODE_TRANSPOSE:
 			m_state.m_view = VIEW_TYPE::VIEW_PITCH_OFFSET;
+			m_cfg.m_interpolate = 0;
 			break;
 		case V_SQL_SEQ_MODE_MOD:
 			m_state.m_view = VIEW_TYPE::VIEW_MODULATION;
+			m_cfg.m_interpolate = 1;
 			break;
 		}
 		m_cfg.m_mode = value;
@@ -351,6 +416,12 @@ public:
 	void set_step(byte page_no, byte index, CSequenceStep& step) {
 		CSequencePage& page = m_cfg.m_page[page_no];
 		page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void clear_step(byte page_no, byte index) {
+		CSequencePage& page = m_cfg.m_page[page_no];
+		page.clear_step(index, m_cfg.m_interpolate, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -406,7 +477,12 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	byte shift_vertical(byte page_no, int dir) {
 		CSequencePage& page = m_cfg.m_page[page_no];
-		return page.shift_vertical(dir);
+		if(m_state.m_view == VIEW_PITCH_SCALED) {
+			return page.shift_vertical(dir, &g_scale, m_cfg.m_interpolate, get_default_value());
+		}
+		else {
+			return page.shift_vertical(dir, NULL, m_cfg.m_interpolate, get_default_value());
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -465,22 +541,49 @@ public:
 		m_state.m_scroll_ofs = scroll_ofs;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void set_loop_from(int loop_from) {
-		m_cfg.m_loop_from = loop_from;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	int get_loop_from() {
-		return m_cfg.m_loop_from;
+	void set_loop_from(byte page_no, int from) {
+		if(m_cfg.m_common_loop_points) {
+			for(int i=0; i<MAX_PAGES; ++i) {
+				m_cfg.m_page[i].set_loop_from(from);
+			}
+		}
+		else {
+			m_cfg.m_page[page_no].set_loop_from(from);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_loop_to(int loop_to) {
-		m_cfg.m_loop_to = loop_to;
+	void set_loop_to(byte page_no, int to) {
+		if(m_cfg.m_common_loop_points) {
+			for(int i=0; i<MAX_PAGES; ++i) {
+				m_cfg.m_page[i].set_loop_to(to);
+			}
+		}
+		else {
+			m_cfg.m_page[page_no].set_loop_to(to);
+		}
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
-	int get_loop_to() {
-		return m_cfg.m_loop_to;
+	int get_loop_from(byte page_no) {
+		if(m_cfg.m_common_loop_points) {
+			return m_cfg.m_page[0].get_loop_from();
+		}
+		else {
+			return m_cfg.m_page[page_no].get_loop_from();
+		}
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int get_loop_to(byte page_no) {
+		if(m_cfg.m_common_loop_points) {
+			return m_cfg.m_page[0].get_loop_to();
+		}
+		else {
+			return m_cfg.m_page[page_no].get_loop_to();
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_stepped() {
 		return m_state.m_stepped;
@@ -541,6 +644,7 @@ public:
 		}*/
 	}
 
+	/*
 	void next_step() {
 		m_state.m_page_advanced = 0;
 		if(m_state.m_play_pos == m_cfg.m_loop_to) { // end of page
@@ -592,12 +696,12 @@ public:
 		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
 		m_state.m_step_value = page.get_step(m_state.m_play_pos);
 	}
-
+*/
 	///////////////////////////////////////////////////////////////////////////////
 	void tick(uint32_t ticks, byte parts_tick) {
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
-			next_step();
+			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_next_page_no);
 			m_state.m_stepped = 1;
 		}
 		else {
@@ -1006,8 +1110,14 @@ public:
 
 		byte value1 = page.get_step(m_state.m_play_pos).get_value();
 		if(m_cfg.m_cv_glide == V_SQL_CVGLIDE_ON) {
-			int next = next_step_index(m_state.m_play_pos);
-			byte value2 = page.get_step(next).get_value();
+
+			int page_no = m_state.m_play_page_no;
+			int step_no = m_state.m_play_page_no;
+			int next_page_no = m_state.m_next_page_no;
+			byte page_advanced;
+			calc_next_step(page_no, step_no, page_advanced, next_page_no);
+
+			byte value2 = get_step(page_no, step_no).get_value();
 			int ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			g_cv_gate.mod_cv(which, value1, m_cfg.m_cv_range, value2, ms);
 		}

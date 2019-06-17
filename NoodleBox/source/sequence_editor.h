@@ -139,28 +139,8 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	/*
-	void show_page_no(int value) {
-		switch(value) {
-		case 0:
-			g_popup.text("A", 1);
-			break;
-		case 1:
-			g_popup.text("B", 1);
-			break;
-		case 2:
-			g_popup.text("C", 1);
-			break;
-		case 3:
-			g_popup.text("D", 1);
-			break;
-		}
-		g_popup.avoid(m_cursor);
-	}
-*/
-	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
-		char text[2];
+		char text[3];
 		text[0] = '1' + m_cur_layer;
 		text[1] = 'A' + m_cur_page;
 		if(!g_sequence.get_layer(m_cur_layer).get_enabled()) {
@@ -238,21 +218,6 @@ class CSequenceEditor {
 			break;
 		}
 	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// scroll display so that a specific step is visible
-	/*void set_scroll_for(CSequenceLayer& layer, CSequenceStep step) {
-		int v = step.m_value;
-		if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
-			v = layer.get_scale().note_to_index(v);
-		}
-		if(v<layer.get_scroll_ofs()) {
-			layer.set_scroll_ofs(v);
-		}
-		else if(v>layer.get_scroll_ofs()+12) {
-			layer.set_scroll_ofs(v-12);
-		}
-	}*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// get info for the graticule/grid for display
@@ -342,7 +307,7 @@ class CSequenceEditor {
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			layer.set_scroll_for(step.get_value(),1);
+			layer.set_scroll_for(step.get_value());
 			break;
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
@@ -489,16 +454,15 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// CLEAR BUTTON
 	void clear_action(CSequenceLayer& layer, ACTION what) {
-		CSequenceStep blank;
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			layer.set_step(m_cur_page, m_cursor, blank);
+			layer.clear_step(m_cur_page, m_cursor);
 			break;
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			layer.set_step(m_cur_page, m_cursor, blank);
+			layer.clear_step(m_cur_page, m_cursor);
 			cursor_action(layer, what, m_cursor);
 			break;
 		default:
@@ -553,27 +517,33 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void loop_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
+		case ACTION_BEGIN:
+			m_sel_from = m_cursor;
+			break;
+		case ACTION_CLICK:
+			layer.set_pos(m_cursor);
+			break;
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			if(m_sel_from < 0) {
-				m_sel_from = m_cursor;
-			}
 			cursor_action(layer, what, m_cursor);
 			m_sel_to = m_cursor;
+			if(m_sel_to > m_sel_from) {
+				g_popup.num2digits(m_sel_to - m_sel_from + 1);
+			}
+			else {
+				g_popup.num2digits(m_sel_from - m_sel_to + 1);
+			}
 			break;
 		////////////////////////////////////////////////
 		case ACTION_END:
-			if(m_sel_from < 0) {
-				layer.set_pos(m_cursor);
-			}
-			else {
-				layer.set_loop_from(m_sel_from);
-				layer.set_loop_to(m_sel_to);
+			if(m_sel_to >= 0) {
+				layer.set_loop_from(m_cur_page, m_sel_from);
+				layer.set_loop_to(m_cur_page, m_sel_to);
 				layer.set_pos(m_sel_from);
-				m_sel_to = -1;
-				m_sel_from = -1;
 			}
+			m_sel_to = -1;
+			m_sel_from = -1;
 			break;
 		default:
 			break;
@@ -581,13 +551,14 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-
-
 	void page_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
 			m_edit_value = layer.get_max_page_no();
+			break;
+		case ACTION_CLICK:
+			show_layer_page();
 			break;
 		case ACTION_ENC_LEFT:
 			if(m_encoder_moved && m_edit_value >= 0) {
@@ -633,7 +604,6 @@ class CSequenceEditor {
 					m_cur_page = m_edit_value;
 				}
 			}
-			g_popup.hide();
 			break;
 		default:
 			break;
@@ -852,13 +822,13 @@ public:
 		// determine where the "ruler" will be drawn
 		int ruler_from;
 		int ruler_to;
-		if(m_sel_from >= 0) {
+		if(m_sel_to >= 0) {
 			ruler_from = m_sel_from;
 			ruler_to = m_sel_to;
 		}
 		else {
-			ruler_from = layer.get_loop_from();
-			ruler_to = layer.get_loop_to();
+			ruler_from = layer.get_loop_from(m_cur_page);
+			ruler_to = layer.get_loop_to(m_cur_page);
 		}
 
 

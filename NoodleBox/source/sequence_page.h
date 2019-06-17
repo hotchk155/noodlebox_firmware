@@ -18,12 +18,18 @@
 // Holds a single page of the sequence
 // Has methods which act on entire page
 class CSequencePage {
+	enum {
+		DEFAULT_LOOP_FROM = 0,
+		DEFAULT_LOOP_TO = 15
+	};
 public:
 	enum {
 		MAX_STEPS = 32,					// number of steps in page
 	};
 private:
 	CSequenceStep m_step[MAX_STEPS];	// data value and gate for each step
+	byte 			m_loop_from;		// loop start point
+	byte 			m_loop_to;			// loop end point
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Create interpolated points between two waypoints
@@ -115,6 +121,10 @@ private:
 	}
 
 public:
+	CSequencePage() :
+		m_loop_from(DEFAULT_LOOP_FROM),
+		m_loop_to(DEFAULT_LOOP_TO)
+		{}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void recalc(byte interpolation, byte default_value) {
@@ -139,6 +149,31 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void clear_step(byte index, byte interpolate, byte default_value) {
+		m_step[index].clear();
+		recalc(0, default_value);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline void set_loop_from(byte value) {
+		m_loop_from = value;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte get_loop_from() {
+		return m_loop_from;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline void set_loop_to(byte value) {
+		m_loop_to = value;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte get_loop_to() {
+		return m_loop_to;
+	}
+	///////////////////////////////////////////////////////////////////////////////
 	void clear(byte default_value) {
 		for(int i=0; i<MAX_STEPS; ++i) {
 			m_step[i].clear();
@@ -148,21 +183,34 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
-	byte shift_vertical(int dir) {
-		// first make sure that the shift will not exceed the bounds at
-		// the top of the bottom of the pattern
-		for(int i = 0; i<MAX_STEPS; ++i) {
-			int new_value = (int)m_step[i].get_value() + dir;
-			if(new_value < 0 || new_value > 127) {
-				return 0;
+	byte shift_vertical(int dir, CScale *scale, byte interpolate, byte default_value) {
+		int value[MAX_STEPS];
+		for(int i=0; i<MAX_STEPS; ++i) {
+			if(m_step[i].is_data_point()) {
+				value[i] = m_step[i].get_value();
+				if(scale) {
+					if(!scale->inc_note_in_scale(value[i],dir)) {
+						return 0;
+					}
+				}
+				else {
+					value[i] += dir;
+					if(value[i] < 0 || value[i] > 127) {
+						return 0;
+					}
+				}
+			}
+			else {
+				value[i] = 0;
 			}
 		}
 
 		// perform the actual shift of all the data points
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			m_step[i].set_value(dir + (int)m_step[i].get_value());
+			m_step[i].set_value(value[i]);
 		}
 
+		recalc(interpolate, default_value);
 		return 1;
 	}
 

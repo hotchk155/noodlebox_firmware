@@ -19,6 +19,18 @@
 
 
 class CPopup {
+	void format_number(int value, int msd) {
+		if(value<0) {
+			m_text[m_len++] = '-';
+			value = -value;
+		}
+		//value%=msd;
+		while(msd>0) {
+			m_text[m_len++] = '0' + value/msd;
+			value%=msd;
+			msd/=10;
+		}
+	}
 
 public:
 	enum {
@@ -73,18 +85,6 @@ public:
 			}
 		}
 	}
-	void format_number(int value, int msd) {
-		if(value<0) {
-			m_text[m_len++] = '-';
-			value = -value;
-		}
-		//value%=msd;
-		while(msd>0) {
-			m_text[m_len++] = '0' + value/msd;
-			value%=msd;
-			msd/=10;
-		}
-	}
 
 	void align(int mode) {
 		if(mode != m_align) {
@@ -104,18 +104,6 @@ public:
 			m_render = 1;
 		}
 	}
-	/*
-	void layer_page(byte layer, byte page, byte enabled) {
-		m_len = 0;
-		m_text[m_len++] = '1' + layer;
-		m_text[m_len++] = 'A' + page;
-		if(!enabled) {
-			m_text[m_len++] = '$';
-		}
-		m_align = ALIGN_RIGHT;
-		m_timeout = DISPLAY_TIMEOUT;
-		m_render = 1;
-	}*/
 	// for popup showing note name
 	void note_name(byte note) {
 		m_len = 1;
@@ -203,7 +191,7 @@ public:
 	void repaint() {
 		if(m_render) {
 			prepare();
-			m_render = 1;
+			m_render = 0;
 		}
 
 		int row = m_row;
