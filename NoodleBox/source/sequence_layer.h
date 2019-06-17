@@ -38,12 +38,15 @@ private:
 
 	enum {
 		MAX_PLAYING_NOTES = 8,
-		DEFAULT_SCROLL_OFS = 24
+		DEFAULT_SCROLL_OFS = 24,
+		MAX_PAGE_LIST = 16
 	};
 
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
 		CSequencePage 		m_page[MAX_PAGES];	// sequencer page
+		byte 			m_page_list[MAX_PAGE_LIST];
+		byte			m_page_list_count;
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_FORCE_SCALE	m_force_scale;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
@@ -60,9 +63,9 @@ private:
 		byte 			m_midi_vel;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		byte 			m_common_loop_points :1;
-		byte			m_interpolate :1;
-		byte 			m_enabled:1;
-		V_SQL_PAGE_ADVANCE m_page_adv;
+		int				m_interpolate:1;
+		int 			m_enabled:1;
+		int 			m_page_advance:1;
 	} CONFIG;
 
 
@@ -71,8 +74,9 @@ private:
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
 		int m_play_page_no;				// the page number being played
-		int m_next_page_no;
+//		int m_next_page_no;
 		int m_play_pos;
+		int m_page_list_pos;
 
 
 		CSequenceStep m_step_value;			// the last value output by sequencer
@@ -119,68 +123,65 @@ private:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Calculate the page and step
-	void calc_next_step(int &page_no, int &step_no, byte& page_switch, int &next_page_no) {
+	void calc_next_step(int &page_no, int &step_no, byte& page_switch, int &page_list_pos) {
 
 		CSequencePage& page = get_page(page_no);
 		page_switch=0;
 		if(step_no == page.get_loop_to()) {
 
-			// we have just played the last step on this page
-			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_OFF) {
-				// no page advance
-				next_page_no = -1;
-			}
-			else {
-				if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_AUTO) {
+			if(m_cfg.m_page_advance) { // automatic advance at end of page?
+				if(m_cfg.m_page_list_count) { // has user got a page list?
+					if(page_list_pos < m_cfg.m_page_list_count - 1) {
+						++page_list_pos;
+					}
+					else {
+						page_list_pos = 0;
+					}
+					byte next_page_no = m_cfg.m_page_list[page_list_pos];
+					if(next_page_no <= m_cfg.m_max_page_no) {
+						// still a valid page
+						page_no = next_page_no;
+						page_switch = 1;
+					}
+				}
+				else {
 					if(page_no < m_cfg.m_max_page_no) {
 						// automatic page advance to the next page
 						++page_no;
 						page_switch = 1;
 					}
 					else {
-						if(m_cfg.m_max_page_no > 0) {
-							// reached end of last page, going back to first
-							page_no = 0;
-							page_switch = 1;
-						}
-					}
-				}
-				else if(next_page_no >= 0) {
-					// a next page is cued up by user
-
-					if(next_page_no <= m_cfg.m_max_page_no) {
-						// still a valid page
-						page_no = next_page_no;
+						// reached end of last page, going back to first
+						page_no = 0;
 						page_switch = 1;
 					}
-					next_page_no = -1;
 				}
 			}
 			// back to first step
 			CSequencePage& new_page = get_page(page_no); // could be same page
 			step_no = new_page.get_loop_from();
 		}
-		else { // not reached end of loop yet
-
-			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_IMMEDIATE && next_page_no >= 0) {
-				// immediate page switch
-				if(next_page_no <= m_cfg.m_max_page_no) {
-					// still a valid page
-					page_no = next_page_no;
-					page_switch = 1;
-				}
-				next_page_no = -1;
-			}
-
-			// calculate next step within the loop window
+		else {
 			if(page.get_loop_to() < page.get_loop_from()) { // run backwards
 				if(--step_no < 0) {
 					step_no = CSequencePage::MAX_STEPS-1;
+				}
+				else if(step_no > page.get_loop_from()) {
+					step_no = page.get_loop_from();
+				}
+				else if(step_no < page.get_loop_to()) {
+					step_no = page.get_loop_to();
 				}
 			}
 			else {
 				if(++step_no > CSequencePage::MAX_STEPS-1) {
 					step_no = 0;
+				}
+				else if(step_no > page.get_loop_to()) {
+					step_no = page.get_loop_to();
+				}
+				else if(step_no < page.get_loop_from()) {
+					step_no = page.get_loop_from();
 				}
 			}
 		}
@@ -241,8 +242,9 @@ public:
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_interpolate = 0;
 		m_cfg.m_max_page_no = 0;
-		m_cfg.m_page_adv = V_SQL_PAGE_ADVANCE_AUTO;
+		m_cfg.m_page_advance = 0;
 		m_cfg.m_common_loop_points = 1;
+		m_cfg.m_page_list_count = 0;
 		set_mode(m_cfg.m_mode);
 	}
 
@@ -254,7 +256,8 @@ public:
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
 		m_state.m_view = VIEW_PITCH_SCALED;
-		m_state.m_next_page_no = -1;
+		//m_state.m_next_page_no = -1;
+		m_state.m_page_list_pos = 0;
 		set_scroll_for(get_default_value(),SCROLL_MARGIN);
 		reset();
 	}
@@ -295,7 +298,6 @@ public:
 		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points_all_pages(); break;
 		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
-		case P_SQL_PAGE_ADVANCE: m_cfg.m_page_adv = (V_SQL_PAGE_ADVANCE)value; break;
 		case P_SQL_LOOP_SPEC: m_cfg.m_common_loop_points = !value; break;
 		default: break;
 		}
@@ -320,7 +322,6 @@ public:
 		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
 		case P_SQL_SCALE_TYPE: return g_scale.get_type();
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
-		case P_SQL_PAGE_ADVANCE: return m_cfg.m_page_adv;
 		case P_SQL_LOOP_SPEC: return !m_cfg.m_common_loop_points;
 		default:return 0;
 		}
@@ -454,9 +455,15 @@ public:
 		}
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
-	inline int get_play_page() {
-		return m_state.m_play_page_no;
+	inline int get_page_advance() {
+		return m_cfg.m_page_advance;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_page_advance(int value) {
+		m_cfg.m_page_advance = value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -554,6 +561,28 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void clear_page_list() {
+		m_cfg.m_page_list_count = 0;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	int get_page_list_count() {
+		return m_cfg.m_page_list_count;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte add_to_page_list(byte page_no) {
+		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
+		if(page_no > m_cfg.m_max_page_no) {
+			return 0;
+		}
+		if(m_cfg.m_page_list_count < MAX_PAGE_LIST) {
+			m_cfg.m_page_list[m_cfg.m_page_list_count++] = page_no;
+			return 1;
+		}
+		return 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	byte is_stepped() {
 		return m_state.m_stepped;
 	}
@@ -562,12 +591,16 @@ public:
 		return m_state.m_page_advanced;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void set_next_page_no(int page_no) {
-		m_state.m_next_page_no = page_no;
-	}
-	///////////////////////////////////////////////////////////////////////////////
 	CSequenceStep& get_current_step() {
 		return m_state.m_step_value;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void set_play_page(int page_no) {
+		m_state.m_play_page_no = page_no;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	int get_play_page() {
+		return m_state.m_play_page_no;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_pos(int pos) {
@@ -670,7 +703,7 @@ public:
 	void tick(uint32_t ticks, byte parts_tick) {
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
-			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_next_page_no);
+			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_page_list_pos);
 			m_state.m_stepped = 1;
 		}
 		else {
@@ -1082,9 +1115,9 @@ public:
 
 			int page_no = m_state.m_play_page_no;
 			int step_no = m_state.m_play_page_no;
-			int next_page_no = m_state.m_next_page_no;
+			int page_list_pos = m_state.m_page_list_pos;
 			byte page_advanced;
-			calc_next_step(page_no, step_no, page_advanced, next_page_no);
+			calc_next_step(page_no, step_no, page_advanced, page_list_pos);
 
 			byte value2 = get_step(page_no, step_no).get_value();
 			int ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);

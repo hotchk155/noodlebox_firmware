@@ -68,14 +68,16 @@
 
 
 // define key combinations with button 1 (CV)
-#define KEY2_CV_FINE		KEY_B2
+#define KEY2_CV_SCROLL		KEY_B2
+#define KEY2_CV_FINE		KEY_B3
 #define KEY2_CV_MOVE_HORZ	KEY_B4
 #define KEY2_CV_MOVE_VERT	KEY_B5
 
-#define KEY2_PAGE_A		KEY_B1
-#define KEY2_PAGE_B		KEY_B2
-#define KEY2_PAGE_C		KEY_B3
-#define KEY2_PAGE_D		KEY_B4
+#define KEY2_PAGE_A			KEY_B1
+#define KEY2_PAGE_B			KEY_B2
+#define KEY2_PAGE_C			KEY_B3
+#define KEY2_PAGE_D			KEY_B4
+#define KEY2_PAGE_ADVANCE	KEY_B6
 
 
 #define KEY2_MENU_LAYER1		KEY_B1

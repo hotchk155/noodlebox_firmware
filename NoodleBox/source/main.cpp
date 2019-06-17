@@ -234,7 +234,7 @@ int main(void) {
 
     g_sequence.init();
 
-    byte i2c_priority = 0;
+    //byte i2c_priority = 0;
     while(1) {
 
     	if(g_clock.m_ms_tick) {

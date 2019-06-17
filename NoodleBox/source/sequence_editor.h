@@ -68,6 +68,7 @@ class CSequenceEditor {
 	uint32_t m_last_action_key;
 	uint32_t m_key_combo;		// keys pressed in conjunction with edit shift
 	byte m_encoder_moved;		// whether encoder has been previously moved since action was in progress
+	byte m_combo_clicks;
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
 	int m_sel_from;				// start of selection range
@@ -325,8 +326,8 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// STUFF WHAT THE EDIT BUTTON DOES...
-	byte edit_action(CSequenceLayer& layer, ACTION what) {
+	// STUFF WHAT THE CV BUTTON DOES...
+	byte cv_action(CSequenceLayer& layer, ACTION what) {
 		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
@@ -349,6 +350,15 @@ class CSequenceEditor {
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			switch(m_key_combo) {
+			case KEY_CV|KEY2_CV_SCROLL:
+				// action to shift all points up or down
+				if(what == ACTION_ENC_LEFT) {
+					scroll(layer,-1);
+				}
+				else {
+					scroll(layer,+1);
+				}
+				break;
 				// fine edit in mod mode
 			case KEY_CV|KEY2_CV_FINE:
 				if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
@@ -555,8 +565,10 @@ class CSequenceEditor {
 		switch(what) {
 		case ACTION_BEGIN:
 			m_sel_from = m_cursor;
+			m_combo_clicks = 0;
 			break;
 		case ACTION_CLICK:
+			layer.set_play_page(m_cur_page);
 			layer.set_pos(m_cursor);
 			break;
 		////////////////////////////////////////////////
@@ -571,12 +583,41 @@ class CSequenceEditor {
 				g_popup.num2digits(m_sel_from - m_sel_to + 1);
 			}
 			break;
+			////////////////////////////////////////////////
+		case ACTION_KEY_COMBO:
+			{
+				int page = -1;
+				switch(m_key_combo) {
+				case KEY_LOOP|KEY2_PAGE_A:
+					page = 0;
+					break;
+				case KEY_LOOP|KEY2_PAGE_B:
+					page = 1;
+					break;
+				case KEY_LOOP|KEY2_PAGE_C:
+					page = 2;
+					break;
+				case KEY_LOOP|KEY2_PAGE_D:
+					page = 3;
+					break;
+				}
+				if(page>=0) {
+					if(!m_combo_clicks) {
+						layer.clear_page_list();
+					}
+					if(layer.add_to_page_list(page)) {
+						g_popup.num2digits(layer.get_page_list_count());
+						g_popup.align(CPopup::ALIGN_RIGHT);
+					}
+					++m_combo_clicks;
+				}
+				break;
+			}
 		////////////////////////////////////////////////
 		case ACTION_END:
 			if(m_sel_to >= 0) {
 				layer.set_loop_from(m_cur_page, m_sel_from);
 				layer.set_loop_to(m_cur_page, m_sel_to);
-				layer.set_pos(m_sel_from);
 			}
 			m_sel_to = -1;
 			m_sel_from = -1;
@@ -608,25 +649,50 @@ class CSequenceEditor {
 			}
 			show_page_list(m_edit_value);
 			break;
-		case ACTION_KEY_COMBO:
-			switch(m_key_combo) {
-			case KEY_PAGE|KEY2_PAGE_A:
-				m_cur_page = 0;
-				break;
-			case KEY_PAGE|KEY2_PAGE_B:
-				m_cur_page = 1;
-				break;
-			case KEY_PAGE|KEY2_PAGE_C:
-				m_cur_page = 2;
-				break;
-			case KEY_PAGE|KEY2_PAGE_D:
-				m_cur_page = 3;
-				break;
+		case ACTION_KEY_COMBO: {
+
+				int cur_page = -1;
+				switch(m_key_combo) {
+				case KEY_PAGE|KEY2_PAGE_A:
+					cur_page = 0;
+					break;
+				case KEY_PAGE|KEY2_PAGE_B:
+					cur_page = 1;
+					break;
+				case KEY_PAGE|KEY2_PAGE_C:
+					cur_page = 2;
+					break;
+				case KEY_PAGE|KEY2_PAGE_D:
+					cur_page = 3;
+					break;
+				case KEY_PAGE|KEY2_PAGE_ADVANCE:
+					if(layer.get_page_advance()) { // page advance currently enabled
+						if(!layer.get_page_list_count()) { // no user defined order
+							layer.set_page_advance(0); // turn off page advance
+							g_popup.text("ADV$", 4);
+						}
+						else {
+							layer.clear_page_list();
+							g_popup.text("ADV", 3);	// clear user defined order
+						}
+					}
+					else {
+						layer.set_page_advance(1); // enable page advance
+						g_popup.text("ADV", 3);
+					}
+					g_popup.align(CPopup::ALIGN_RIGHT);
+					break;
+				}
+				if(cur_page >= 0) {
+					m_cur_page = cur_page;
+					layer.prepare_page(m_cur_page);
+					m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
+					if(!layer.get_page_advance()) {
+						layer.set_play_page(m_cur_page);
+					}
+					show_layer_page();
+				}
 			}
-			layer.prepare_page(m_cur_page);
-			m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
-			layer.set_next_page_no(m_cur_page);
-			show_layer_page();
 			break;
 		case ACTION_END:
 			if(m_edit_value < 0) {
@@ -696,7 +762,7 @@ class CSequenceEditor {
 	// key has been pressed
 	void action(CSequenceLayer& layer, ACTION what) {
 		switch(m_action_key) {
-		case KEY_CV: edit_action(layer, what); break;
+		case KEY_CV: cv_action(layer, what); break;
 		case KEY_CLONE: clone_action(layer, what); break;
 		case KEY_CLEAR: clear_action(layer, what); break;
 		case KEY_GATE: gate_action(layer, what); break;
@@ -990,7 +1056,7 @@ public:
 		}
 
 
-		if(layer.is_page_advanced()) {
+		if(layer.is_page_advanced() && layer.get_page_list_count()!=1) {
 			m_ppi_timeout = PPI_MS;
 		}
 		else if(m_ppi_timeout) {
