@@ -60,6 +60,12 @@ class CSequenceEditor {
 		CLONE_ACTIONED
 	};
 
+	typedef struct {
+		int m_show_grid:1;
+		int m_auto_gate:1;
+	} CONFIG;
+	CONFIG m_cfg;
+
 	//
 	// MEMBER VARIABLES
 	//
@@ -103,6 +109,12 @@ class CSequenceEditor {
 		m_cur_layer = 0;
 		m_cur_page = 0;
 		m_confirm_pending = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void init_config() {
+		m_cfg.m_show_grid = 1;
+		m_cfg.m_auto_gate = 1;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -211,11 +223,13 @@ class CSequenceEditor {
 			}
 			break;
 		case CSequenceLayer::VIEW_PITCH_SCALED:
-			value = g_scale.note_to_index(value);
-			value += delta;
-			value = g_scale.index_to_note(value);
-			max_value = g_scale.max_index();
-			break;
+			if(!fine) {
+				value = g_scale.note_to_index(value);
+				value += delta;
+				value = g_scale.index_to_note(value);
+				max_value = g_scale.max_index();
+				break;
+			} // else fall thru
 		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
 		default:
@@ -229,6 +243,16 @@ class CSequenceEditor {
 			value = max_value;
 		}
 		step.set_value(value);
+		if(m_cfg.m_auto_gate) {
+			switch(layer.get_view()) {
+				case CSequenceLayer::VIEW_PITCH_SCALED:
+				case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+					step.set_gate(1);
+					break;
+				default:
+					break;
+			}
+		}
 		step.set_data_point(1);	// the data point has been set by user
 	}
 
@@ -259,31 +283,46 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// get info for the graticule/grid for display
-	byte get_graticule(CSequenceLayer& layer, int *baseline, int *spacing) {
+	void show_grid(CSequenceLayer& layer) {
 		int n;
 		int notes_per_octave;
+		int row;
+		int spacing;
 		switch (layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
 			n = 12*(n/12); // C at bottom of that octave
-			*baseline = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-			*spacing = 12;
-			return 1;
+			row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+			spacing = 12;
+			break;
 		case CSequenceLayer::VIEW_PITCH_SCALED:
 			notes_per_octave = layer.get_scale().get_notes_per_octave();
 			n = layer.get_scroll_ofs() + 15; // note at top row of screen
 			n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
-			*baseline = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-			*spacing = notes_per_octave;
-			return 1;
+			row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+			spacing = notes_per_octave;
+			break;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
-			*baseline = CSequenceLayer::OFFSET_ZERO;
-			*spacing = 0;
-			return 1;
+			row = CSequenceLayer::OFFSET_ZERO;
+			spacing = 0;
+			break;
 		case CSequenceLayer::VIEW_MODULATION:
+		default:
+			row =-1; // no grid
 			break;
 		}
-		return 0;
+
+		while(row >= 0 && row < 16) {
+			if(row >= 0 && row <=12) {
+				g_ui.hilite(row) = 0x11111111U;
+			}
+			if(spacing > 0) {
+				row += spacing;
+			}
+			else {
+				break;
+			}
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -827,6 +866,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// constructor
 	CSequenceEditor() {
+		init_cfg();
 		init_state();
 	}
 
@@ -914,7 +954,6 @@ public:
 	// draw the display
 	void repaint() {
 		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		//CSequencePage& page = layer.get_page(m_cur_page);
 		int i;
 		uint32_t mask;
 
@@ -922,25 +961,10 @@ public:
 		// Clear the display
 		g_ui.clear();
 
-//TODO move all logic to graticule function
-		// insert the "graticule", which provides the grid lines to in the background
-		// of note based modes
-		int graticule_row = 0;
-		int graticule_spacing = 0;
-		if(get_graticule(layer, &graticule_row, &graticule_spacing)) {
-			while(graticule_row < 16) {
-				if(graticule_row>= 0 && graticule_row<=12) {
-					g_ui.hilite(graticule_row) = 0x11111111U;
-				}
-				if(graticule_spacing > 0) {
-					graticule_row += graticule_spacing;
-				}
-				else {
-					break;
-				}
-			}
+		// add grid lines
+		if(m_cfg.m_show_grid) {
+			show_grid(layer);
 		}
-
 
 		// displaying the cursor
 		mask = g_ui.bit(m_cursor);
@@ -948,7 +972,6 @@ public:
 			g_ui.raster(i) &= ~mask;
 			g_ui.hilite(i) |= mask;
 		}
-
 
 		// decide if clone source will be shown on row 13
 		if(m_clone_status != CLONE_NONE) {
@@ -963,10 +986,6 @@ public:
 		g_ui.hilite(15) |= mask;
 
 
-		mask = g_ui.bit(0);
-		int c = 0;
-		int n;
-
 		// determine where the "ruler" will be drawn
 		int ruler_from;
 		int ruler_to;
@@ -979,8 +998,9 @@ public:
 			ruler_to = layer.get_loop_to(m_cur_page);
 		}
 
-
 		// scan over the full 32 columns
+		mask = g_ui.bit(0);
+		int c = 0;
 		for(i=0; i<32; ++i) {
 
 			// show the "ruler" at the bottom of screen
@@ -1007,52 +1027,45 @@ public:
 				}
 			}
 
+			// get the current step value and map to display row
 			CSequenceStep step = layer.get_step(m_cur_page,i);
-
-			byte show_active_pos = (i == layer.get_pos()) && (g_sequence.is_running()) && (layer.get_play_page() == m_cur_page);
+			int n = step.get_value();
 			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
 				n = 12 - step.get_value()/10;
 				if(n<0) {
 					n=0;
 				}
+			}
+			else {
+				if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
+					n = layer.get_scale().note_to_index(n);
+				}
+				n = 12 - n + layer.get_scroll_ofs();
+			}
+
+			// should this step be shown as active?
+			byte show_active_pos =
+					(i == layer.get_pos()) &&
+					(g_sequence.is_running()) &&
+					(layer.get_play_page() == m_cur_page);
+
+			// plot the value point for the step
+			if(n >= 0 && n <= 12) {
 				if(show_active_pos) {
-					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) |= mask;
+					g_ui.raster(n) |= mask;
 				}
 				else if(step.is_data_point()) {
 					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) &= ~mask;
-
 				}
 				else {
 					g_ui.hilite(n) |= mask;
 					g_ui.raster(n) &= ~mask;
 				}
 			}
-			else {
-				n = step.get_value();
-				if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
-					n = layer.get_scale().note_to_index(n);
-				}
-				n = 12 - n + layer.get_scroll_ofs();
-				if(n >= 0 && n <= 12) {
-					if(show_active_pos) {
-						g_ui.hilite(n) |= mask;
-						g_ui.raster(n) |= mask;
-					}
-					else if(step.is_data_point()) {
-						g_ui.raster(n) |= mask;
-						g_ui.hilite(n) &= ~mask;
-					}
-					else {
-						g_ui.hilite(n) |= mask;
-						g_ui.raster(n) &= ~mask;
-					}
-				}
-			}
 
-
-
+			// determine how the gate point should be displayed
 			byte bri = BRIGHT_OFF;
 			switch(m_gate_view) {
 				case GATE_VIEW_GATE:
@@ -1081,16 +1094,20 @@ public:
 					break;
 			}
 
+			// gates at current position are highlighted
 			if(bri != BRIGHT_OFF && show_active_pos) {
-					bri = BRIGHT_HIGH;
+				bri = BRIGHT_HIGH;
 			}
 
+			// plot the gate info
 			switch(bri) {
 			case BRIGHT_LOW:
+				g_ui.raster(14) &= ~mask;
 				g_ui.hilite(14) |= mask;
 				break;
 			case BRIGHT_MED:
 				g_ui.raster(14) |= mask;
+				g_ui.hilite(14) &= ~mask;
 				break;
 			case BRIGHT_HIGH:
 				g_ui.raster(14) |= mask;
@@ -1101,13 +1118,6 @@ public:
 			mask>>=1;
 		}
 
-
-		if(layer.is_page_advanced() && layer.get_page_list_count()!=1) {
-			m_ppi_timeout = PPI_MS;
-		}
-		else if(m_ppi_timeout) {
-			--m_ppi_timeout;
-		}
 
 		if(m_ppi_timeout) {
 			g_ui.hilite(14) |= 0b11;
@@ -1128,6 +1138,17 @@ public:
 					g_ui.raster(15) |= 0b10;
 					break;
 			}
+		}
+	}
+
+
+	void run() {
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
+		if(layer.is_page_advanced() && layer.get_page_list_count()!=1) {
+			m_ppi_timeout = PPI_MS;
+		}
+		else if(m_ppi_timeout) {
+			--m_ppi_timeout;
 		}
 	}
 };

@@ -240,11 +240,13 @@ int main(void) {
     	if(g_clock.m_ms_tick) {
     		g_clock.m_ms_tick = 0;
 
-    		g_popup.run();
+       		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
         	g_cv_gate.run();
         	g_midi.run();
-       		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
+
+       		g_sequence_editor.run();
         	g_ui.run();
+    		g_popup.run();
 
 			g_ui.lock_for_update();
 			switch(g_view) {

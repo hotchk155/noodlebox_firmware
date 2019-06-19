@@ -74,7 +74,6 @@ private:
 		VIEW_TYPE m_view;
 		byte m_scroll_ofs;					// lowest step value shown on grid
 		int m_play_page_no;				// the page number being played
-//		int m_next_page_no;
 		int m_play_pos;
 		int m_page_list_pos;
 
@@ -83,10 +82,8 @@ private:
 		byte m_stepped;						// stepped flag
 		byte m_page_advanced;
 		byte m_midi_note; 					// last midi note played on channel
-		//byte m_last_velocity;
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
-		//CSequenceStep m_paste_step;
 		uint32_t m_gate_timeout;
 	} STATE;
 
@@ -100,6 +97,8 @@ private:
 	//
 
 
+	///////////////////////////////////////////////////////////////////////////////
+	// accessor for a page
 	inline CSequencePage& get_page(byte page_no) {
 		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
 		return m_cfg.m_page[page_no];
@@ -118,8 +117,6 @@ private:
 				return 0;
 		}
 	}
-
-//	calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_next_page_no);
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Calculate the page and step
