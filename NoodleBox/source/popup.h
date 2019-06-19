@@ -205,6 +205,9 @@ public:
 	void no_hide() {
 		m_timeout = 0;
 	}
+	void hide_after_timeout() {
+		m_timeout = DISPLAY_TIMEOUT;
+	}
 	void hide() {
 		m_len = 0;
 		force_full_repaint();

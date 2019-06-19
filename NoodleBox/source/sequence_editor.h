@@ -88,10 +88,11 @@ class CSequenceEditor {
 	byte m_combo_clicks;
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
-
+	PARAM_ID m_edit_param;
 	COMMAND m_command;
 	const char *m_cmd_prompt;
 	int m_num_values;
+
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
 	byte m_gate_view;			// which gate layer is being viewed
@@ -127,6 +128,7 @@ class CSequenceEditor {
 		m_command = CMD_NONE;
 		m_cmd_prompt = NULL;
 		m_num_values = 0;
+		m_edit_param = P_NONE;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -206,6 +208,68 @@ class CSequenceEditor {
 			break;
 		}
 		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// draw grid
+	// 00
+	// 01
+	// 02
+	// 03
+	// 04
+	// 05
+	// 06
+	// 07
+	// 08
+	// 09
+	// 10
+	// 11
+	// 12 <-- scroll offset
+	// 13
+	// 14
+	// 15
+	void show_grid(CSequenceLayer& layer) {
+		int n;
+		int notes_per_octave;
+		int row;
+		int spacing;
+		switch (layer.get_view()) {
+		case CSequenceLayer::VIEW_PITCH:
+			if(m_cfg.m_scaled_pitch) {
+				notes_per_octave = layer.get_scale().get_notes_per_octave();	// e.g. 7
+				n = layer.get_scroll_ofs() + 15; // note at top row of screen
+				n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
+				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+				spacing = notes_per_octave;
+			}
+			else {
+				n = layer.get_scroll_ofs() + 15; // note at top row of screen
+				n = 12*(n/12); // C at bottom of that octave
+				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+				spacing = 12;
+			}
+			break;
+		case CSequenceLayer::VIEW_PITCH_OFFSET:
+			row = CSequenceLayer::OFFSET_ZERO;
+			spacing = 0;
+			break;
+		case CSequenceLayer::VIEW_MODULATION:
+		default:
+			row =-1; // no grid
+			break;
+		}
+
+		while(row < 16) {
+			if(row >= 0 && row <=12) {
+				g_ui.hilite(row) = 0x11111111U;
+			}
+			if(spacing > 0) {
+				row += spacing;
+			}
+			else {
+				break;
+			}
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -316,51 +380,6 @@ class CSequenceEditor {
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	// get info for the graticule/grid for display
-	void show_grid(CSequenceLayer& layer) {
-		int n;
-		int notes_per_octave;
-		int row;
-		int spacing;
-		switch (layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH:
-			if(m_cfg.m_scaled_pitch) {
-				notes_per_octave = layer.get_scale().get_notes_per_octave();
-				n = layer.get_scroll_ofs() + 15; // note at top row of screen
-				n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
-				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-				spacing = notes_per_octave;
-			}
-			else {
-				n = layer.get_scroll_ofs() + 15; // note at top row of screen
-				n = 12*(n/12); // C at bottom of that octave
-				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-				spacing = 12;
-			}
-			break;
-		case CSequenceLayer::VIEW_PITCH_OFFSET:
-			row = CSequenceLayer::OFFSET_ZERO;
-			spacing = 0;
-			break;
-		case CSequenceLayer::VIEW_MODULATION:
-		default:
-			row =-1; // no grid
-			break;
-		}
-
-		while(row >= 0 && row < 16) {
-			if(row >= 0 && row <=12) {
-				g_ui.hilite(row) = 0x11111111U;
-			}
-			if(spacing > 0) {
-				row += spacing;
-			}
-			else {
-				break;
-			}
-		}
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change step value based on encoder event
@@ -402,6 +421,117 @@ class CSequenceEditor {
 		}
 	}
 
+
+	////////////////////////////////////////////////
+	void command_prompt() {
+		if(m_cmd_prompt) {
+			int count = m_edit_value;
+			const char *ch = m_cmd_prompt;
+			while(*ch) {
+				char text[8];
+				int len = 0;
+				while(*ch && *ch != '|' && len<8) {
+					text[len++] = *ch++;
+				}
+				if(!count) {
+					g_popup.text(text, len);
+					g_popup.no_hide();
+					break;
+				}
+				if(!*ch) {
+					break;
+				}
+				++ch;
+				--count;
+			}
+		}
+	}
+
+	////////////////////////////////////////////////
+	void command_mode(COMMAND cmd) {
+		m_command = cmd;
+		m_cmd_prompt = NULL;
+		switch(cmd) {
+		case CMD_CLEAR_PAGE:
+		case CMD_CLEAR_LAYER:
+			m_edit_value = 0;
+			m_num_values = 2;
+			m_cmd_prompt = "SURE? NO|SURE?YES";
+			break;
+		}
+		command_prompt();
+	}
+
+	////////////////////////////////////////////////
+	void command_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+			////////////////////////////////////////////////
+		case ACTION_ENC_LEFT:
+			if(m_edit_value>0) {
+				--m_edit_value;
+				command_prompt();
+			}
+			break;
+		case ACTION_ENC_RIGHT:
+			if(m_edit_value<m_num_values-1) {
+				++m_edit_value;
+				command_prompt();
+			}
+			break;
+		case ACTION_END:
+			if(exec_command(layer, m_command, m_edit_value)) {
+				g_popup.text("DONE",4);
+			}
+			else {
+				g_popup.hide();
+			}
+			m_command = CMD_NONE;
+			break;
+		default:
+			break;
+		}
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void toggle_init() {
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void toggle(PARAM_ID param, const char*text) {
+		if(m_combo_clicks>1) {
+			set(param, !get(param));
+		}
+		m_cmd_prompt = text;
+		m_edit_value = get(param)?1:0;
+		command_prompt();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void toggle_done() {
+		g_popup.hide_after_timeout();
+	}
+
+
+	////////////////////////////////////////////////
+	byte exec_command(CSequenceLayer& layer, COMMAND cmd, int value) {
+		switch(cmd) {
+		case CMD_CLEAR_PAGE:
+			if(value) {
+				layer.clear_page(m_cur_page);
+				return 1;
+			}
+			break;
+		case CMD_CLEAR_LAYER:
+			if(value) {
+				layer.clear();
+				m_cur_page = 0;
+				return 1;
+			}
+			break;
+		}
+		return 0;
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	// STUFF WHAT THE CV BUTTON DOES...
 	byte cv_action(CSequenceLayer& layer, ACTION what) {
@@ -438,15 +568,11 @@ class CSequenceEditor {
 				break;
 				// fine edit in mod mode
 			case KEY_CV|KEY2_CV_FINE:
-				if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
-					// fine adjustment of value. show the new value and copy
-					// it to the paste buffer
-					value_action(layer, step, what, 1);
-					layer.set_step(m_cur_page, m_cursor, step);
-					set_scroll_for(layer, step.get_value());
-					show_step_value(layer, step.get_value());
-
-				}
+				// fine adjustment of value. show the new value and copy
+				value_action(layer, step, what, 1);
+				layer.set_step(m_cur_page, m_cursor, step);
+				set_scroll_for(layer, step.get_value());
+				show_step_value(layer, step.get_value());
 				break;
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
@@ -639,7 +765,6 @@ class CSequenceEditor {
 		switch(what) {
 		case ACTION_BEGIN:
 			m_sel_from = m_cursor;
-			m_combo_clicks = 0;
 			break;
 		case ACTION_CLICK:
 			layer.set_play_page(m_cur_page);
@@ -676,14 +801,13 @@ class CSequenceEditor {
 					break;
 				}
 				if(page>=0) {
-					if(!m_combo_clicks) {
+					if(m_combo_clicks<2) {
 						layer.clear_page_list();
 					}
 					if(layer.add_to_page_list(page)) {
 						g_popup.num2digits(layer.get_page_list_count());
 						g_popup.align(CPopup::ALIGN_RIGHT);
 					}
-					++m_combo_clicks;
 				}
 				break;
 			}
@@ -767,7 +891,7 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	// MENU BUTTON
-	void menu_action(CSequenceLayer& layer, ACTION what) {
+	void layer_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
@@ -809,6 +933,40 @@ class CSequenceEditor {
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void run_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+		case ACTION_BEGIN:
+			toggle_init();
+			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_RUN|KEY_RUN_SCALE_MODE:
+				toggle(P_EDIT_SCALE_GRID, "CHRO EDT|SCAL EDT");
+				break;
+			case KEY_RUN|KEY_RUN_AUTO_GATE:
+				toggle(P_EDIT_AUTO_GATE_INSERT, "MAN GATE|AUTO GAT");
+				break;
+			case KEY_RUN|KEY_RUN_INTERPOLATE:
+				toggle(P_SQL_INTERPOLATE, "FILL STP|FILL CUR");
+				break;
+			case KEY_RUN|KEY_RUN_GRID:
+				toggle(P_EDIT_SHOW_GRID, "GRID OFF|GRID ON");
+				break;
+			case KEY_RUN|KEY_RUN_LOOP_MODE:
+				toggle(P_SQL_LOOP_PER_PAGE, "LOOP COM|LOOP IND");
+				break;
+			case KEY_RUN|KEY_RUN_PAGE_ADV:
+				toggle(P_SQL_AUTO_PAGE_ADVANCE, "PAG FGD|PAG SEQ");
+				break;
+			}
+			break;
+		case ACTION_END:
+			toggle_done();
+		default:
+			break;
+		}
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// function to dispatch an action to the correct handler based on which
@@ -825,101 +983,13 @@ class CSequenceEditor {
 			case KEY_GATE: gate_action(layer, what); break;
 			case KEY_LOOP: loop_action(layer, what); break;
 			case KEY_PAGE: page_action(layer, what); break;
-			case KEY_LAYER: menu_action(layer, what); break;
+			case KEY_LAYER: layer_action(layer, what); break;
+			case KEY_RUN: run_action(layer, what); break;
 			}
 		}
 	}
 
 
-	////////////////////////////////////////////////
-	void command_prompt() {
-		if(m_cmd_prompt) {
-			int count = m_edit_value;
-			const char *ch = m_cmd_prompt;
-			while(*ch) {
-				char text[8];
-				int len = 0;
-				while(*ch && *ch != '|' && len<8) {
-					text[len++] = *ch++;
-				}
-				if(!count) {
-					g_popup.text(text, len);
-					g_popup.no_hide();
-					break;
-				}
-				if(!*ch) {
-					break;
-				}
-				++ch;
-				--count;
-			}
-		}
-	}
-	////////////////////////////////////////////////
-	void command_mode(COMMAND cmd) {
-		m_command = cmd;
-		m_cmd_prompt = NULL;
-		switch(cmd) {
-		case CMD_CLEAR_PAGE:
-		case CMD_CLEAR_LAYER:
-			m_edit_value = 0;
-			m_num_values = 2;
-			m_cmd_prompt = "SURE? NO|SURE?YES";
-			break;
-		}
-		command_prompt();
-	}
-
-	////////////////////////////////////////////////
-	void command_action(CSequenceLayer& layer, ACTION what) {
-		switch(what) {
-			////////////////////////////////////////////////
-		case ACTION_ENC_LEFT:
-			if(m_edit_value>0) {
-				--m_edit_value;
-				command_prompt();
-			}
-			break;
-		case ACTION_ENC_RIGHT:
-			if(m_edit_value<m_num_values-1) {
-				++m_edit_value;
-				command_prompt();
-			}
-			break;
-		case ACTION_END:
-			if(exec_command(layer, m_command, m_edit_value)) {
-				g_popup.text("DONE",4);
-			}
-			else {
-				g_popup.hide();
-			}
-			m_command = CMD_NONE;
-			break;
-		default:
-			break;
-		}
-
-	}
-
-	////////////////////////////////////////////////
-	byte exec_command(CSequenceLayer& layer, COMMAND cmd, int value) {
-		switch(cmd) {
-		case CMD_CLEAR_PAGE:
-			if(value) {
-				layer.clear_page(m_cur_page);
-				return 1;
-			}
-			break;
-		case CMD_CLEAR_LAYER:
-			if(value) {
-				layer.clear();
-				m_cur_page = 0;
-				return 1;
-			}
-			break;
-		}
-		return 0;
-	}
 
 public:
 
@@ -937,9 +1007,9 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
 		switch(param) {
-		case P_EDIT_AUTO_GATE_INSERT: return m_cfg.m_auto_gate;
-		case P_EDIT_SHOW_GRID: return m_cfg.m_show_grid;
-		case P_EDIT_SCALE_GRID: return m_cfg.m_scaled_pitch;
+		case P_EDIT_AUTO_GATE_INSERT: return !!m_cfg.m_auto_gate;
+		case P_EDIT_SHOW_GRID: return !!m_cfg.m_show_grid;
+		case P_EDIT_SCALE_GRID: return !!m_cfg.m_scaled_pitch;
 		default:
 			return g_sequence.get_layer(m_cur_layer).get(param);
 		}
@@ -982,13 +1052,16 @@ public:
 				case KEY_LOOP:
 				case KEY_PAGE:
 				case KEY_LAYER:
+				case KEY_RUN:
 					m_action_key = param;
 					m_encoder_moved = 0;
+					m_combo_clicks = 0;
 					action(layer, ACTION_BEGIN);
 				}
 			}
 			else {
 				m_key_combo = param;
+				++m_combo_clicks;
 				action(layer, ACTION_KEY_COMBO);
 			}
 			break;
@@ -1119,6 +1192,8 @@ public:
 				}
 				n = 12 - n + layer.get_scroll_ofs();
 			}
+
+
 
 			// should this step be shown as active?
 			byte show_active_pos =

@@ -322,20 +322,15 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		case P_SQL_FORCE_SCALE: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
+		case P_SQL_FORCE_SCALE:
+		case P_SQL_SCALE_TYPE:
+		case P_SQL_SCALE_ROOT:
+			return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
 		case P_SQL_MIDI_CC:	return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_CVRANGE: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_CVSCALE: return !(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_TRAN_TRIG:
 		case P_SQL_TRAN_ACC: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
-		case P_SQL_SCALE_TYPE:
-		case P_SQL_SCALE_ROOT:
-			switch(m_state.m_view) {
-			case VIEW_PITCH:
-			case VIEW_PITCH_OFFSET:
-				return m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON;
-			}
-			break;
 		case P_SQL_MIDI_VEL:
 		case P_SQL_MIDI_VEL_ACCENT:
 			switch(m_cfg.m_mode) {
@@ -531,6 +526,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_page_list() {
 		m_cfg.m_page_list_count = 0;
+		m_state.m_page_list_pos = 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	int get_page_list_count() {

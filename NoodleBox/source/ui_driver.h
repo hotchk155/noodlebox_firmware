@@ -63,7 +63,6 @@
 #define KEY_LOOP		KEY_B6
 #define KEY_PAGE		KEY_B7
 #define KEY_LAYER		KEY_B8
-
 #define KEY_RUN			KEY_R3
 
 
@@ -88,6 +87,14 @@
 #define KEY2_LAYER_3		KEY_B3
 #define KEY2_LAYER_4		KEY_B4
 #define KEY2_LAYER_MUTE		KEY_B7
+
+#define KEY_RUN_SCALE_MODE	KEY_B1
+#define KEY_RUN_AUTO_GATE	KEY_B2
+#define KEY_RUN_INTERPOLATE	KEY_B3
+#define KEY_RUN_GRID		KEY_B4
+#define KEY_RUN_LOOP_MODE	KEY_B6
+#define KEY_RUN_PAGE_ADV	KEY_B7
+
 
 
 // debounce times (ms)

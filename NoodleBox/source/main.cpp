@@ -130,33 +130,6 @@ void fire_event(int event, uint32_t param) {
 				g_menu.activate();
 			}
 			break;
-/*
-		case KEY_MENU|KEY2_MENU_LAYER1:
-			select_layer(0);
-			break;
-		case KEY_MENU|KEY2_MENU_LAYER2:
-			select_layer(1);
-			break;
-		case KEY_MENU|KEY2_MENU_LAYER3:
-			select_layer(2);
-			break;
-		case KEY_MENU|KEY2_MENU_LAYER4:
-			select_layer(3);
-			break;
-		case KEY_MENU|KEY2_MENU_LAYER_MUTE:
-			g_sequencer.cur_layer().set_enabled(!g_sequencer.cur_layer().get_enabled());
-			g_popup.layer_page(g_sequencer.get_cur_layer(), g_sequencer.cur_layer().get_view_page(), g_sequencer.cur_layer().get_enabled());
-			force_full_repaint();
-			g_popup.align(CPopup::ALIGN_RIGHT);
-			break;*/
-		default:
-			dispatch_event(event, param);
-			break;
-		}
-		break;
-	///////////////////////////////////
-	case EV_KEY_PRESS:
-		switch(param) {
 		case KEY_RUN:
 			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
 			break;
