@@ -57,6 +57,7 @@ typedef enum:byte {
 	P_NONE = 0,
 
 	P_EDIT_AUTO_GATE_INSERT,
+	P_EDIT_SHOW_GRID,
 	P_EDIT_SCALE_GRID,
 
 	P_SQL_SEQ_MODE,

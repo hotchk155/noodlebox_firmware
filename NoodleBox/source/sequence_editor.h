@@ -41,6 +41,15 @@ class CSequenceEditor {
 		ACTION_END			// end of an action, when button is released
 	} ACTION;
 
+	// once a command mode is entered from an action being in progress, all input is
+	// directed to the command handler, which can deal with confirmation, prompts etc
+	// command mode ends when all the action buttons are released
+	typedef enum {
+		CMD_NONE,
+		CMD_CLEAR_PAGE,
+		CMD_CLEAR_LAYER
+	} COMMAND;
+
 	enum {
 		GATE_VIEW_GATE,
 		GATE_VIEW_TIE,
@@ -80,16 +89,15 @@ class CSequenceEditor {
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
 
-	int m_prompt_values;
-	int m_prompt_width;
-	const char *m_prompt_text;
-
+	COMMAND m_command;
+	const char *m_cmd_prompt;
+	int m_num_values;
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
 	byte m_gate_view;			// which gate layer is being viewed
 	int m_clone_source;			// column from which to clone data
 	byte m_clone_status;
-	byte m_confirm_pending;
+	//byte m_confirm_pending;
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
 
@@ -115,11 +123,10 @@ class CSequenceEditor {
 		m_clone_status = CLONE_NONE;
 		m_cur_layer = 0;
 		m_cur_page = 0;
-		m_confirm_pending = 0;
-		m_prompt_values = 0;
-		m_prompt_width = 0;
-		m_prompt_text = NULL;
-
+		//m_confirm_pending = 0;
+		m_command = CMD_NONE;
+		m_cmd_prompt = NULL;
+		m_num_values = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -355,55 +362,6 @@ class CSequenceEditor {
 		}
 	}
 
-/*
-	void show_prompt() {
-		if(m_prompt_text) {
-			int c = m_edit_value;
-			const char *ch = m_prompt_text;
-			while(c>0 && *ch) {
-				if(*ch == '|') {
-					--c;
-				}
-				++ch;
-			}
-			if(*ch) {
-				g_popup.text(ch, m_prompt_width);
-				g_popup.no_hide();
-			}
-		}
-	}
-	void prompt_init(int value, const char *text, int values, int width) {
-		m_edit_value = value;
-		m_prompt_values = values;
-		m_prompt_width = width;
-		m_prompt_text = text;
-		show_prompt();
-	}
-	void prompt_action(ACTION what) {
-		switch(what) {
-		case ACTION_ENC_LEFT:
-			if(m_edit_value>0) {
-				--m_edit_value;
-				show_prompt();
-			}
-			break;
-		case ACTION_ENC_RIGHT:
-			if(m_edit_value<m_prompt_values-1) {
-				++m_edit_value;
-				show_prompt();
-			}
-			break;
-		}
-
-	}
-	void prompt_done() {
-		m_prompt_text= NULL;
-		g_popup.hide();
-	}
-	void prompt_init_confirm() {
-		prompt_init(0, "SURE?N|SURE?Y", 2, 6);
-	}*/
-
 	///////////////////////////////////////////////////////////////////////////////
 	// change step value based on encoder event
 	void value_action(CSequenceLayer& layer, CSequenceStep& step, ACTION what, byte fine) {
@@ -538,25 +496,6 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
-
-/*			case KEY_CV|KEY_PASTE:
-				// EDIT + PASTE - advance cursor and copy the current step
-				if(layer.is_paste_step_available()) {
-					if(++m_cursor >= GRID_WIDTH-1) {
-						m_cursor = 0;
-					}
-					layer.paste_step(m_cursor);
-				}
-				break;*/
-/*			case KEY_CV|KEY_CLEAR:
-				if(layer.is_note_mode()) {
-					// EDIT + CLEAR - insert rest and advance cursor
-					layer.clear_step_value(m_cursor);
-					if(++m_cursor >= GRID_WIDTH-1) {
-						m_cursor = 0;
-					}
-				}
-				break;*/
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT", 4);
@@ -625,49 +564,26 @@ class CSequenceEditor {
 			layer.clear_step(m_cur_page, m_cursor);
 			break;
 			////////////////////////////////////////////////
-/*		case ACTION_KEY_COMBO:
+		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
 			case KEY_CLEAR|KEY2_CLEAR_PAGE:
-				prompt_init_confirm(PROMPT_CLEAR_PAGE);
+				command_mode(CMD_CLEAR_PAGE);
 				break;
 			case KEY_CLEAR|KEY2_CLEAR_LAYER:
-				prompt_init_confirm(PROMPT_CLEAR_LAYER);
+				command_mode(CMD_CLEAR_LAYER);
 				break;
 			}
-			break;*/
+			break;
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-/*			if(prompt_pending()) {
-				prompt_action(what);
-			}
-			else {*/
-				layer.clear_step(m_cur_page, m_cursor);
-				cursor_action(layer, what, m_cursor);
-				break;
-/*			}*/
+			layer.clear_step(m_cur_page, m_cursor);
+			cursor_action(layer, what, m_cursor);
 			break;
 		case ACTION_END:
-/*			if(prompt_pending()) {
-			prompt_done();
-			switch(m_key_combo) {
-			case KEY_CLEAR|KEY2_CLEAR_PAGE:
-				if(m_edit_value) {
-					layer.clear_page(m_cur_page);
-					g_popup.text("OK",2);
-				}
-				break;
-			case KEY_CLEAR|KEY2_CLEAR_LAYER:
-				if(m_edit_value) {
-					layer.clear();
-					m_cur_page = 0;
-					g_popup.text("OK",2);
-				}
-				break;
-			default:*/
+			if(!m_encoder_moved) {
 				layer.clear_step(m_cur_page, m_cursor);
 				cursor_action(layer, what, m_cursor);
-				break;
-			/*}*/
+			}
 			break;
 		default:
 			break;
@@ -848,6 +764,7 @@ class CSequenceEditor {
 		}
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
 	// MENU BUTTON
 	void menu_action(CSequenceLayer& layer, ACTION what) {
@@ -897,15 +814,111 @@ class CSequenceEditor {
 	// function to dispatch an action to the correct handler based on which
 	// key has been pressed
 	void action(CSequenceLayer& layer, ACTION what) {
-		switch(m_action_key) {
-		case KEY_CV: cv_action(layer, what); break;
-		case KEY_CLONE: clone_action(layer, what); break;
-		case KEY_CLEAR: clear_action(layer, what); break;
-		case KEY_GATE: gate_action(layer, what); break;
-		case KEY_LOOP: loop_action(layer, what); break;
-		case KEY_PAGE: page_action(layer, what); break;
-		case KEY_LAYER: menu_action(layer, what); break;
+		if(m_command) { // a command is in progress, so until
+			command_action(layer, what);
 		}
+		else {
+			switch(m_action_key) {
+			case KEY_CV: cv_action(layer, what); break;
+			case KEY_CLONE: clone_action(layer, what); break;
+			case KEY_CLEAR: clear_action(layer, what); break;
+			case KEY_GATE: gate_action(layer, what); break;
+			case KEY_LOOP: loop_action(layer, what); break;
+			case KEY_PAGE: page_action(layer, what); break;
+			case KEY_LAYER: menu_action(layer, what); break;
+			}
+		}
+	}
+
+
+	////////////////////////////////////////////////
+	void command_prompt() {
+		if(m_cmd_prompt) {
+			int count = m_edit_value;
+			const char *ch = m_cmd_prompt;
+			while(*ch) {
+				char text[8];
+				int len = 0;
+				while(*ch && *ch != '|' && len<8) {
+					text[len++] = *ch++;
+				}
+				if(!count) {
+					g_popup.text(text, len);
+					g_popup.no_hide();
+					break;
+				}
+				if(!*ch) {
+					break;
+				}
+				++ch;
+				--count;
+			}
+		}
+	}
+	////////////////////////////////////////////////
+	void command_mode(COMMAND cmd) {
+		m_command = cmd;
+		m_cmd_prompt = NULL;
+		switch(cmd) {
+		case CMD_CLEAR_PAGE:
+		case CMD_CLEAR_LAYER:
+			m_edit_value = 0;
+			m_num_values = 2;
+			m_cmd_prompt = "SURE? NO|SURE?YES";
+			break;
+		}
+		command_prompt();
+	}
+
+	////////////////////////////////////////////////
+	void command_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+			////////////////////////////////////////////////
+		case ACTION_ENC_LEFT:
+			if(m_edit_value>0) {
+				--m_edit_value;
+				command_prompt();
+			}
+			break;
+		case ACTION_ENC_RIGHT:
+			if(m_edit_value<m_num_values-1) {
+				++m_edit_value;
+				command_prompt();
+			}
+			break;
+		case ACTION_END:
+			if(exec_command(layer, m_command, m_edit_value)) {
+				g_popup.text("DONE",4);
+			}
+			else {
+				g_popup.hide();
+			}
+			m_command = CMD_NONE;
+			break;
+		default:
+			break;
+		}
+
+	}
+
+	////////////////////////////////////////////////
+	byte exec_command(CSequenceLayer& layer, COMMAND cmd, int value) {
+		switch(cmd) {
+		case CMD_CLEAR_PAGE:
+			if(value) {
+				layer.clear_page(m_cur_page);
+				return 1;
+			}
+			break;
+		case CMD_CLEAR_LAYER:
+			if(value) {
+				layer.clear();
+				m_cur_page = 0;
+				return 1;
+			}
+			break;
+		}
+		return 0;
 	}
 
 public:
