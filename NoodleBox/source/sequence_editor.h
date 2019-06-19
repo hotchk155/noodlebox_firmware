@@ -25,7 +25,8 @@ class CSequenceEditor {
 		GRID_WIDTH = 32,	// number of columns in the grid
 		GRID_HEIGHT = 16,	// number of rows in the grid
 		POPUP_MS = 2000,		// how long popup window is to be displayed
-		PPI_MS = 100		// play page indicator timeout
+		PPI_MS = 100,		// play page indicator timeout
+		SCROLL_MARGIN = 3
 	};
 
 	// enumeration of the "gestures" or actions that the user can perform
@@ -63,6 +64,7 @@ class CSequenceEditor {
 	typedef struct {
 		int m_show_grid:1;
 		int m_auto_gate:1;
+		int m_scaled_pitch:1;
 	} CONFIG;
 	CONFIG m_cfg;
 
@@ -77,6 +79,11 @@ class CSequenceEditor {
 	byte m_combo_clicks;
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
+
+	int m_prompt_values;
+	int m_prompt_width;
+	const char *m_prompt_text;
+
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
 	byte m_gate_view;			// which gate layer is being viewed
@@ -109,6 +116,10 @@ class CSequenceEditor {
 		m_cur_layer = 0;
 		m_cur_page = 0;
 		m_confirm_pending = 0;
+		m_prompt_values = 0;
+		m_prompt_width = 0;
+		m_prompt_text = NULL;
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -191,11 +202,31 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void set_scroll_for(CSequenceLayer& layer, int value, int margin = SCROLL_MARGIN) {
+
+		if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
+			value = g_scale.note_to_index(value);
+		}
+
+		int scroll_ofs = layer.get_scroll_ofs();
+		if((value-margin)<scroll_ofs) {
+			scroll_ofs = value-margin;
+		}
+		else if((value+margin)>scroll_ofs+12) {
+			scroll_ofs = value-12+margin;
+		}
+
+		if(scroll_ofs < 0) {
+			scroll_ofs = 0;
+		}
+		layer.set_scroll_ofs(scroll_ofs);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
 	void show_step_value(CSequenceLayer& layer, int value) {
 		switch(layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH_SCALED:
-		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+		case CSequenceLayer::VIEW_PITCH:
 			g_popup.note_name(value);
 			break;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
@@ -222,15 +253,14 @@ class CSequenceEditor {
 				value = 10*(value/10 + delta);
 			}
 			break;
-		case CSequenceLayer::VIEW_PITCH_SCALED:
-			if(!fine) {
+		case CSequenceLayer::VIEW_PITCH:
+			if(m_cfg.m_scaled_pitch && !fine) {
 				value = g_scale.note_to_index(value);
 				value += delta;
 				value = g_scale.index_to_note(value);
 				max_value = g_scale.max_index();
 				break;
 			} // else fall thru
-		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
 		default:
 			value += delta;
@@ -245,8 +275,7 @@ class CSequenceEditor {
 		step.set_value(value);
 		if(m_cfg.m_auto_gate) {
 			switch(layer.get_view()) {
-				case CSequenceLayer::VIEW_PITCH_SCALED:
-				case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+				case CSequenceLayer::VIEW_PITCH:
 					step.set_gate(1);
 					break;
 				default:
@@ -260,8 +289,7 @@ class CSequenceEditor {
 	// scroll display up or down
 	void scroll(CSequenceLayer& layer, int dir) {
 		switch(layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH_SCALED:
-		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
+		case CSequenceLayer::VIEW_PITCH:
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
 			{
 				int scroll_ofs = layer.get_scroll_ofs();
@@ -289,18 +317,20 @@ class CSequenceEditor {
 		int row;
 		int spacing;
 		switch (layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH_CHROMATIC:
-			n = layer.get_scroll_ofs() + 15; // note at top row of screen
-			n = 12*(n/12); // C at bottom of that octave
-			row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-			spacing = 12;
-			break;
-		case CSequenceLayer::VIEW_PITCH_SCALED:
-			notes_per_octave = layer.get_scale().get_notes_per_octave();
-			n = layer.get_scroll_ofs() + 15; // note at top row of screen
-			n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
-			row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
-			spacing = notes_per_octave;
+		case CSequenceLayer::VIEW_PITCH:
+			if(m_cfg.m_scaled_pitch) {
+				notes_per_octave = layer.get_scale().get_notes_per_octave();
+				n = layer.get_scroll_ofs() + 15; // note at top row of screen
+				n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
+				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+				spacing = notes_per_octave;
+			}
+			else {
+				n = layer.get_scroll_ofs() + 15; // note at top row of screen
+				n = 12*(n/12); // C at bottom of that octave
+				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
+				spacing = 12;
+			}
 			break;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
 			row = CSequenceLayer::OFFSET_ZERO;
@@ -324,6 +354,55 @@ class CSequenceEditor {
 			}
 		}
 	}
+
+/*
+	void show_prompt() {
+		if(m_prompt_text) {
+			int c = m_edit_value;
+			const char *ch = m_prompt_text;
+			while(c>0 && *ch) {
+				if(*ch == '|') {
+					--c;
+				}
+				++ch;
+			}
+			if(*ch) {
+				g_popup.text(ch, m_prompt_width);
+				g_popup.no_hide();
+			}
+		}
+	}
+	void prompt_init(int value, const char *text, int values, int width) {
+		m_edit_value = value;
+		m_prompt_values = values;
+		m_prompt_width = width;
+		m_prompt_text = text;
+		show_prompt();
+	}
+	void prompt_action(ACTION what) {
+		switch(what) {
+		case ACTION_ENC_LEFT:
+			if(m_edit_value>0) {
+				--m_edit_value;
+				show_prompt();
+			}
+			break;
+		case ACTION_ENC_RIGHT:
+			if(m_edit_value<m_prompt_values-1) {
+				++m_edit_value;
+				show_prompt();
+			}
+			break;
+		}
+
+	}
+	void prompt_done() {
+		m_prompt_text= NULL;
+		g_popup.hide();
+	}
+	void prompt_init_confirm() {
+		prompt_init(0, "SURE?N|SURE?Y", 2, 6);
+	}*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change step value based on encoder event
@@ -384,7 +463,7 @@ class CSequenceEditor {
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			layer.set_scroll_for(step.get_value());
+			set_scroll_for(layer, step.get_value());
 			break;
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
@@ -406,7 +485,7 @@ class CSequenceEditor {
 					// it to the paste buffer
 					value_action(layer, step, what, 1);
 					layer.set_step(m_cur_page, m_cursor, step);
-					layer.set_scroll_for(step.get_value());
+					set_scroll_for(layer, step.get_value());
 					show_step_value(layer, step.get_value());
 
 				}
@@ -414,12 +493,12 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
-					if(layer.shift_vertical(m_cur_page, -1)) {
+					if(layer.shift_vertical(m_cur_page, -1, m_cfg.m_scaled_pitch)) {
 						--m_edit_value;
 					}
 				}
 				else {
-					if(layer.shift_vertical(m_cur_page, +1)) {
+					if(layer.shift_vertical(m_cur_page, +1, m_cfg.m_scaled_pitch)) {
 						++m_edit_value;
 					}
 				}
@@ -451,7 +530,7 @@ class CSequenceEditor {
 				}
 				// editing a step value
 				layer.set_step(m_cur_page, m_cursor, step);
-				layer.set_scroll_for(step.get_value());
+				set_scroll_for(layer, step.get_value());
 				show_step_value(layer, step.get_value());
 				break;
 			}
@@ -538,33 +617,6 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void begin_confirm() {
-		g_popup.text("SURE?",5);
-		g_popup.no_hide();
-		m_confirm_pending = 1;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	byte confirm_ok(ACTION what) {
-		if(m_confirm_pending) {
-			m_confirm_pending = 0;
-			if(what==ACTION_ENC_RIGHT) {
-				g_popup.text("DONE",4);
-				return 1;
-			}
-			else {
-				g_popup.hide();
-			}
-		}
-		return 0;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	void end_confirm() {
-		if(m_confirm_pending) {
-			m_confirm_pending = 0;
-			g_popup.hide();
-		}
-	}
-	///////////////////////////////////////////////////////////////////////////////
 	// CLEAR BUTTON
 	void clear_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
@@ -573,35 +625,49 @@ class CSequenceEditor {
 			layer.clear_step(m_cur_page, m_cursor);
 			break;
 			////////////////////////////////////////////////
+/*		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_CLEAR|KEY2_CLEAR_PAGE:
+				prompt_init_confirm(PROMPT_CLEAR_PAGE);
+				break;
+			case KEY_CLEAR|KEY2_CLEAR_LAYER:
+				prompt_init_confirm(PROMPT_CLEAR_LAYER);
+				break;
+			}
+			break;*/
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			switch(m_key_combo) {
-			case KEY_CLEAR|KEY2_CLEAR_PAGE:
-				if(confirm_ok(what)) {
-					layer.clear_page(m_cur_page);
-				}
-				break;
-			case KEY_CLEAR|KEY2_CLEAR_LAYER:
-				if(confirm_ok(what)) {
-					layer.clear();
-					m_cur_page = 0;
-				}
-				break;
-			default:
+/*			if(prompt_pending()) {
+				prompt_action(what);
+			}
+			else {*/
 				layer.clear_step(m_cur_page, m_cursor);
 				cursor_action(layer, what, m_cursor);
-			}
-			break;
-		case ACTION_KEY_COMBO:
-			switch(m_key_combo) {
-			case KEY_CLEAR|KEY2_CLEAR_PAGE:
-			case KEY_CLEAR|KEY2_CLEAR_LAYER:
-				begin_confirm();
 				break;
-			}
+/*			}*/
 			break;
 		case ACTION_END:
-			end_confirm();
+/*			if(prompt_pending()) {
+			prompt_done();
+			switch(m_key_combo) {
+			case KEY_CLEAR|KEY2_CLEAR_PAGE:
+				if(m_edit_value) {
+					layer.clear_page(m_cur_page);
+					g_popup.text("OK",2);
+				}
+				break;
+			case KEY_CLEAR|KEY2_CLEAR_LAYER:
+				if(m_edit_value) {
+					layer.clear();
+					m_cur_page = 0;
+					g_popup.text("OK",2);
+				}
+				break;
+			default:*/
+				layer.clear_step(m_cur_page, m_cursor);
+				cursor_action(layer, what, m_cursor);
+				break;
+			/*}*/
 			break;
 		default:
 			break;
@@ -758,28 +824,13 @@ class CSequenceEditor {
 					cur_page = 3;
 					break;
 				case KEY_PAGE|KEY2_PAGE_ADVANCE:
-					if(layer.get_page_advance()) { // page advance currently enabled
-						if(!layer.get_page_list_count()) { // no user defined order
-							layer.set_page_advance(0); // turn off page advance
-							g_popup.text("ADV$", 4);
-						}
-						else {
-							layer.clear_page_list();
-							g_popup.text("ADV", 3);	// clear user defined order
-						}
-					}
-					else {
-						layer.set_page_advance(1); // enable page advance
-						g_popup.text("ADV", 3);
-					}
-					g_popup.align(CPopup::ALIGN_RIGHT);
 					break;
 				}
 				if(cur_page >= 0) {
 					m_cur_page = cur_page;
 					layer.prepare_page(m_cur_page);
 					m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
-					if(!layer.get_page_advance()) {
+					if(!layer.get(P_SQL_AUTO_PAGE_ADVANCE)) {
 						layer.set_play_page(m_cur_page);
 					}
 					show_layer_page();
@@ -866,28 +917,41 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// constructor
 	CSequenceEditor() {
-		init_cfg();
+		init_config();
 		init_state();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// config setter
-	void set(PARAM_ID param, int value) {
-		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		layer.set(param,value);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// config getter
 	int get(PARAM_ID param) {
-		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		return layer.get(param);
+		switch(param) {
+		case P_EDIT_AUTO_GATE_INSERT: return m_cfg.m_auto_gate;
+		case P_EDIT_SHOW_GRID: return m_cfg.m_show_grid;
+		case P_EDIT_SCALE_GRID: return m_cfg.m_scaled_pitch;
+		default:
+			return g_sequence.get_layer(m_cur_layer).get(param);
+		}
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void set(PARAM_ID param, int value) {
+		switch(param) {
+		case P_EDIT_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
+		case P_EDIT_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
+		case P_EDIT_SCALE_GRID: m_cfg.m_scaled_pitch = !!value; break;
+		default:
+			g_sequence.get_layer(m_cur_layer).set(param, value);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
-		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		return layer.is_valid_param(param);
+		switch(param) {
+			case P_EDIT_AUTO_GATE_INSERT:
+			case P_EDIT_SHOW_GRID:
+			case P_EDIT_SCALE_GRID:
+				return 1;
+			default:
+				return g_sequence.get_layer(m_cur_layer).is_valid_param(param);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -1037,7 +1101,7 @@ public:
 				}
 			}
 			else {
-				if(layer.get_view() == CSequenceLayer::VIEW_PITCH_SCALED) {
+				if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
 					n = layer.get_scale().note_to_index(n);
 				}
 				n = 12 - n + layer.get_scroll_ofs();

@@ -22,14 +22,12 @@ class CSequenceLayer {
 
 public:
 	typedef enum {
-		VIEW_PITCH_CHROMATIC,
-		VIEW_PITCH_SCALED,
+		VIEW_PITCH,
 		VIEW_PITCH_OFFSET,
 		VIEW_MODULATION
 	} VIEW_TYPE;
 
 	enum {
-		SCROLL_MARGIN = 3,
 		OFFSET_ZERO = 64,		// step value for zero transpose offset
 		MAX_PAGES = 4					// number of pages
 	};
@@ -62,7 +60,7 @@ private:
 		byte 			m_midi_vel_accent;
 		byte 			m_midi_vel;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
-		byte 			m_common_loop_points :1;
+		byte 			m_loop_per_page :1;
 		int				m_interpolate:1;
 		int 			m_enabled:1;
 		int 			m_page_advance:1;
@@ -109,8 +107,7 @@ private:
 		switch(m_cfg.m_mode) {
 			case V_SQL_SEQ_MODE_TRANSPOSE:
 				return OFFSET_ZERO;
-			case V_SQL_SEQ_MODE_SCALE:
-			case V_SQL_SEQ_MODE_CHROMATIC:
+			case V_SQL_SEQ_MODE_PITCH:
 				return g_scale.default_note();
 			case V_SQL_SEQ_MODE_MOD:
 			default:
@@ -216,7 +213,7 @@ public:
 	// Assign valid default values to the sequence layer configuration (i.e.
 	// the data that forms part of a saved sequence)
 	void init_config() {
-		m_cfg.m_mode 		= V_SQL_SEQ_MODE_SCALE;
+		m_cfg.m_mode 		= V_SQL_SEQ_MODE_PITCH;
 		m_cfg.m_force_scale = V_SQL_FORCE_SCALE_OFF;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
 		m_cfg.m_note_dur	= V_SQL_NOTE_DUR_100;
@@ -236,7 +233,7 @@ public:
 		m_cfg.m_interpolate = 0;
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_page_advance = 0;
-		m_cfg.m_common_loop_points = 1;
+		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_page_list_count = 0;
 		set_mode(m_cfg.m_mode);
 		clear();
@@ -249,10 +246,9 @@ public:
 		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = 0;
-		m_state.m_view = VIEW_PITCH_SCALED;
+		m_state.m_view = VIEW_PITCH;
 		//m_state.m_next_page_no = -1;
 		m_state.m_page_list_pos = 0;
-		set_scroll_for(get_default_value(),SCROLL_MARGIN);
 		reset();
 	}
 
@@ -292,7 +288,8 @@ public:
 		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points_all_pages(); break;
 		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
-		case P_SQL_LOOP_SPEC: m_cfg.m_common_loop_points = !value; break;
+		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
+		case P_SQL_AUTO_PAGE_ADVANCE: m_cfg.m_page_advance = value; break;
 		default: break;
 		}
 	}
@@ -316,7 +313,8 @@ public:
 		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
 		case P_SQL_SCALE_TYPE: return g_scale.get_type();
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
-		case P_SQL_LOOP_SPEC: return !m_cfg.m_common_loop_points;
+		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
+		case P_SQL_AUTO_PAGE_ADVANCE: return m_cfg.m_page_advance;
 		default:return 0;
 		}
 	}
@@ -324,7 +322,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		case P_SQL_FORCE_SCALE: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_CHROMATIC||m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
+		case P_SQL_FORCE_SCALE: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_TRANSPOSE);
 		case P_SQL_MIDI_CC:	return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_CVRANGE: return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_CVSCALE: return !(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
@@ -333,19 +331,16 @@ public:
 		case P_SQL_SCALE_TYPE:
 		case P_SQL_SCALE_ROOT:
 			switch(m_state.m_view) {
-			case VIEW_PITCH_CHROMATIC:
+			case VIEW_PITCH:
 			case VIEW_PITCH_OFFSET:
 				return m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON;
-			case VIEW_PITCH_SCALED:
-				return 1;
 			}
 			break;
 		case P_SQL_MIDI_VEL:
 		case P_SQL_MIDI_VEL_ACCENT:
 			switch(m_cfg.m_mode) {
-			case V_SQL_SEQ_MODE_CHROMATIC:
+			case V_SQL_SEQ_MODE_PITCH:
 			case V_SQL_SEQ_MODE_TRANSPOSE:
-			case V_SQL_SEQ_MODE_SCALE:
 				return 1;
 			case V_SQL_SEQ_MODE_MOD:
 				return 0;
@@ -361,38 +356,13 @@ public:
 	//
 
 
-	///////////////////////////////////////////////////////////////////////////////
-	void set_scroll_for(int value, int margin = SCROLL_MARGIN) {
-
-		if(m_state.m_view == VIEW_PITCH_SCALED) {
-			value = g_scale.note_to_index(value);
-		}
-
-		int scroll_ofs = m_state.m_scroll_ofs;
-		if((value-margin)<scroll_ofs) {
-			scroll_ofs = value-margin;
-		}
-		else if((value+margin)>scroll_ofs+12) {
-			scroll_ofs = value-12+margin;
-		}
-
-		if(scroll_ofs < 0) {
-			scroll_ofs = 0;
-		}
-		m_state.m_scroll_ofs = scroll_ofs;
-
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change the mode
 	void set_mode(V_SQL_SEQ_MODE value) {
 		switch (value) {
-		case V_SQL_SEQ_MODE_SCALE:
-			m_state.m_view = VIEW_TYPE::VIEW_PITCH_SCALED;
-			m_cfg.m_interpolate = 0;
-			break;
-		case V_SQL_SEQ_MODE_CHROMATIC:
-			m_state.m_view = VIEW_TYPE::VIEW_PITCH_CHROMATIC;
+		case V_SQL_SEQ_MODE_PITCH:
+			m_state.m_view = VIEW_TYPE::VIEW_PITCH;
 			m_cfg.m_interpolate = 0;
 			break;
 		case V_SQL_SEQ_MODE_TRANSPOSE:
@@ -448,26 +418,21 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte shift_vertical(byte page_no, int dir) {
+	byte shift_vertical(byte page_no, int dir, int scaled) {
 		CSequencePage& page = get_page(page_no);
-		if(m_state.m_view == VIEW_PITCH_SCALED) {
-			return page.shift_vertical(dir, &g_scale, m_cfg.m_interpolate, get_default_value());
-		}
-		else {
-			return page.shift_vertical(dir, NULL, m_cfg.m_interpolate, get_default_value());
-		}
+		return page.shift_vertical(dir, scaled? &g_scale : NULL, m_cfg.m_interpolate, get_default_value());
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline int get_page_advance() {
-		return m_cfg.m_page_advance;
-	}
+//	inline int get_page_advance() {
+	//	return m_cfg.m_page_advance;
+//	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_page_advance(int value) {
-		m_cfg.m_page_advance = value;
-	}
+	//void set_page_advance(int value) {
+		//m_cfg.m_page_advance = value;
+//	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline int get_max_page_no() {
@@ -521,45 +486,45 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_from(byte page_no, int from) {
-		if(m_cfg.m_common_loop_points) {
+		if(m_cfg.m_loop_per_page) {
+			get_page(page_no).set_loop_from(from);
+		}
+		else {
 			for(int i=0; i<MAX_PAGES; ++i) {
 				get_page(i).set_loop_from(from);
 			}
-		}
-		else {
-			get_page(page_no).set_loop_from(from);
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_to(byte page_no, int to) {
-		if(m_cfg.m_common_loop_points) {
+		if(m_cfg.m_loop_per_page) {
+			get_page(page_no).set_loop_to(to);
+		}
+		else {
 			for(int i=0; i<MAX_PAGES; ++i) {
 				get_page(i).set_loop_to(to);
 			}
-		}
-		else {
-			get_page(page_no).set_loop_to(to);
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_from(byte page_no) {
-		if(m_cfg.m_common_loop_points) {
-			return get_page(0).get_loop_from();
+		if(m_cfg.m_loop_per_page) {
+			return get_page(page_no).get_loop_from();
 		}
 		else {
-			return get_page(page_no).get_loop_from();
+			return get_page(0).get_loop_from();
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_to(byte page_no) {
-		if(m_cfg.m_common_loop_points) {
-			return get_page(0).get_loop_to();
+		if(m_cfg.m_loop_per_page) {
+			return get_page(page_no).get_loop_to();
 		}
 		else {
-			return get_page(page_no).get_loop_to();
+			return get_page(0).get_loop_to();
 		}
 	}
 
@@ -1006,10 +971,7 @@ public:
 			// get the note we need to play, taking into account being
 			// forced into a scale
 			byte note = step.get_value();
-			if(m_cfg.m_mode == V_SQL_SEQ_MODE_SCALE) {
-				note = g_scale.index_to_note(note);
-			}
-			else if(m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON) {
+			if(m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON) {
 				note = g_scale.force_to_scale(note);
 			}
 

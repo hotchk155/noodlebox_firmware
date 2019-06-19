@@ -118,8 +118,7 @@ public:
 							break;
 
 						//////////////////////////////////////////////////
-						case V_SQL_SEQ_MODE_CHROMATIC:
-						case V_SQL_SEQ_MODE_SCALE:
+						case V_SQL_SEQ_MODE_PITCH:
 							layer.action_step_note(
 									i,
 									CSequenceStep(),
@@ -131,8 +130,7 @@ public:
 							// note layers pass note information to subsequent transpose/velocity layers
 							for(int j=i+1; j<NUM_LAYERS; ++j) {
 								CSequenceLayer& other_layer = m_cfg.m_layers[j];
-								if(other_layer.get_mode() == V_SQL_SEQ_MODE_SCALE ||
-									other_layer.get_mode() == V_SQL_SEQ_MODE_CHROMATIC) {
+								if(other_layer.get_mode() == V_SQL_SEQ_MODE_PITCH) {
 									// another note layer found - stops current note layer providing any
 									// info to further layers
 									break;
