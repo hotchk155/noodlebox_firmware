@@ -223,6 +223,9 @@ public:
 		impl_set_cv(which, dac);
 	}
 
+	void test_dac(int which, int dac) {
+		impl_set_cv(which, dac);
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// get block of data to send to i2c
@@ -254,7 +257,6 @@ public:
 			m_i2c_buf[7] = (byte)m_chan[0].dac;
 			m_txn.data_len = 8;
 			g_i2c_bus.transmit(&m_txn);
-			g_cv_led.blink(g_cv_led.MEDIUM_BLINK);
 			m_dac_state = DAC_IDLE;
 			break;
 		case DAC_IDLE:

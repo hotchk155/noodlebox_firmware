@@ -597,6 +597,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void start(uint32_t ticks, byte parts_tick) {
 		m_state.m_next_tick = ticks;
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -610,74 +611,18 @@ public:
 		}*/
 	}
 
-	/*
-	void next_step() {
-		m_state.m_page_advanced = 0;
-		if(m_state.m_play_pos == m_cfg.m_loop_to) { // end of page
-			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_OFF) {
-				m_state.m_next_page_no = -1;
-			}
-			else {
-				if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_AUTO) {
-					if(m_state.m_play_page_no < m_cfg.m_max_page_no) {
-						++m_state.m_play_page_no;
-						m_state.m_page_advanced = 1;
-					}
-					else {
-						if(m_state.m_play_page_no > 0) {
-							m_state.m_play_page_no = 0;
-							m_state.m_page_advanced = 1;
-						}
-					}
-				}
-				else if(m_state.m_next_page_no >= 0) {
-					if(m_state.m_next_page_no <= m_cfg.m_max_page_no) {
-						m_state.m_play_page_no = m_state.m_next_page_no;
-						m_state.m_page_advanced = 1;
-					}
-					m_state.m_next_page_no = -1;
-				}
-			}
-			m_state.m_play_pos = m_cfg.m_loop_from;
-		}
-		else {
-			if(m_cfg.m_page_adv == V_SQL_PAGE_ADVANCE_IMMEDIATE &&	m_state.m_next_page_no >= 0) {
-				if(m_state.m_next_page_no <= m_cfg.m_max_page_no) {
-					m_state.m_play_page_no = m_state.m_next_page_no;
-					m_state.m_page_advanced = 1;
-				}
-				m_state.m_next_page_no = -1;
-			}
-			if(m_cfg.m_loop_to < m_cfg.m_loop_from) { // run backwards
-				if(--m_state.m_play_pos < 0) {
-					m_state.m_play_pos = CSequencePage::MAX_STEPS-1;
-				}
-			}
-			else {
-				if(++m_state.m_play_pos > CSequencePage::MAX_STEPS-1) {
-					m_state.m_play_pos = 0;
-				}
-			}
-		}
-		CSequencePage& page = m_cfg.m_page[m_state.m_play_page_no];
-		m_state.m_step_value = page.get_step(m_state.m_play_pos);
-	}
-*/
 	///////////////////////////////////////////////////////////////////////////////
 	void tick(uint32_t ticks, byte parts_tick) {
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
 			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_page_list_pos);
+			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
 			m_state.m_stepped = 1;
 		}
 		else {
 			m_state.m_stepped = 0;
 		}
 	}
-
-
-
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms
@@ -693,27 +638,6 @@ public:
 
 
 
-	/*
-	///////////////////////////////////////////////////////////////////////////////
-	void service(byte index, uint32_t ticks) {
-		// has a tick expired?
-		if(m_state.m_last_tick_lsb != (byte)ticks) {
-			m_state.m_last_tick_lsb = (byte)ticks;
-			for(int i=0; i<MAX_PLAYING_NOTES;++i) {
-				if(m_state.m_playing[i].count) {
-					if(!--m_state.m_playing[i].count) {
-						if(m_state.m_playing[i].note == m_state.m_last_note) {
-							// close the gate
-							g_cv_gate.gate(index, CCVGate::GATE_CLOSED);
-						}
-						send_midi_note(m_state.m_playing[i].note, 0);
-						m_state.m_playing[i].note = 0;
-					}
-				}
-			}
-		}
-	}
-*/
 
 	/*
 	///////////////////////////////////////////////////////////////////////////////
@@ -897,6 +821,25 @@ public:
 	}
 */
 
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Play a step for a note mode
+//TODO - MIDI
+	void action_step_pitch(byte which) {
+
+
+		// get the note we need to play, taking into account being
+		// forced into a scale
+		byte note = m_state.m_step_value.get_value();
+		if(m_cfg.m_force_scale == V_SQL_FORCE_SCALE_ON) {
+			note = g_scale.force_to_scale(note);
+		}
+		// set the note pitch
+		g_cv_gate.pitch_cv(which, note, m_cfg.m_cv_scale, 0);
+
+	}
+
+#if 0
 	///////////////////////////////////////////////////////////////////////////////
 	// Play a step for a note mode
 //TODO - MIDI
@@ -1066,6 +1009,7 @@ public:
 		}
 
 	}
+#endif
 
 	///////////////////////////////////////////////////////////////////////////////
 	void action_step_mod(byte which) {
@@ -1092,8 +1036,32 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step
 	void action_step_gate(byte which) {
-		CSequenceStep step = m_state.m_step_value;
-		if(step.is_gate()) {
+		if(m_state.m_step_value.is_gate()) {
+			// set the appropriate note duration
+			switch(m_cfg.m_note_dur) {
+			case V_SQL_NOTE_DUR_OPEN:
+			case V_SQL_NOTE_DUR_LEGA:
+				m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
+				break;
+			case V_SQL_NOTE_DUR_TRIG:
+				m_state.m_gate_timeout = CCVGate::TRIG_DURATION; // just a short trigger pulse
+				break;
+			case V_SQL_NOTE_DUR_100:
+				m_state.m_gate_timeout = 0; // until the next step
+				break;
+			default: // other enumerations have integer values 0-10
+				m_state.m_gate_timeout = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * m_cfg.m_note_dur ) / 10;
+				break;
+			}
+		}
+		else {
+			if(!m_state.m_gate_timeout) {
+				g_cv_gate.gate(which, CCVGate::GATE_CLOSED);
+			}
+		}
+	}
+
+/*		if(step.is_gate()) {
 			g_cv_gate.gate(which, CCVGate::GATE_RETRIG);
 		}
 		else if(step.is_tied()) {
@@ -1102,7 +1070,7 @@ public:
 		else {
 			g_cv_gate.gate(which, CCVGate::GATE_CLOSED);
 		}
-	}
+	}*/
 
 
 

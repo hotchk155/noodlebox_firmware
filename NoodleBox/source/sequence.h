@@ -109,24 +109,18 @@ public:
 						//////////////////////////////////////////////////
 						case V_SQL_SEQ_MODE_MOD:
 							layer.action_step_mod(i);
-							layer.action_step_gate(i);
 							break;
 
 						//////////////////////////////////////////////////
 						case V_SQL_SEQ_MODE_TRANSPOSE:
-							layer.action_step_gate(i);
+//							layer.action_step_gate(i);
 							break;
 
 						//////////////////////////////////////////////////
 						case V_SQL_SEQ_MODE_PITCH:
-							layer.action_step_note(
-									i,
-									CSequenceStep(),
-									//m_cfg.m_midi_vel_accent,
-									//m_cfg.m_midi_vel,
-									1
-							);
-
+							layer.action_step_pitch(i);
+							break;
+/*
 							// note layers pass note information to subsequent transpose/velocity layers
 							for(int j=i+1; j<NUM_LAYERS; ++j) {
 								CSequenceLayer& other_layer = m_cfg.m_layers[j];
@@ -150,13 +144,13 @@ public:
 								//	g_cv_gate.mod_cv(j, layer.get_last_velocity(), other_layer.get(P_SQL_CVRANGE),0,0);
 								//}
 							}
-
-							break;
+*/
 
 
 						default:
 							break;
 					}
+					layer.action_step_gate(i);
 				}
 			}
 		}

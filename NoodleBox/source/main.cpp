@@ -180,6 +180,30 @@ void force_full_repaint() {
 	g_selector.force_repaint();
 }
 
+void test() {
+	int dac = 0;
+	int gate = 0;
+	int gate_tmr = 0;
+	while(1) {
+    	if(g_clock.m_ms_tick) {
+    		g_clock.m_ms_tick = 0;
+    		g_cv_gate.test_dac(2,  dac);
+    		g_cv_gate.test_dac(3,  dac);
+    		if(++dac > 4095) {
+    			dac = 0;
+    		}
+    		if(++gate_tmr > 50) {
+    			gate_tmr = 0;
+    			gate = !gate;
+    			g_cv_gate.gate(3, gate? CCVGate::GATE_OPEN: CCVGate::GATE_CLOSED);
+
+    		}
+
+    	}
+
+		g_cv_gate.run_i2c();
+	}
+}
 
 /*
  * @brief   Application entry point.
@@ -195,11 +219,11 @@ int main(void) {
     PowerControl.set(1);
 
     g_i2c_bus.init();
-//    g_i2c_bus.dac_init();
     g_midi.init();
 
     //g_storage.test();
 
+    //test();
 
 
     g_ui.init();

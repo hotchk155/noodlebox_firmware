@@ -211,28 +211,11 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// draw grid
-	// 00
-	// 01
-	// 02
-	// 03
-	// 04
-	// 05
-	// 06
-	// 07
-	// 08
-	// 09
-	// 10
-	// 11
-	// 12 <-- scroll offset
-	// 13
-	// 14
-	// 15
 	void show_grid(CSequenceLayer& layer) {
 		int n;
 		int notes_per_octave;
 		int row;
-		int spacing;
+		int spacing = 0;
 		switch (layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH:
 			if(m_cfg.m_scaled_pitch) {
@@ -251,7 +234,6 @@ class CSequenceEditor {
 			break;
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
 			row = CSequenceLayer::OFFSET_ZERO;
-			spacing = 0;
 			break;
 		case CSequenceLayer::VIEW_MODULATION:
 		default:
