@@ -60,8 +60,8 @@
 #include "clock.h"
 #include "i2c_bus.h"
 #include "midi.h"
-#include "cv_gate.h"
 #include "scale.h"
+#include "outs.h"
 #include "sequence_step.h"
 #include "sequence_page.h"
 #include "sequence_layer.h"
@@ -141,7 +141,7 @@ void fire_event(int event, uint32_t param) {
 	///////////////////////////////////
 	case EV_SEQ_STOP:
 		g_sequence.stop();
-		g_cv_gate.close_all_gates();
+		g_outs.close_all_gates();
 		g_popup.text("STOP", 4);
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
@@ -187,21 +187,21 @@ void test() {
 	while(1) {
     	if(g_clock.m_ms_tick) {
     		g_clock.m_ms_tick = 0;
-    		g_cv_gate.test_dac(2,  dac);
-    		g_cv_gate.test_dac(3,  dac);
+    		g_outs.test_dac(2,  dac);
+    		g_outs.test_dac(3,  dac);
     		if(++dac > 4095) {
     			dac = 0;
     		}
     		if(++gate_tmr > 50) {
     			gate_tmr = 0;
     			gate = !gate;
-    			g_cv_gate.gate(3, gate? CCVGate::GATE_OPEN: CCVGate::GATE_CLOSED);
+    			g_outs.gate(3, gate? COuts::GATE_OPEN: COuts::GATE_CLOSED);
 
     		}
 
     	}
 
-		g_cv_gate.run_i2c();
+		g_outs.run_i2c();
 	}
 }
 
@@ -238,7 +238,7 @@ int main(void) {
     		g_clock.m_ms_tick = 0;
 
        		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
-        	g_cv_gate.run();
+        	g_outs.run();
         	g_midi.run();
 
        		g_sequence_editor.run();
@@ -274,7 +274,7 @@ int main(void) {
     	// run the i2c bus. If the bus is currently idle then check if we need to send
     	// out CV information to the DAC, or transfer data to/from EEPROM. We alternately
     	// prioritize each to allow interleavng of data when both are busy
-g_cv_gate.run_i2c();
+g_outs.run_i2c();
 /*    	if(!g_i2c_bus.busy()) {
     		if(i2c_priority) {
     			g_cv_gate.run_i2c();

@@ -14,8 +14,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CV_GATE_H_
-#define CV_GATE_H_
+#ifndef OUTS_H_
+#define OUTS_H_
 
 //
 // MACRO DEFS
@@ -45,7 +45,7 @@ CDigitalOut<kGPIO_PORTD, PORTD_BIT_GATE4> g_gate_4;
 // CLASS WRAPS UP CV AND GATE FUNCTIONS
 //
 /////////////////////////////////////////////////////////////////////////////////
-class CCVGate {
+class COuts {
 public:
 	typedef enum:byte  {
 		GATE_CLOSED,
@@ -58,6 +58,10 @@ public:
 		I2C_BUF_SIZE = 100,
 		TRIG_DURATION = 15,
 		RETRIG_DELAY_MS = 2
+	};
+
+	enum : long {
+		SCALING = 0x10000
 	};
 
 	typedef struct {
@@ -130,7 +134,7 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////////
-	CCVGate()
+	COuts()
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
 		//m_gate_pending = 0;
@@ -205,6 +209,36 @@ public:
 			m_chan[which].glide_rate = 0;
 			impl_set_cv(which, dac);
 		}
+	}
+
+
+	void cv(int which, long value, V_SQL_CVSCALE scaling) {
+		switch(scaling) {
+		case V_SQL_CVSCALE_1VOCT:
+		case V_SQL_CVSCALE_1_2VOCT:
+			value = (((scaling==V_SQL_CVSCALE_1_2VOCT)? 600:500) * value)/(12*SCALING);
+			while(value<0) {
+				value += 500;
+			}
+			while(value>4095) {
+				value -= 500;
+			}
+			break;
+		case V_SQL_CVSCALE_HZVOLT:
+			//TODO
+			break;
+		default:
+			value = ((value * 500 * (1 + (int)scaling - V_SQL_CVSCALE_1V))/SCALING);
+			if(value < 0) {
+				value = 0;
+			}
+			if(value > 4095) {
+				value = 4095;
+			}
+		}
+		m_chan[which].pitch = value<<16;
+		m_chan[which].glide_rate = 0;
+		impl_set_cv(which, value);
 	}
 
 
@@ -301,6 +335,6 @@ public:
 };
 
 // define global instance of the CV/Gate controller
-CCVGate g_cv_gate;
+COuts g_outs;
 
-#endif /* CV_GATE_H_ */
+#endif /* OUTS_H_ */

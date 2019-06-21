@@ -327,13 +327,7 @@ class CSequenceEditor {
 		}
 		step.set_value(value);
 		if(m_cfg.m_auto_gate) {
-			switch(layer.get_view()) {
-				case CSequenceLayer::VIEW_PITCH:
-					step.set_gate(1);
-					break;
-				default:
-					break;
-			}
+			step.set_gate(1);
 		}
 		step.set_data_point(1);	// the data point has been set by user
 	}

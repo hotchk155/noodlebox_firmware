@@ -48,7 +48,7 @@ public:
 	void init_config() {
 		m_cfg.m_scale.build(V_SQL_SCALE_TYPE_IONIAN, V_SQL_SCALE_ROOT_C);
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_cfg.m_layers[i].init();
+			m_cfg.m_layers[i].init(i);
 		}
 	}
 
@@ -101,56 +101,18 @@ public:
 
 
 			// process each layer
+			long prev_output = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer& layer = m_cfg.m_layers[i];
-				if(layer.is_stepped() && layer.get_enabled()) {
-					switch(layer.get_mode()) {
-
-						//////////////////////////////////////////////////
-						case V_SQL_SEQ_MODE_MOD:
-							layer.action_step_mod(i);
-							break;
-
-						//////////////////////////////////////////////////
-						case V_SQL_SEQ_MODE_TRANSPOSE:
-//							layer.action_step_gate(i);
-							break;
-
-						//////////////////////////////////////////////////
-						case V_SQL_SEQ_MODE_PITCH:
-							layer.action_step_pitch(i);
-							break;
-/*
-							// note layers pass note information to subsequent transpose/velocity layers
-							for(int j=i+1; j<NUM_LAYERS; ++j) {
-								CSequenceLayer& other_layer = m_cfg.m_layers[j];
-								if(other_layer.get_mode() == V_SQL_SEQ_MODE_PITCH) {
-									// another note layer found - stops current note layer providing any
-									// info to further layers
-									break;
-								}
-								else if(other_layer.get_mode() == V_SQL_SEQ_MODE_TRANSPOSE) {
-									// transpose layer, action as a note layer passing in the
-									// note from the active layer to be transposed
-									other_layer.action_step_note(
-											j,
-											layer.get_current_step(),
-											//m_cfg.m_midi_vel_accent,
-											//m_cfg.m_midi_vel,
-											0
-									);
-								}
-								//else if(other_layer.get_mode() == V_SQL_SEQ_MODE_VELOCITY) {
-								//	g_cv_gate.mod_cv(j, layer.get_last_velocity(), other_layer.get(P_SQL_CVRANGE),0,0);
-								//}
-							}
-*/
-
-
-						default:
-							break;
+				if(layer.get_enabled()) {
+					prev_output = layer.process_cv(i,prev_output);
+					if(layer.is_stepped()) {
+						layer.process_gate(i);
 					}
-					layer.action_step_gate(i);
+				}
+				else {
+					// ensure the gate for a disabled layer is closed
+					g_outs.gate(i, COuts::GATE_CLOSED);
 				}
 			}
 		}
