@@ -53,6 +53,7 @@ private:
 		V_SQL_MIDI_CHAN m_midi_channel;		// MIDI channel
 		byte 			m_midi_cc;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
+		V_SQL_CVSHIFT	m_cv_shift;
 		V_SQL_CVGLIDE	m_cv_glide;
 		V_SQL_COMBINE	m_combine_prev;
 		byte 			m_midi_vel;
@@ -222,6 +223,7 @@ public:
 		m_cfg.m_midi_cc = 1;
 		m_cfg.m_enabled = 1;
 		m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
+		m_cfg.m_cv_shift = V_SQL_CVSHIFT_NONE;
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_interpolate = 0;
@@ -280,6 +282,7 @@ public:
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		case P_SQL_AUTO_PAGE_ADVANCE: m_cfg.m_page_advance = value; break;
 		case P_SQL_COMBINE: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
+		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		default: break;
 		}
 	}
@@ -302,6 +305,7 @@ public:
 		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
 		case P_SQL_AUTO_PAGE_ADVANCE: return m_cfg.m_page_advance;
 		case P_SQL_COMBINE: return m_cfg.m_combine_prev;
+		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		default:return 0;
 		}
 	}
@@ -626,28 +630,23 @@ public:
 		}
 		else {
 			long step_output;
-			switch(m_cfg.m_mode) {
-			case V_SQL_SEQ_MODE_MOD:
-				switch(m_cfg.m_cv_scale) {
-				case V_SQL_CVSCALE_1VOCT:
-				case V_SQL_CVSCALE_1_2VOCT:
-				case V_SQL_CVSCALE_HZVOLT:
-					step_output = COuts::SCALING*m_state.m_step_value.get_value();
-					break;
-				default:
-					step_output = (COuts::SCALING * m_state.m_step_value.get_value()
-						* ((1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)) / 127;
-				}
-				break;
-			case V_SQL_SEQ_MODE_OFFSET:
+
+			// get the scaled data point
+			if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
 				step_output = COuts::SCALING*(m_state.m_step_value.get_value() - OFFSET_ZERO);
-				break;
-			case V_SQL_SEQ_MODE_PITCH:
-			default:
+			}
+			else {
 				step_output = COuts::SCALING*m_state.m_step_value.get_value();
-				break;
 			}
 
+			// check if we have an absolute volts range (1V - 8V). If so scale the output
+			// accordingly (each volt will be 12 scale points)
+			if(m_cfg.m_cv_scale < V_SQL_CVSCALE_1VOCT) {
+				step_output = (step_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
+
+			}
+
+			// perform any addition of previous layer output
 			if(m_cfg.m_combine_prev == V_SQL_COMBINE_ADD ||
 				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) {
 				this_output = this_input + step_output;
@@ -657,7 +656,12 @@ public:
 			}
 		}
 
+		// apply octave shift
+		if(m_cfg.m_cv_shift != V_SQL_CVSHIFT_NONE) {
+			this_output = this_output + COuts::SCALING * (m_cfg.m_cv_shift - V_SQL_CVSHIFT_NONE);
+		}
 
+		// quantize the output to scale if needed
 		switch(m_cfg.m_quantize) {
 		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
 			if(this_output < 0) {
@@ -672,6 +676,8 @@ public:
 			this_output = COuts::SCALING * g_scale.force_to_scale(this_output/COuts::SCALING);
 			break;
 		}
+
+		// finally update the CV output
 		g_outs.cv(which, this_output, m_cfg.m_cv_scale);
 		return this_output;
 	}

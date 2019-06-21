@@ -228,7 +228,7 @@ public:
 			//TODO
 			break;
 		default:
-			value = ((value * 500 * (1 + (int)scaling - V_SQL_CVSCALE_1V))/SCALING);
+			value = (500 * value)/(12*SCALING);
 			if(value < 0) {
 				value = 0;
 			}
