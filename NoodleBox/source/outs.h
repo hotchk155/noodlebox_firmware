@@ -71,6 +71,7 @@ public:
 		int pitch;			// 32-bit current pitch value (dac << 16)
 		int target;  		// 32-bit current target value (dac << 16)
 		int glide_rate;  	// glide rate applied per ms to the pitch
+
 		uint16_t dac;		// raw 12-bit DAC value
 	} CHAN_STATE;
 
@@ -184,7 +185,7 @@ public:
 			m_chan[i].gate_status = GATE_CLOSED;
 		}
 	}
-
+/*
 	/////////////////////////////////////////////////////////////////////////////////
 	void pitch_cv(int which, int note, V_SQL_CVSCALE scaling, int glide_time) {
 		// convert the note to DAC value
@@ -210,9 +211,9 @@ public:
 			impl_set_cv(which, dac);
 		}
 	}
+*/
 
-
-	void cv(int which, long value, V_SQL_CVSCALE scaling) {
+	void cv(int which, long value, V_SQL_CVSCALE scaling, int glide_time) {
 		switch(scaling) {
 		case V_SQL_CVSCALE_1VOCT:
 		case V_SQL_CVSCALE_1_2VOCT:
@@ -236,12 +237,20 @@ public:
 				value = 4095;
 			}
 		}
-		m_chan[which].pitch = value<<16;
-		m_chan[which].glide_rate = 0;
-		impl_set_cv(which, value);
+
+		if(glide_time) {
+			m_chan[which].target = value<<16;
+			m_chan[which].glide_rate = (m_chan[which].target - m_chan[which].pitch)/glide_time;
+		}
+		else {
+			m_chan[which].pitch = value<<16;
+			m_chan[which].glide_rate = 0;
+			impl_set_cv(which, value);
+		}
+
 	}
 
-
+/*
 	/////////////////////////////////////////////////////////////////////////////////
 	void mod_cv(int which, int value, int volt_range, int value2, int sweep_time) {
 		m_chan[which].pitch = (500*volt_range*value)<<9; // divide by 128 then left shift by 16
@@ -256,7 +265,7 @@ public:
 		uint16_t dac = m_chan[which].pitch>>16;
 		impl_set_cv(which, dac);
 	}
-
+*/
 	void test_dac(int which, int dac) {
 		impl_set_cv(which, dac);
 	}
@@ -320,6 +329,11 @@ public:
 				int dac = m_chan[i].pitch>>16;
 				impl_set_cv(i, dac);
 			}
+
+
+
+
+			// processing for retrigs
 			if(m_chan[i].gate_status == GATE_RETRIG) {
 				if(m_chan[i].retrig_delay) {
 					--m_chan[i].retrig_delay;

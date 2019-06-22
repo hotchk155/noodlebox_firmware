@@ -88,31 +88,40 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void run(uint32_t ticks, byte parts_tick) {
 
+		// once per ms housekeeping for layers
 		for(int i=0; i<NUM_LAYERS; ++i) {
 			m_cfg.m_layers[i].ms_tick(i);
 		}
+
 		// ensure the sequencer is running
 		if(m_is_running) {
 
 			// tick each layer
-			for(int i=0; i<NUM_LAYERS; ++i) {
-				m_cfg.m_layers[i].tick(ticks, parts_tick);
-			}
-
-
-			// process each layer
-			long prev_output = 0;
+			byte any_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer& layer = m_cfg.m_layers[i];
-				if(layer.get_enabled()) {
-					prev_output = layer.process_cv(i,prev_output);
-					if(layer.is_stepped()) {
-						layer.process_gate(i);
-					}
+				layer.tick(ticks, parts_tick);
+				if(layer.is_stepped() && layer.get_enabled()) {
+					any_step = 1;
 				}
-				else {
-					// ensure the gate for a disabled layer is closed
-					g_outs.gate(i, COuts::GATE_CLOSED);
+			}
+
+			// did the tick cause any enabled layer to step?
+			if(any_step) {
+				// process each layer
+				long prev_output = 0;
+				for(int i=0; i<NUM_LAYERS; ++i) {
+					CSequenceLayer& layer = m_cfg.m_layers[i];
+					if(layer.get_enabled()) {
+						prev_output = layer.process_cv(i,prev_output);
+						if(layer.is_stepped()) {
+							layer.process_gate(i);
+						}
+					}
+					else {
+						// ensure the gate for a disabled layer is closed
+						g_outs.gate(i, COuts::GATE_CLOSED);
+					}
 				}
 			}
 		}

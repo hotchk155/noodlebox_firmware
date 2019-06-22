@@ -81,6 +81,7 @@ private:
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;
+		uint32_t m_step_timeout;
 	} STATE;
 
 	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -256,6 +257,7 @@ public:
 		m_state.m_play_pos = 0;
 		m_state.m_next_tick = 0;
 		m_state.m_gate_timeout = 0;
+		m_state.m_step_timeout = 0;
 		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
 	}
@@ -596,6 +598,7 @@ public:
 	void tick(uint32_t ticks, byte parts_tick) {
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
+			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_page_list_pos);
 			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
 			m_state.m_stepped = 1;
@@ -614,6 +617,9 @@ public:
 				send_midi_note(m_state.m_midi_note, 0);
 				m_state.m_midi_note = 0;
 			}
+		}
+		if(m_state.m_step_timeout) {
+			--m_state.m_step_timeout;
 		}
 	}
 
@@ -643,7 +649,6 @@ public:
 			// accordingly (each volt will be 12 scale points)
 			if(m_cfg.m_cv_scale < V_SQL_CVSCALE_1VOCT) {
 				step_output = (step_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
-
 			}
 
 			// perform any addition of previous layer output
@@ -658,7 +663,7 @@ public:
 
 		// apply octave shift
 		if(m_cfg.m_cv_shift != V_SQL_CVSHIFT_NONE) {
-			this_output = this_output + COuts::SCALING * (m_cfg.m_cv_shift - V_SQL_CVSHIFT_NONE);
+			this_output = this_output + 12 * COuts::SCALING * (m_cfg.m_cv_shift - V_SQL_CVSHIFT_NONE);
 		}
 
 		// quantize the output to scale if needed
@@ -677,8 +682,21 @@ public:
 			break;
 		}
 
+		int glide_time;
+		switch(m_cfg.m_cv_glide) {
+		case V_SQL_CVGLIDE_ON:
+			glide_time = m_state.m_step_timeout;
+			break;
+		case V_SQL_CVGLIDE_TIE:
+			glide_time = (m_state.m_step_value.is_tied())? m_state.m_step_timeout : 0;
+			break;
+		case V_SQL_CVGLIDE_OFF:
+		default:
+			glide_time = 0;
+		}
+
 		// finally update the CV output
-		g_outs.cv(which, this_output, m_cfg.m_cv_scale);
+		g_outs.cv(which, this_output, m_cfg.m_cv_scale, glide_time);
 		return this_output;
 	}
 

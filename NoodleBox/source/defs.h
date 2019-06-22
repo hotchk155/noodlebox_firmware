@@ -233,7 +233,9 @@ typedef enum:byte {
 
 typedef enum:byte {
 	V_SQL_CVGLIDE_OFF= 0,
-	V_SQL_CVGLIDE_ON
+	V_SQL_CVGLIDE_ON,
+	V_SQL_CVGLIDE_TIE,
+	V_SQL_CVGLIDE_MAX
 } V_SQL_CVGLIDE;
 
 typedef enum:byte {
