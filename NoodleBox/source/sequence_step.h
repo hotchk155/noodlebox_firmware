@@ -36,6 +36,13 @@ public:
 		PROB_MAX = 15,
 		RETRIG_MAX = 15
 	};
+
+	typedef enum: byte {
+		CV_DATA = 1,
+		GATE_DATA = 2,
+		ALL_DATA = CV_DATA|GATE_DATA
+	} DATA;
+
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_value() {
 		return m_value;
@@ -97,33 +104,33 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	void copy_data_point(CSequenceStep &other) {
-		m_value = other.m_value;
-		m_is_data_point = other.m_is_data_point;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	void copy_gate(CSequenceStep &other) {
-		m_gate = other.m_gate;
-		m_tie = other.m_tie;
-		m_prob = other.m_prob;
+	// clear data point and gates
+	void clear(DATA what) {
+		if(what&CV_DATA) {
+			m_is_data_point = 0;
+			m_value = 0;
+		}
+		if(what&GATE_DATA) {
+			m_gate = 0;
+			m_tie = 0;
+			m_prob = 0;
+			m_retrig = 0;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// clear data point and gates
-	void clear() {
-		m_gate = 0;
-		m_tie = 0;
-		m_prob = 0;
-		m_is_data_point = 0;
-		m_value = 0;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// clear data point but preserve gate
-	void clear_data_point() {
-		m_is_data_point = 0;
-		m_value = 0;
+	void copy(CSequenceStep &other, DATA what) {
+		if(what&CV_DATA) {
+			m_value = other.m_value;
+			m_is_data_point = other.m_is_data_point;
+		}
+		if(what&GATE_DATA) {
+			m_gate = other.m_gate;
+			m_tie = other.m_tie;
+			m_prob = other.m_prob;
+			m_retrig = other.m_retrig;
+		}
 	}
 
 };

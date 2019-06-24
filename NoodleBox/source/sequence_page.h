@@ -144,16 +144,16 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step, byte interpolate, byte default_value) {
+	void set_step(byte index, CSequenceStep& step, byte interpolate, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_step[index] = step;
+		m_step[index].copy(step, what);
 		recalc(interpolate, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_step(byte index, byte interpolate, byte default_value) {
+	void clear_step(byte index, byte interpolate, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_step[index].clear();
+		m_step[index].clear(what);
 		recalc(0, default_value);
 	}
 
@@ -181,7 +181,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void clear(byte default_value) {
 		for(int i=0; i<MAX_STEPS; ++i) {
-			m_step[i].clear();
+			m_step[i].clear(CSequenceStep::ALL_DATA);
 		}
 		recalc(0, default_value);
 		m_loop_from = DEFAULT_LOOP_FROM;

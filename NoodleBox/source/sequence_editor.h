@@ -751,8 +751,20 @@ class CSequenceEditor {
 			break;
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			layer.clear_step(m_cur_page, m_cursor);
-			cursor_action(what, 1);
+			switch(m_key_combo) {
+			case KEY_CLEAR|KEY2_CLEAR_CV:
+				layer.clear_step(m_cur_page, m_cursor, CSequenceStep::CV_DATA);
+				cursor_action(what, 1);
+				break;
+			case KEY_CLEAR|KEY2_CLEAR_GATE:
+				layer.clear_step(m_cur_page, m_cursor, CSequenceStep::GATE_DATA);
+				cursor_action(what, 1);
+				break;
+			default:
+				layer.clear_step(m_cur_page, m_cursor);
+				cursor_action(what, 1);
+				break;
+			}
 			break;
 		case ACTION_END:
 			if(!m_encoder_moved) {

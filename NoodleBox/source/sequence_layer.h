@@ -192,12 +192,12 @@ private:
 
 public:
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_data_point(byte page_no, byte index) {
-		CSequencePage& page = get_page(page_no);
-		CSequenceStep step = page.get_step(index);
-		step.clear();
-		page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
-	}
+	//void clear_data_point(byte page_no, byte index) {
+		//CSequencePage& page = get_page(page_no);
+		//CSequenceStep step = page.get_step(index);
+		//step.clear();
+		//page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init(byte id) {
@@ -252,7 +252,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Reset the playback state of the layer
 	void reset() {
-		m_state.m_step_value.clear();
+		m_state.m_step_value.clear(CSequenceStep::ALL_DATA);
 		m_state.m_stepped = 0;
 		m_state.m_play_pos = 0;
 		m_state.m_next_tick = 0;
@@ -362,15 +362,15 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte page_no, byte index, CSequenceStep& step) {
+	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
 		CSequencePage& page = get_page(page_no);
-		page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
+		page.set_step(index, step, m_cfg.m_interpolate, get_default_value(), what);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_step(byte page_no, byte index) {
+	void clear_step(byte page_no, byte index, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
 		CSequencePage& page = get_page(page_no);
-		page.clear_step(index, m_cfg.m_interpolate, get_default_value());
+		page.clear_step(index, m_cfg.m_interpolate, get_default_value(), what);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
