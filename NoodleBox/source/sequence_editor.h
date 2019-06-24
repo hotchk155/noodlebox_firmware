@@ -693,7 +693,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// PASTE BUTTON
 	void clone_action(CSequenceLayer& layer, ACTION what) {
-		//CSequencePage& page = layer.get_page(m_cur_page);
+		CSequenceStep::DATA data_type;
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
@@ -708,17 +708,29 @@ class CSequenceEditor {
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
+			switch(m_key_combo) {
+			case KEY_CLONE|KEY2_CLONE_CV:
+				data_type = CSequenceStep::CV_DATA;
+				break;
+			case KEY_CLONE|KEY2_CLONE_GATE:
+				data_type = CSequenceStep::GATE_DATA;
+				break;
+			default:
+				data_type = CSequenceStep::ALL_DATA;
+				break;
+			}
 			if(m_clone_status == CLONE_NONE) {
-				CSequenceStep source =	layer.get_step(m_cur_page, m_cursor);
+				CSequenceStep source = layer.get_step(m_cur_page, m_cursor);
 				cursor_action(what, 1);
-				layer.set_step(m_cur_page, m_cursor, source);
+				layer.set_step(m_cur_page, m_cursor, source, data_type);
 			}
 			else {
-				CSequenceStep source =	layer.get_step(m_cur_page, m_clone_source);
-				layer.set_step(m_cur_page, m_cursor, source);
+				CSequenceStep source = layer.get_step(m_cur_page, m_clone_source);
+				layer.set_step(m_cur_page, m_cursor, source, data_type);
 				cursor_action(what, 1);
 				m_clone_status = CLONE_ACTIONED;
 			}
+
 			break;
 		case ACTION_END:
 			if(m_clone_status == CLONE_ACTIONED) {
