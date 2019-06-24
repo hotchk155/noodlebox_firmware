@@ -51,8 +51,7 @@ class CSequenceEditor {
 	} COMMAND;
 
 	enum {
-		GATE_VIEW_GATE,
-		GATE_VIEW_TIE,
+		GATE_VIEW_GATE_TIE,
 		GATE_VIEW_PROB,
 		GATE_VIEW_RETRIG,
 		GATE_VIEW_MAX = GATE_VIEW_RETRIG
@@ -96,7 +95,7 @@ class CSequenceEditor {
 
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
-	byte m_gate_view;			// which gate layer is being viewed
+	int m_gate_view;			// which gate layer is being viewed
 	int m_clone_source;			// column from which to clone data
 	byte m_clone_status;
 	//byte m_confirm_pending;
@@ -120,7 +119,7 @@ class CSequenceEditor {
 		m_edit_value = 0;
 		m_sel_from = -1;
 		m_sel_to = -1;
-		m_gate_view = GATE_VIEW_GATE;
+		m_gate_view = GATE_VIEW_GATE_TIE;
 		m_clone_source = 0;
 		m_clone_status = CLONE_NONE;
 		m_cur_layer = 0;
@@ -141,17 +140,14 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_view() {
 		switch(m_gate_view) {
-		case GATE_VIEW_GATE:
-			g_popup.text("TRIG", 4);
-			break;
-		case GATE_VIEW_TIE:
-			g_popup.text("TIES", 4);
+		case GATE_VIEW_GATE_TIE:
+			g_popup.text("GATE", 4);
 			break;
 		case GATE_VIEW_PROB:
-			g_popup.text("RAND", 4);
+			g_popup.text("PROB", 4);
 			break;
 		case GATE_VIEW_RETRIG:
-			g_popup.text("RTRG", 4);
+			g_popup.text("RETR", 4);
 			break;
 		}
 		g_popup.avoid(m_cursor);
@@ -396,28 +392,34 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// Move cursor left / right for encoder event
-	void cursor_action(CSequenceLayer& layer, ACTION what, int& cursor, byte wrap=0) {
+	byte encoder_action(ACTION what, int& value, int min, int max, int wrap) {
 		switch(what) {
 		case ACTION_ENC_RIGHT:
-			if(cursor < GRID_WIDTH-1) {
-				++cursor;
+			if(value < max) {
+				++value;
+				return 1;
 			}
 			else if(wrap) {
-				cursor = 0;
+				value = 0;
+				return 1;
 			}
 			break;
 		case ACTION_ENC_LEFT:
-			if(cursor > 0) {
-				--cursor;
+			if(value > min) {
+				--value;
+				return 1;
 			}
 			else if(wrap) {
-				cursor = GRID_WIDTH-1;
+				value = min;
+				return 1;
 			}
-			break;
-		default:
-			break;
 		}
+		return 0;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	// Move cursor left / right for encoder event
+	inline void cursor_action(ACTION what, byte wrap) {
+		encoder_action(what, m_cursor, 0, GRID_WIDTH-1, wrap);
 	}
 
 
@@ -466,14 +468,8 @@ class CSequenceEditor {
 		switch(what) {
 			////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
-			if(m_edit_value>0) {
-				--m_edit_value;
-				command_prompt();
-			}
-			break;
 		case ACTION_ENC_RIGHT:
-			if(m_edit_value<m_num_values-1) {
-				++m_edit_value;
+			if(encoder_action(what, m_edit_value, 0, m_num_values-1, 0)) {
 				command_prompt();
 			}
 			break;
@@ -589,17 +585,13 @@ class CSequenceEditor {
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				// action to shift all points left or right
-				if(what == ACTION_ENC_LEFT) {
-					if(--m_edit_value <= -(GRID_WIDTH-1)) {
-						m_edit_value = -(GRID_WIDTH-1);
+				if(encoder_action(what, m_edit_value, -(GRID_WIDTH-1), GRID_WIDTH-1, 0)) {
+					if(what == ACTION_ENC_LEFT) {
+						layer.shift_horizontal(m_cur_page, -1);
 					}
-					layer.shift_horizontal(m_cur_page, -1);
-				}
-				else {
-					if(++m_edit_value >= GRID_WIDTH-1) {
-						m_edit_value = 0;
+					else {
+						layer.shift_horizontal(m_cur_page, +1);
 					}
-					layer.shift_horizontal(m_cur_page, +1);
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
@@ -640,6 +632,42 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	// GATE BUTTON
+	void gate_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+		////////////////////////////////////////////////
+		case ACTION_ENC_LEFT:
+		case ACTION_ENC_RIGHT:
+			switch(m_key_combo) {
+			case KEY_GATE|KEY2_GATE_LAYER:
+				encoder_action(what, m_gate_view, 0, GATE_VIEW_MAX, 0);
+				show_gate_view();
+				break;
+			case KEY_GATE|KEY2_GATE_PROB:
+//				encoder_action(what, m_gate_view, 0, GATE_VIEW_MAX, 0);
+	//			show_gate_view();
+				break;
+			case KEY_GATE|KEY2_GATE_RETRIG:
+		//		encoder_action(what, m_gate_view, 0, 16, 0);
+			//	show_gate_view();
+				break;
+			}
+			break;
+		////////////////////////////////////////////////
+		case ACTION_CLICK:
+			//CSequencePage& page = layer.get_page(m_cur_page);
+			if(m_gate_view == GATE_VIEW_GATE_TIE) {
+				CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
+				step.toggle_gate();
+				layer.set_step(m_cur_page, m_cursor, step);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// PASTE BUTTON
 	void clone_action(CSequenceLayer& layer, ACTION what) {
 		//CSequencePage& page = layer.get_page(m_cur_page);
@@ -659,14 +687,13 @@ class CSequenceEditor {
 		case ACTION_ENC_RIGHT:
 			if(m_clone_status == CLONE_NONE) {
 				CSequenceStep source =	layer.get_step(m_cur_page, m_cursor);
-				cursor_action(layer, what, m_cursor, 1);
+				cursor_action(what, 1);
 				layer.set_step(m_cur_page, m_cursor, source);
 			}
 			else {
 				CSequenceStep source =	layer.get_step(m_cur_page, m_clone_source);
 				layer.set_step(m_cur_page, m_cursor, source);
-				cursor_action(layer, what, m_cursor, 1);
-				cursor_action(layer, what, m_clone_source, 1);
+				cursor_action(what, 1);
 				m_clone_status = CLONE_ACTIONED;
 			}
 			break;
@@ -702,12 +729,12 @@ class CSequenceEditor {
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			layer.clear_step(m_cur_page, m_cursor);
-			cursor_action(layer, what, m_cursor);
+			cursor_action(what, 1);
 			break;
 		case ACTION_END:
 			if(!m_encoder_moved) {
 				layer.clear_step(m_cur_page, m_cursor);
-				cursor_action(layer, what, m_cursor);
+				cursor_action(what, 1);
 			}
 			break;
 		default:
@@ -716,52 +743,6 @@ class CSequenceEditor {
 	}
 
 
-	///////////////////////////////////////////////////////////////////////////////
-	// GATE BUTTON
-	void gate_action(CSequenceLayer& layer, ACTION what) {
-		switch(what) {
-		////////////////////////////////////////////////
-		case ACTION_ENC_LEFT:
-			if(m_gate_view) {
-				--m_gate_view;
-			}
-			show_gate_view();
-			break;
-		////////////////////////////////////////////////
-		case ACTION_ENC_RIGHT:
-			if(m_gate_view < GATE_VIEW_MAX) {
-				++m_gate_view;
-			}
-			show_gate_view();
-			break;
-		////////////////////////////////////////////////
-		case ACTION_CLICK:
-		{
-			//CSequencePage& page = layer.get_page(m_cur_page);
-			CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
-			switch(m_gate_view) {
-			case GATE_VIEW_GATE:
-				step.toggle_gate();
-				break;
-			case GATE_VIEW_TIE:
-				step.toggle_tie();
-				break;
-			case GATE_VIEW_PROB:
-				step.inc_prob();
-				show_gate_prob(step.get_prob());
-				break;
-			case GATE_VIEW_RETRIG:
-				step.inc_retrig();
-				show_gate_retrig(step.get_retrig());
-				break;
-			}
-			layer.set_step(m_cur_page, m_cursor, step);
-			break;
-		}
-		default:
-			break;
-		}
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void loop_action(CSequenceLayer& layer, ACTION what) {
@@ -776,7 +757,7 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			cursor_action(layer, what, m_cursor);
+			cursor_action(what, 1);
 			m_sel_to = m_cursor;
 			if(m_sel_to > m_sel_from) {
 				g_popup.num2digits(m_sel_to - m_sel_from + 1);
@@ -839,14 +820,9 @@ class CSequenceEditor {
 			show_layer_page();
 			break;
 		case ACTION_ENC_LEFT:
-			if(m_encoder_moved && m_edit_value > 0) {
-				--m_edit_value;
-			}
-			show_page_list(m_edit_value);
-			break;
 		case ACTION_ENC_RIGHT:
-			if(m_encoder_moved && m_edit_value < CSequenceLayer::MAX_PAGES-1) {
-				++m_edit_value;
+			if(m_encoder_moved) {
+				encoder_action(what, m_edit_value, 0, CSequenceLayer::MAX_PAGES-1, 0);
 			}
 			show_page_list(m_edit_value);
 			break;
@@ -1095,7 +1071,7 @@ public:
 					m_encoder_moved = 1;
 				}
 				else {
-					cursor_action(layer, what, m_cursor);
+					cursor_action(what, 1);
 					g_popup.avoid(m_cursor);
 				}
 				break;
@@ -1223,19 +1199,11 @@ public:
 			// determine how the gate point should be displayed
 			byte bri = BRIGHT_OFF;
 			switch(m_gate_view) {
-				case GATE_VIEW_GATE:
+				case GATE_VIEW_GATE_TIE:
 					if(step.is_gate()) {
-						bri = BRIGHT_MED;
+						bri = step.is_tied()? BRIGHT_HIGH : BRIGHT_MED;
 					}
 					else if(step.is_tied()){
-						bri = BRIGHT_LOW;
-					}
-					break;
-				case GATE_VIEW_TIE:
-					if(step.is_tied()){
-						bri = BRIGHT_MED;
-					}
-					else if(step.is_gate()) {
 						bri = BRIGHT_LOW;
 					}
 					break;
@@ -1243,7 +1211,7 @@ public:
 					if(step.get_prob() != CSequenceStep::PROB_OFF) {
 						bri = BRIGHT_MED;
 					}
-					else if(step.is_gate()){
+					else if(step.is_gate()||step.is_tied()){
 						bri = BRIGHT_LOW;
 					}
 					break;
@@ -1251,7 +1219,7 @@ public:
 					if(step.get_retrig() != CSequenceStep::RETRIG_OFF) {
 						bri = BRIGHT_MED;
 					}
-					else if(step.is_gate()){
+					else if(step.is_gate()||step.is_tied()){
 						bri = BRIGHT_LOW;
 					}
 					break;
