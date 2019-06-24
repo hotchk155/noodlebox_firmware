@@ -195,7 +195,7 @@ void test() {
     		if(++gate_tmr > 50) {
     			gate_tmr = 0;
     			gate = !gate;
-    			g_outs.gate(3, gate? COuts::GATE_OPEN: COuts::GATE_CLOSED);
+    			g_outs.gate(3, gate? COuts::GATE_OPEN: COuts::GATE_CLOSED, 0);
 
     		}
 

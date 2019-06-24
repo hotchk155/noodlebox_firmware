@@ -120,7 +120,7 @@ public:
 					}
 					else {
 						// ensure the gate for a disabled layer is closed
-						g_outs.gate(i, COuts::GATE_CLOSED);
+						g_outs.gate(i, COuts::GATE_CLOSED, 0);
 					}
 				}
 			}

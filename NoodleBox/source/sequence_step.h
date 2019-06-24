@@ -28,6 +28,7 @@ class CSequenceStep {
 	byte m_gate:1;
 	byte m_tie:1;
 	byte m_prob:2;			// probabitity 0=Always, 1,2,3 = high medium low
+	byte m_retrig:2;			// Retrig 0=Never, 1,2,3 = high medium low
 	byte m_is_data_point:1; // is the CV value user defined rather than auto filled
 	byte m_value;	// CV value
 public:
@@ -37,6 +38,13 @@ public:
 		PROB_MED,
 		PROB_LOW,
 		PROB_MAX = PROB_LOW
+	};
+	enum {
+		RETRIG_OFF,
+		RETRIG_SLOW,
+		RETRIG_MED,
+		RETRIG_FAST,
+		RETRIG_MAX = RETRIG_FAST
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +85,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_prob() {
 		return m_prob;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	inline byte get_retrig() {
+		return m_retrig;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +138,14 @@ public:
 	void inc_prob() {
 		if(++m_prob>PROB_MAX) {
 			m_prob=0;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	// Prob order is OFF->HIGH->MED->LOW->OFF
+	void inc_retrig() {
+		if(++m_retrig>RETRIG_MAX) {
+			m_retrig=0;
 		}
 	}
 };

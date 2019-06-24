@@ -50,14 +50,14 @@ public:
 	typedef enum:byte  {
 		GATE_CLOSED,
 		GATE_OPEN,
-		GATE_RETRIG,
+		GATE_TRIG,
 	} GATE_STATUS;
 	enum {
 		MAX_CV = 4,
 		MAX_GATE = 4,
 		I2C_BUF_SIZE = 100,
 		TRIG_DURATION = 15,
-		RETRIG_DELAY_MS = 2
+		TRIG_DELAY_MS = 2
 	};
 
 	enum : long {
@@ -66,7 +66,8 @@ public:
 
 	typedef struct {
 		GATE_STATUS	gate_status;	// current state of the gate
-		byte retrig_delay;	// delay
+		byte trig_delay;	// delay
+		int retrig_period;
 
 		int pitch;			// 32-bit current pitch value (dac << 16)
 		int target;  		// 32-bit current target value (dac << 16)
@@ -152,19 +153,24 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void gate(byte which, GATE_STATUS gate) {
+	void gate(byte which, GATE_STATUS gate, int retrig_period) {
+		m_chan[which].retrig_period = 0;
+		m_chan[which].trig_delay = 0;
 		if(m_chan[which].gate_status != gate) {
 			switch(gate) {
 				case GATE_CLOSED:
 					impl_gate_off(which);
 					m_chan[which].gate_status = GATE_CLOSED;
 					break;
-				case GATE_RETRIG:
+				case GATE_TRIG:
+					if(retrig_period > TRIG_DELAY_MS) {
+						m_chan[which].retrig_period = retrig_period - TRIG_DELAY_MS;
+					}
 					if(m_chan[which].gate_status == GATE_OPEN) {
 						// gate is open so need to generate a new rising edge
 						impl_gate_off(which);
-						m_chan[which].gate_status = GATE_RETRIG;
-						m_chan[which].retrig_delay = RETRIG_DELAY_MS;
+						m_chan[which].gate_status = GATE_TRIG;
+						m_chan[which].trig_delay = TRIG_DELAY_MS;
 						g_gate_led.blink(g_gate_led.MEDIUM_BLINK);
 						break;
 					}
@@ -334,13 +340,33 @@ public:
 
 
 			// processing for retrigs
-			if(m_chan[i].gate_status == GATE_RETRIG) {
-				if(m_chan[i].retrig_delay) {
-					--m_chan[i].retrig_delay;
+			if(m_chan[i].gate_status == GATE_TRIG) {
+				if(m_chan[i].trig_delay) {
+					--m_chan[i].trig_delay;
 				}
-				if(!m_chan[i].retrig_delay) {
+				if(!m_chan[i].trig_delay) {
 					m_chan[i].gate_status = GATE_OPEN;
 					impl_gate_on(i);
+					if(m_chan[i].retrig_period > TRIG_DELAY_MS) {
+						m_chan[i].trig_delay = m_chan[i].retrig_period - TRIG_DELAY_MS;
+					}
+				}
+			}
+			else if(m_chan[i].retrig_period) {
+				if(m_chan[i].trig_delay) {
+					--m_chan[i].trig_delay;
+				}
+				else {
+					if(m_chan[i].gate_status == GATE_CLOSED) {
+						m_chan[i].gate_status = GATE_OPEN;
+						m_chan[i].trig_delay = m_chan[i].retrig_period;
+						impl_gate_on(i);
+					}
+					else {
+						m_chan[i].gate_status = GATE_CLOSED;
+						m_chan[i].trig_delay = TRIG_DELAY_MS;
+						impl_gate_off(i);
+					}
 				}
 			}
 		}

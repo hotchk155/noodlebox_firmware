@@ -613,7 +613,7 @@ public:
 	void ms_tick(int which) {
 		if(m_state.m_gate_timeout) {
 			if(!--m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED);
+				g_outs.gate(which, COuts::GATE_CLOSED, 0);
 				send_midi_note(m_state.m_midi_note, 0);
 				m_state.m_midi_note = 0;
 			}
@@ -704,28 +704,52 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step
 	void process_gate(byte which) {
-		if(m_state.m_step_value.is_gate()) {
-			// set the appropriate note duration
-			switch(m_cfg.m_note_dur) {
-			case V_SQL_NOTE_DUR_OPEN:
-			case V_SQL_NOTE_DUR_LEGA:
-				m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
-				break;
-			case V_SQL_NOTE_DUR_TRIG:
-				m_state.m_gate_timeout = COuts::TRIG_DURATION; // just a short trigger pulse
-				break;
-			case V_SQL_NOTE_DUR_100:
+		if(m_state.m_step_value.is_gate() ||
+			m_state.m_step_value.get_retrig() != CSequenceStep::RETRIG_OFF) {
+			if(m_state.m_step_value.is_tied()) {
 				m_state.m_gate_timeout = 0; // until the next step
-				break;
-			default: // other enumerations have integer values 0-10
-				m_state.m_gate_timeout = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * m_cfg.m_note_dur ) / 10;
-				break;
 			}
-			g_outs.gate(which, COuts::GATE_RETRIG);
+			else {
+				// set the appropriate note duration
+				switch(m_cfg.m_note_dur) {
+				case V_SQL_NOTE_DUR_OPEN:
+				case V_SQL_NOTE_DUR_LEGA:
+					m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
+					break;
+				case V_SQL_NOTE_DUR_TRIG:
+					m_state.m_gate_timeout = COuts::TRIG_DURATION; // just a short trigger pulse
+					break;
+				case V_SQL_NOTE_DUR_100:
+					m_state.m_gate_timeout = 0; // until the next step
+					break;
+				default: // other enumerations have integer values 0-10
+					m_state.m_gate_timeout = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * m_cfg.m_note_dur ) / 10;
+					break;
+				}
+			}
+			int retrig = 0;
+			switch(m_state.m_step_value.get_retrig()) {
+				case CSequenceStep::RETRIG_FAST:
+					retrig = 50;
+					break;
+				case CSequenceStep::RETRIG_MED:
+					retrig = 100;
+					break;
+				case CSequenceStep::RETRIG_SLOW:
+					retrig = 200;
+					break;
+				case CSequenceStep::RETRIG_OFF:
+					break;
+			}
+			g_outs.gate(which, COuts::GATE_TRIG, retrig);
+		}
+		else if(m_state.m_step_value.is_tied()) {
+			m_state.m_gate_timeout = 0;
+			g_outs.gate(which, COuts::GATE_OPEN, 0);
 		}
 		else {
 			if(!m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED);
+				g_outs.gate(which, COuts::GATE_CLOSED, 0);
 			}
 		}
 	}

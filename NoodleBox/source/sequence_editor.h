@@ -54,7 +54,8 @@ class CSequenceEditor {
 		GATE_VIEW_GATE,
 		GATE_VIEW_TIE,
 		GATE_VIEW_PROB,
-		GATE_VIEW_MAX = GATE_VIEW_PROB
+		GATE_VIEW_RETRIG,
+		GATE_VIEW_MAX = GATE_VIEW_RETRIG
 	};
 
 	enum {
@@ -141,13 +142,16 @@ class CSequenceEditor {
 	void show_gate_view() {
 		switch(m_gate_view) {
 		case GATE_VIEW_GATE:
-			g_popup.text("GAT", 3);
+			g_popup.text("TRIG", 4);
 			break;
 		case GATE_VIEW_TIE:
-			g_popup.text("TIE", 3);
+			g_popup.text("TIES", 4);
 			break;
 		case GATE_VIEW_PROB:
-			g_popup.text("RND", 3);
+			g_popup.text("RAND", 4);
+			break;
+		case GATE_VIEW_RETRIG:
+			g_popup.text("RTRG", 4);
 			break;
 		}
 		g_popup.avoid(m_cursor);
@@ -167,6 +171,25 @@ class CSequenceEditor {
 			break;
 		case CSequenceStep::PROB_LOW:
 			g_popup.text("LOW", 3);
+			break;
+		}
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_gate_retrig(int value) {
+		switch(value) {
+		case CSequenceStep::RETRIG_OFF:
+			g_popup.text("OFF", 3);
+			break;
+		case CSequenceStep::RETRIG_SLOW:
+			g_popup.text("SLOW", 4);
+			break;
+		case CSequenceStep::RETRIG_MED:
+			g_popup.text("MED", 3);
+			break;
+		case CSequenceStep::RETRIG_FAST:
+			g_popup.text("FAST", 4);
 			break;
 		}
 		g_popup.avoid(m_cursor);
@@ -727,6 +750,10 @@ class CSequenceEditor {
 				step.inc_prob();
 				show_gate_prob(step.get_prob());
 				break;
+			case GATE_VIEW_RETRIG:
+				step.inc_retrig();
+				show_gate_retrig(step.get_retrig());
+				break;
 			}
 			layer.set_step(m_cur_page, m_cursor, step);
 			break;
@@ -1216,7 +1243,15 @@ public:
 					if(step.get_prob() != CSequenceStep::PROB_OFF) {
 						bri = BRIGHT_MED;
 					}
-					else if(step.is_gate() || step.is_tied()){
+					else if(step.is_gate()){
+						bri = BRIGHT_LOW;
+					}
+					break;
+				case GATE_VIEW_RETRIG:
+					if(step.get_retrig() != CSequenceStep::RETRIG_OFF) {
+						bri = BRIGHT_MED;
+					}
+					else if(step.is_gate()){
 						bri = BRIGHT_LOW;
 					}
 					break;
