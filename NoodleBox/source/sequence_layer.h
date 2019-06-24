@@ -688,7 +688,7 @@ public:
 			glide_time = m_state.m_step_timeout;
 			break;
 		case V_SQL_CVGLIDE_TIE:
-			glide_time = (m_state.m_step_value.is_tied())? m_state.m_step_timeout : 0;
+			glide_time = (m_state.m_step_value.get_tie())? m_state.m_step_timeout : 0;
 			break;
 		case V_SQL_CVGLIDE_OFF:
 		default:
@@ -704,9 +704,9 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step
 	void process_gate(byte which) {
-		if(m_state.m_step_value.is_gate() ||
-			m_state.m_step_value.get_retrig() != CSequenceStep::RETRIG_OFF) {
-			if(m_state.m_step_value.is_tied()) {
+		if(m_state.m_step_value.get_gate() ||
+			m_state.m_step_value.get_retrig()>0) {
+			if(m_state.m_step_value.get_tie()) {
 				m_state.m_gate_timeout = 0; // until the next step
 			}
 			else {
@@ -727,23 +727,17 @@ public:
 					break;
 				}
 			}
-			int retrig = 0;
-			switch(m_state.m_step_value.get_retrig()) {
-				case CSequenceStep::RETRIG_FAST:
-					retrig = 50;
-					break;
-				case CSequenceStep::RETRIG_MED:
-					retrig = 100;
-					break;
-				case CSequenceStep::RETRIG_SLOW:
-					retrig = 200;
-					break;
-				case CSequenceStep::RETRIG_OFF:
-					break;
+
+			int retrig;
+			if(m_state.m_step_value.get_retrig() > 0) {
+				retrig = g_clock.get_ms_per_measure(m_cfg.m_step_rate) / (1+m_state.m_step_value.get_retrig());
+			}
+			else {
+				retrig = 0;
 			}
 			g_outs.gate(which, COuts::GATE_TRIG, retrig);
 		}
-		else if(m_state.m_step_value.is_tied()) {
+		else if(m_state.m_step_value.get_tie()) {
 			m_state.m_gate_timeout = 0;
 			g_outs.gate(which, COuts::GATE_OPEN, 0);
 		}

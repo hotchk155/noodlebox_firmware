@@ -27,26 +27,15 @@
 class CSequenceStep {
 	byte m_gate:1;
 	byte m_tie:1;
-	byte m_prob:2;			// probabitity 0=Always, 1,2,3 = high medium low
-	byte m_retrig:2;			// Retrig 0=Never, 1,2,3 = high medium low
+	byte m_prob:4;			// probabitity 0=Always, 1,2,3 = high medium low
+	byte m_retrig:4;			// Retrig 0=Never, 1,2,3 = high medium low
 	byte m_is_data_point:1; // is the CV value user defined rather than auto filled
 	byte m_value;	// CV value
 public:
 	enum {
-		PROB_OFF,
-		PROB_HIGH,
-		PROB_MED,
-		PROB_LOW,
-		PROB_MAX = PROB_LOW
+		PROB_MAX = 15,
+		RETRIG_MAX = 15
 	};
-	enum {
-		RETRIG_OFF,
-		RETRIG_SLOW,
-		RETRIG_MED,
-		RETRIG_FAST,
-		RETRIG_MAX = RETRIG_FAST
-	};
-
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_value() {
 		return m_value;
@@ -68,17 +57,22 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline void set_gate(int gate) {
+	inline void set_gate(byte gate) {
 		m_gate = !!gate;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline int is_gate() {
+	inline int get_gate() {
 		return m_gate;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline byte is_tied() {
+	inline void set_tie(byte tie) {
+		m_tie = !!tie;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	inline byte get_tie() {
 		return m_tie;
 	}
 
@@ -88,8 +82,18 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
+	void set_prob(byte prob) {
+		m_prob = prob;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_retrig() {
 		return m_retrig;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	void set_retrig(byte retrig) {
+		m_retrig = retrig;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -122,32 +126,6 @@ public:
 		m_value = 0;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////
-	void toggle_gate() {
-		m_gate = !m_gate;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// glide is simply a toggle
-	void toggle_tie() {
-		m_tie = !m_tie;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Prob order is OFF->HIGH->MED->LOW->OFF
-	void inc_prob() {
-		if(++m_prob>PROB_MAX) {
-			m_prob=0;
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Prob order is OFF->HIGH->MED->LOW->OFF
-	void inc_retrig() {
-		if(++m_retrig>RETRIG_MAX) {
-			m_retrig=0;
-		}
-	}
 };
 
 #endif /* SEQUENCE_STEP_H_ */

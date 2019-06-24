@@ -155,15 +155,29 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
-	void num2digits(int value) {
-		m_len = 0;
+	void num1digit(int value, byte append=0) {
+		if(!append) {
+			m_len = 0;
+		}
+		format_number(value, 1);
+		m_render = 1;
+		m_timeout = DISPLAY_TIMEOUT;
+	}
+
+	void num2digits(int value, byte append=0) {
+		if(!append) {
+			m_len = 0;
+		}
 		format_number(value, 10);
 		m_render = 1;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
-	void num3digits(int value) {
-		m_len = 0;
+
+	void num3digits(int value, byte append=0) {
+		if(!append) {
+			m_len = 0;
+		}
 		format_number(value, 100);
 		m_render = 1;
 		m_timeout = DISPLAY_TIMEOUT;

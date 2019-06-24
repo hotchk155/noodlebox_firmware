@@ -137,6 +137,7 @@ class CSequenceEditor {
 		m_cfg.m_auto_gate = 1;
 	}
 
+	/*
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_view() {
 		switch(m_gate_view) {
@@ -152,44 +153,33 @@ class CSequenceEditor {
 		}
 		g_popup.avoid(m_cursor);
 	}
-
+*/
 	///////////////////////////////////////////////////////////////////////////////
-	void show_gate_prob(int value) {
-		switch(value) {
-		case CSequenceStep::PROB_OFF:
-			g_popup.text("ALL", 3);
-			break;
-		case CSequenceStep::PROB_HIGH:
-			g_popup.text("HI", 2);
-			break;
-		case CSequenceStep::PROB_MED:
-			g_popup.text("MED", 3);
-			break;
-		case CSequenceStep::PROB_LOW:
-			g_popup.text("LOW", 3);
-			break;
-		}
+	void show_gate_prob(CSequenceStep& step) {
+		g_popup.text("PRB.",4);
+		g_popup.num2digits(step.get_prob(),1);
 		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void show_gate_retrig(int value) {
-		switch(value) {
-		case CSequenceStep::RETRIG_OFF:
-			g_popup.text("OFF", 3);
-			break;
-		case CSequenceStep::RETRIG_SLOW:
-			g_popup.text("SLOW", 4);
-			break;
-		case CSequenceStep::RETRIG_MED:
-			g_popup.text("MED", 3);
-			break;
-		case CSequenceStep::RETRIG_FAST:
-			g_popup.text("FAST", 4);
-			break;
-		}
+	void show_gate_retrig(CSequenceStep& step) {
+		g_popup.text("RTR.",4);
+		g_popup.num2digits(step.get_retrig(),1);
 		g_popup.avoid(m_cursor);
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+/*
+	void show_gate_tie(CSequenceStep& step) {
+		char text[4] = {
+			step.get_gate()? 'G':'.',
+			step.get_tie()? 'T':'.',
+			step.get_prob()? 'P':'.',
+			step.get_retrig()? 'R': '.'
+		};
+		g_popup.text(text,4);
+		g_popup.avoid(m_cursor);
+	}*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
@@ -417,6 +407,13 @@ class CSequenceEditor {
 		return 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
+	int inc_value(ACTION what, int value, int min, int max, int wrap) {
+		int x = value;
+		encoder_action(what, x, min, max, wrap);
+		return x;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// Move cursor left / right for encoder event
 	inline void cursor_action(ACTION what, byte wrap) {
 		encoder_action(what, m_cursor, 0, GRID_WIDTH-1, wrap);
@@ -634,22 +631,48 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// GATE BUTTON
 	void gate_action(CSequenceLayer& layer, ACTION what) {
+		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
+		case ACTION_END:
+			m_gate_view = GATE_VIEW_GATE_TIE;
+			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_GATE|KEY2_GATE_PROB:
+				m_gate_view = GATE_VIEW_PROB;
+				show_gate_prob(step);
+				break;
+			case KEY_GATE|KEY2_GATE_RETRIG:
+				m_gate_view = GATE_VIEW_RETRIG;
+				show_gate_retrig(step);
+				break;
+			}
+			break;
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			switch(m_key_combo) {
-			case KEY_GATE|KEY2_GATE_LAYER:
-				encoder_action(what, m_gate_view, 0, GATE_VIEW_MAX, 0);
-				show_gate_view();
-				break;
 			case KEY_GATE|KEY2_GATE_PROB:
-//				encoder_action(what, m_gate_view, 0, GATE_VIEW_MAX, 0);
-	//			show_gate_view();
+				step.set_prob(inc_value(what, step.get_prob(), 0, CSequenceStep::PROB_MAX, 0));
+				layer.set_step(m_cur_page, m_cursor, step);
+				show_gate_prob(step);
+				m_gate_view = GATE_VIEW_PROB;
 				break;
 			case KEY_GATE|KEY2_GATE_RETRIG:
-		//		encoder_action(what, m_gate_view, 0, 16, 0);
-			//	show_gate_view();
+				step.set_retrig(inc_value(what, step.get_retrig(), 0, CSequenceStep::RETRIG_MAX, 0));
+				layer.set_step(m_cur_page, m_cursor, step);
+				show_gate_retrig(step);
+				m_gate_view = GATE_VIEW_RETRIG;
+				break;
+			default:
+				if(what == ACTION_ENC_RIGHT) {
+					step.set_tie(1);
+				}
+				else {
+					step.set_tie(0);
+				}
+				layer.set_step(m_cur_page, m_cursor, step);
+				m_gate_view = GATE_VIEW_GATE_TIE;
 				break;
 			}
 			break;
@@ -658,7 +681,7 @@ class CSequenceEditor {
 			//CSequencePage& page = layer.get_page(m_cur_page);
 			if(m_gate_view == GATE_VIEW_GATE_TIE) {
 				CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
-				step.toggle_gate();
+				step.set_gate(!step.get_gate());
 				layer.set_step(m_cur_page, m_cursor, step);
 			}
 			break;
@@ -1198,28 +1221,29 @@ public:
 
 			// determine how the gate point should be displayed
 			byte bri = BRIGHT_OFF;
+			byte gate_or_tie = step.get_gate()||step.get_tie();
 			switch(m_gate_view) {
 				case GATE_VIEW_GATE_TIE:
-					if(step.is_gate()) {
-						bri = step.is_tied()? BRIGHT_HIGH : BRIGHT_MED;
+					if(step.get_gate()) {
+						bri = step.get_tie()? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(step.is_tied()){
+					else if(step.get_tie()){
 						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_PROB:
-					if(step.get_prob() != CSequenceStep::PROB_OFF) {
-						bri = BRIGHT_MED;
+					if(!!step.get_prob()) {
+						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(step.is_gate()||step.is_tied()){
+					else if(gate_or_tie){
 						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_RETRIG:
-					if(step.get_retrig() != CSequenceStep::RETRIG_OFF) {
-						bri = BRIGHT_MED;
+					if(!!step.get_retrig()) {
+						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(step.is_gate()||step.is_tied()){
+					else if(gate_or_tie){
 						bri = BRIGHT_LOW;
 					}
 					break;
