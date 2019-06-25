@@ -142,12 +142,12 @@ void fire_event(int event, uint32_t param) {
 	case EV_SEQ_STOP:
 		g_sequence.stop();
 		g_outs.close_all_gates();
-		g_popup.text("STOP", 4);
+		g_popup.text("STOP");
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
 	///////////////////////////////////
 	case EV_SEQ_RESTART:
-		g_popup.text("RST", 3);
+		g_popup.text("RST");
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		g_clock.on_restart();
 		g_sequence.reset();
@@ -156,7 +156,7 @@ void fire_event(int event, uint32_t param) {
 	///////////////////////////////////
 	case EV_SEQ_START:
 		g_sequence.start();
-		g_popup.text("RUN", 3);
+		g_popup.text("RUN");
 		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
 	///////////////////////////////////
@@ -210,7 +210,7 @@ void test() {
  */
 int main(void) {
   	/* Init board hardware. */
-    BOARD_InitBootPins();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            BOARD_InitBootPins();
     BOARD_InitBootClocks();
     BOARD_InitBootPeripherals();
 

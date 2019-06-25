@@ -63,47 +63,50 @@
 #define KEY_LOOP		KEY_B6
 #define KEY_PAGE		KEY_B7
 #define KEY_LAYER		KEY_B8
-#define KEY_RUN			KEY_R3
+
+#define KEY_MEMO		KEY_R1
+#define KEY_RUN			KEY_R2
+#define KEY_FUNC		KEY_R3
 
 
-// define key combinations with button 1 (CV)
-#define KEY2_CV_SCROLL		KEY_B2
-#define KEY2_CV_FINE		KEY_B3
-#define KEY2_CV_MOVE_HORZ	KEY_B4
-#define KEY2_CV_MOVE_VERT	KEY_B5
+#define KEY2_CV_FINE			KEY_B2
+#define KEY2_CV_SCROLL			KEY_B3
+#define KEY2_CV_MOVE_HORZ		KEY_B4
+#define KEY2_CV_MOVE_VERT		KEY_B5
+
+#define KEY2_GATE_PROB 			KEY_B5
+#define KEY2_GATE_RETRIG 		KEY_B6
+#define KEY2_GATE_LAYER 		KEY_B7
+
+#define KEY2_CLONE_CV			KEY_B1
+#define KEY2_CLONE_GATE			KEY_B2
+#define KEY2_CLONE_PAGE			KEY_B7
+#define KEY2_CLONE_LAYER		KEY_B8
+
+#define KEY2_CLEAR_CV			KEY_B1
+#define KEY2_CLEAR_GATE			KEY_B2
+#define KEY2_CLEAR_PAGE			KEY_B7
+#define KEY2_CLEAR_LAYER		KEY_B8
+
+#define KEY2_PAGE_A				KEY_B1
+#define KEY2_PAGE_B				KEY_B2
+#define KEY2_PAGE_C				KEY_B3
+#define KEY2_PAGE_D				KEY_B4
+#define KEY2_PAGE_ADVANCE		KEY_B6
 
 
-#define KEY2_GATE_PROB 		KEY_B5
-#define KEY2_GATE_RETRIG 	KEY_B6
-#define KEY2_GATE_LAYER 	KEY_B7
+#define KEY2_LAYER_1			KEY_B1
+#define KEY2_LAYER_2			KEY_B2
+#define KEY2_LAYER_3			KEY_B3
+#define KEY2_LAYER_4			KEY_B4
+#define KEY2_LAYER_MUTE			KEY_B7
 
-#define KEY2_CLONE_CV		KEY_B1
-#define KEY2_CLONE_GATE		KEY_B2
-
-#define KEY2_CLEAR_CV		KEY_B1
-#define KEY2_CLEAR_GATE		KEY_B2
-#define KEY2_CLEAR_PAGE		KEY_B7
-#define KEY2_CLEAR_LAYER	KEY_B8
-
-#define KEY2_PAGE_A			KEY_B1
-#define KEY2_PAGE_B			KEY_B2
-#define KEY2_PAGE_C			KEY_B3
-#define KEY2_PAGE_D			KEY_B4
-#define KEY2_PAGE_ADVANCE	KEY_B6
-
-
-#define KEY2_LAYER_1		KEY_B1
-#define KEY2_LAYER_2		KEY_B2
-#define KEY2_LAYER_3		KEY_B3
-#define KEY2_LAYER_4		KEY_B4
-#define KEY2_LAYER_MUTE		KEY_B7
-
-#define KEY_RUN_SCALE_MODE	KEY_B1
-#define KEY_RUN_AUTO_GATE	KEY_B2
-#define KEY_RUN_INTERPOLATE	KEY_B3
-#define KEY_RUN_GRID		KEY_B4
-#define KEY_RUN_LOOP_MODE	KEY_B6
-#define KEY_RUN_PAGE_ADV	KEY_B7
+#define KEY_FUNC_SCALE_MODE		KEY_B1
+#define KEY_FUNC_AUTO_GATE		KEY_B2
+#define KEY_FUNC_INTERPOLATE	KEY_B3
+#define KEY_FUNC_GRID			KEY_B4
+#define KEY_FUNC_LOOP_MODE		KEY_B6
+#define KEY_FUNC_PAGE_ADV		KEY_B7
 
 
 
@@ -534,6 +537,7 @@ public:
 		switch(ch) {
 		case '#': ch = CHAR4X5_HASH; break;
 		case '?': ch = CHAR4X5_QUESTION; break;
+		case ':': ch = CHAR4X5_COLON; break;
 		case '-': ch = CHAR4X5_MINUS; break;
 		case '+': ch = CHAR4X5_PLUS; break;
 		case '~': ch = CHAR4X5_BLOCK; break;

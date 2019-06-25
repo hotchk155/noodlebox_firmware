@@ -42,7 +42,7 @@ private:
 
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
-		CSequencePage 		m_page[MAX_PAGES];	// sequencer page
+		CSequencePage 	m_page[MAX_PAGES];	// sequencer page
 		byte 			m_page_list[MAX_PAGE_LIST];
 		byte			m_page_list_count;
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
@@ -192,14 +192,6 @@ private:
 
 public:
 	///////////////////////////////////////////////////////////////////////////////
-	//void clear_data_point(byte page_no, byte index) {
-		//CSequencePage& page = get_page(page_no);
-		//CSequenceStep step = page.get_step(index);
-		//step.clear();
-		//page.set_step(index, step, m_cfg.m_interpolate, get_default_value());
-	//}
-
-	///////////////////////////////////////////////////////////////////////////////
 	void init(byte id) {
 		m_id = id;
 		init_config();
@@ -283,7 +275,7 @@ public:
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		case P_SQL_AUTO_PAGE_ADVANCE: m_cfg.m_page_advance = value; break;
-		case P_SQL_COMBINE: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
+		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		default: break;
 		}
@@ -306,7 +298,7 @@ public:
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
 		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
 		case P_SQL_AUTO_PAGE_ADVANCE: return m_cfg.m_page_advance;
-		case P_SQL_COMBINE: return m_cfg.m_combine_prev;
+		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		default:return 0;
 		}
@@ -315,13 +307,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		//case P_SQL_FORCE_SCALE:
-		//case P_SQL_SCALE_TYPE:
-		//case P_SQL_SCALE_ROOT:
 		case P_SQL_MIDI_VEL:
 			return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET);
 		case P_SQL_MIDI_CC:	return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
-		case P_SQL_COMBINE: return (m_id!=0);
+		case P_SQL_MIX: return (m_id!=0);
 		}
 		return 1;
 	}
@@ -380,6 +369,18 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void get_page_content(byte page_no, CSequencePage* page) {
+		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
+		*page = m_cfg.m_page[page_no];
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_page_content(byte page_no, CSequencePage* page) {
+		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
+		m_cfg.m_page[page_no] = *page;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
 		for(int i=0; i<MAX_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
@@ -400,17 +401,6 @@ public:
 		CSequencePage& page = get_page(page_no);
 		return page.shift_vertical(dir, scaled? &g_scale : NULL, m_cfg.m_interpolate, get_default_value());
 	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
-//	inline int get_page_advance() {
-	//	return m_cfg.m_page_advance;
-//	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	//void set_page_advance(int value) {
-		//m_cfg.m_page_advance = value;
-//	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline int get_max_page_no() {
@@ -556,6 +546,12 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get_pos() {
 		return m_state.m_play_pos;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_content(CSequenceLayer& other) {
+		m_cfg = other.m_cfg;
+		m_state = other.m_state;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -747,24 +743,6 @@ public:
 			}
 		}
 	}
-
-/*		if(step.is_gate()) {
-			g_cv_gate.gate(which, CCVGate::GATE_RETRIG);
-		}
-		else if(step.is_tied()) {
-			g_cv_gate.gate(which, CCVGate::GATE_OPEN);
-		}
-		else {
-			g_cv_gate.gate(which, CCVGate::GATE_CLOSED);
-		}
-	}*/
-
-
-
 };
-
-//TODO
-//const byte CSequenceLayer::c_tick_rates[V_SQL_STEP_RATE_MAX] = {96,72,48,36,32,24,18,16,12,9,8,6,4,3};
-//const byte CSequenceLayer::c_step_duration[] = {3,4,6,8,9,12,16,18,24,32,36,48,72,96};
 
 #endif /* SEQUENCE_LAYER_H_ */

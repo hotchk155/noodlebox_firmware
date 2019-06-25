@@ -47,7 +47,9 @@ class CSequenceEditor {
 	typedef enum {
 		CMD_NONE,
 		CMD_CLEAR_PAGE,
-		CMD_CLEAR_LAYER
+		CMD_CLEAR_LAYER,
+		CMD_CLONE_PAGE,
+		CMD_CLONE_LAYER
 	} COMMAND;
 
 	enum {
@@ -91,6 +93,7 @@ class CSequenceEditor {
 	PARAM_ID m_edit_param;
 	COMMAND m_command;
 	const char *m_cmd_prompt;
+	const char *m_cmd_values;
 	int m_num_values;
 
 	int m_sel_from;				// start of selection range
@@ -127,6 +130,7 @@ class CSequenceEditor {
 		//m_confirm_pending = 0;
 		m_command = CMD_NONE;
 		m_cmd_prompt = NULL;
+		m_cmd_values = NULL;
 		m_num_values = 0;
 		m_edit_param = P_NONE;
 	}
@@ -156,14 +160,14 @@ class CSequenceEditor {
 */
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_prob(CSequenceStep& step) {
-		g_popup.text("PRB.",4);
+		g_popup.text("PRB.");
 		g_popup.num2digits(step.get_prob(),1);
 		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_retrig(CSequenceStep& step) {
-		g_popup.text("RTR.",4);
+		g_popup.text("RTR.");
 		g_popup.num2digits(step.get_retrig(),1);
 		g_popup.avoid(m_cursor);
 	}
@@ -182,40 +186,33 @@ class CSequenceEditor {
 	}*/
 
 	///////////////////////////////////////////////////////////////////////////////
-	void show_layer_page() {
-		char text[3];
+	const char *get_layer() {
+		static char text[3];
+		text[0] = 'L';
+		text[1] = '1' + m_cur_layer;
+		text[2] = '\0';
+		return text;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	const char *get_layer_page() {
+		static char text[3];
 		text[0] = '1' + m_cur_layer;
 		text[1] = 'A' + m_cur_page;
+		text[2] = '\0';
+		return text;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void show_layer_page() {
+		g_popup.text(get_layer_page());
 		if(!g_sequence.get_layer(m_cur_layer).get_enabled()) {
-			text[2] = '$';
-			g_popup.text(text, 3);
+			g_popup.text("$",1);
 		}
-		else {
-			g_popup.text(text, 2);
-		}
-
 		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_page_list(int value) {
-		switch(value) {
-		case 3:
-			g_popup.text("ABCD", 4);
-			break;
-		case 2:
-			g_popup.text("ABC", 4);
-			break;
-		case 1:
-			g_popup.text("AB", 4);
-			break;
-		case 0:
-			g_popup.text("A", 4);
-			break;
-		case -1:
-			g_popup.text(" ", 4);
-			break;
-		}
+		g_popup.text_value("    |A   |AB  |ABC |ABCD", value);
 		g_popup.avoid(m_cursor);
 	}
 
@@ -423,38 +420,39 @@ class CSequenceEditor {
 	////////////////////////////////////////////////
 	void command_prompt() {
 		if(m_cmd_prompt) {
-			int count = m_edit_value;
-			const char *ch = m_cmd_prompt;
-			while(*ch) {
-				char text[8];
-				int len = 0;
-				while(*ch && *ch != '|' && len<8) {
-					text[len++] = *ch++;
-				}
-				if(!count) {
-					g_popup.text(text, len);
-					g_popup.no_hide();
-					break;
-				}
-				if(!*ch) {
-					break;
-				}
-				++ch;
-				--count;
-			}
+			g_popup.text(m_cmd_prompt);
+			g_popup.text_value(m_cmd_values,m_edit_value,1);
 		}
+		else {
+			g_popup.text_value(m_cmd_values,m_edit_value);
+		}
+		g_popup.align(CPopup::ALIGN_RIGHT);
+		g_popup.no_hide();
 	}
 
 	////////////////////////////////////////////////
 	void command_mode(COMMAND cmd) {
 		m_command = cmd;
-		m_cmd_prompt = NULL;
+		m_cmd_values = NULL;
 		switch(cmd) {
 		case CMD_CLEAR_PAGE:
 		case CMD_CLEAR_LAYER:
 			m_edit_value = 0;
 			m_num_values = 2;
-			m_cmd_prompt = "SURE? NO|SURE?YES";
+			m_cmd_prompt = "SURE?";
+			m_cmd_values = " NO|YES";
+			break;
+		case CMD_CLONE_PAGE:
+			m_edit_value = 1 + 4 * m_cur_layer + m_cur_page;
+			m_num_values = 13;
+			m_cmd_prompt = get_layer_page();
+			m_cmd_values = ">??|>1A|>1B|>1C|>1D|>2A|>2B|>2C|>2D|>3A|>3B|>3C|>3D|>4A|>4B|>4C|>4D";
+			break;
+		case CMD_CLONE_LAYER:
+			m_edit_value = 1 + m_cur_layer;
+			m_num_values = 5;
+			m_cmd_prompt = get_layer();
+			m_cmd_values = ">??|>L1|>L2|>L3|>L4";
 			break;
 		}
 		command_prompt();
@@ -472,7 +470,7 @@ class CSequenceEditor {
 			break;
 		case ACTION_END:
 			if(exec_command(layer, m_command, m_edit_value)) {
-				g_popup.text("DONE",4);
+				g_popup.text("DONE");
 			}
 			else {
 				g_popup.hide();
@@ -487,20 +485,28 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	void toggle_init() {
+		m_edit_param = P_NONE;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void toggle(PARAM_ID param, const char*text) {
-		if(m_combo_clicks>1) {
+	void toggle(PARAM_ID param, const char* prompt, const char* values) {
+		if(m_edit_param != param) {
+			m_edit_param = param;
+		}
+		else {
 			set(param, !get(param));
 		}
-		m_cmd_prompt = text;
+		m_cmd_prompt = prompt;
+		m_cmd_values = values;
 		m_edit_value = get(param)?1:0;
 		command_prompt();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void toggle_done() {
+		m_edit_param = P_NONE;
+		m_cmd_prompt = NULL;
+		m_cmd_values = NULL;
 		g_popup.hide_after_timeout();
 	}
 
@@ -521,6 +527,28 @@ class CSequenceEditor {
 				return 1;
 			}
 			break;
+		case CMD_CLONE_PAGE:
+			if(value) {
+				byte target_layer = (value-1)/4;
+				byte target_page = (value-1)%4;
+				if(target_layer != m_cur_layer || target_page != m_cur_page) {
+					CSequencePage page;
+					layer.get_page_content(m_cur_page, &page);
+					g_sequence.get_layer(target_layer).set_page_content(target_page, &page);
+					return 1;
+				}
+			}
+			break;
+		case CMD_CLONE_LAYER:
+			if(value) {
+				byte target_layer = value - 1;
+				if(target_layer != m_cur_layer) {
+					g_sequence.get_layer(target_layer).set_content(g_sequence.get_layer(m_cur_layer));
+ 					return 1;
+				}
+			}
+			break;
+
 		}
 		return 0;
 	}
@@ -612,12 +640,12 @@ class CSequenceEditor {
 			switch(m_key_combo) {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
-				g_popup.text("VERT", 4);
+				g_popup.text("VERT");
 				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				m_edit_value = 0;
-				g_popup.text("HORZ", 4);
+				g_popup.text("HORZ");
 				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
 			}
@@ -691,7 +719,7 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// PASTE BUTTON
+	// CLONE BUTTON
 	void clone_action(CSequenceLayer& layer, ACTION what) {
 		CSequenceStep::DATA data_type;
 		switch(what) {
@@ -703,6 +731,16 @@ class CSequenceEditor {
 			}
 			else {
 				m_clone_status = CLONE_NONE;
+			}
+			break;
+		case ACTION_KEY_COMBO:
+			switch(m_key_combo) {
+			case KEY_CLONE|KEY2_CLONE_PAGE:
+				command_mode(CMD_CLONE_PAGE);
+				break;
+			case KEY_CLONE|KEY2_CLONE_LAYER:
+				command_mode(CMD_CLONE_LAYER);
+				break;
 			}
 			break;
 			////////////////////////////////////////////////
@@ -960,30 +998,30 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void run_action(CSequenceLayer& layer, ACTION what) {
+	void func_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
 		case ACTION_BEGIN:
 			toggle_init();
 			break;
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
-			case KEY_RUN|KEY_RUN_SCALE_MODE:
-				toggle(P_EDIT_SCALE_GRID, "CHRO EDT|SCAL EDT");
+			case KEY_FUNC|KEY_FUNC_SCALE_MODE:
+				toggle(P_EDIT_SCALE_GRID, "NOTE:", "CHR|SCA");
 				break;
-			case KEY_RUN|KEY_RUN_AUTO_GATE:
-				toggle(P_EDIT_AUTO_GATE_INSERT, "MAN GATE|AUTO GAT");
+			case KEY_FUNC|KEY_FUNC_AUTO_GATE:
+				toggle(P_EDIT_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
 				break;
-			case KEY_RUN|KEY_RUN_INTERPOLATE:
-				toggle(P_SQL_INTERPOLATE, "FILL STP|FILL CUR");
+			case KEY_FUNC|KEY_FUNC_INTERPOLATE:
+				toggle(P_SQL_INTERPOLATE, "FILL:", "FLA|CUR");
 				break;
-			case KEY_RUN|KEY_RUN_GRID:
-				toggle(P_EDIT_SHOW_GRID, "GRID OFF|GRID ON");
+			case KEY_FUNC|KEY_FUNC_GRID:
+				toggle(P_EDIT_SHOW_GRID, "GRID:", "HID|SHO");
 				break;
-			case KEY_RUN|KEY_RUN_LOOP_MODE:
-				toggle(P_SQL_LOOP_PER_PAGE, "LOOP COM|LOOP IND");
+			case KEY_FUNC|KEY_FUNC_LOOP_MODE:
+				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
 				break;
-			case KEY_RUN|KEY_RUN_PAGE_ADV:
-				toggle(P_SQL_AUTO_PAGE_ADVANCE, "PAG FGD|PAG SEQ");
+			case KEY_FUNC|KEY_FUNC_PAGE_ADV:
+				toggle(P_SQL_AUTO_PAGE_ADVANCE, "PAGE:", "FGD|BKG");
 				break;
 			}
 			break;
@@ -1003,14 +1041,30 @@ class CSequenceEditor {
 		}
 		else {
 			switch(m_action_key) {
-			case KEY_CV: cv_action(layer, what); break;
-			case KEY_CLONE: clone_action(layer, what); break;
-			case KEY_CLEAR: clear_action(layer, what); break;
-			case KEY_GATE: gate_action(layer, what); break;
-			case KEY_LOOP: loop_action(layer, what); break;
-			case KEY_PAGE: page_action(layer, what); break;
-			case KEY_LAYER: layer_action(layer, what); break;
-			case KEY_RUN: run_action(layer, what); break;
+			case KEY_CV:
+				cv_action(layer, what);
+				break;
+			case KEY_CLONE:
+				clone_action(layer, what);
+				break;
+			case KEY_CLEAR:
+				clear_action(layer, what);
+				break;
+			case KEY_GATE:
+				gate_action(layer, what);
+				break;
+			case KEY_LOOP:
+				loop_action(layer, what);
+				break;
+			case KEY_PAGE:
+				page_action(layer, what);
+				break;
+			case KEY_LAYER:
+				layer_action(layer, what);
+				break;
+			case KEY_FUNC:
+				func_action(layer, what);
+				break;
 			}
 		}
 	}
@@ -1070,15 +1124,7 @@ public:
 		switch(evt) {
 		case EV_KEY_PRESS:
 			if(!m_action_key) {
-				switch(param) {
-				case KEY_CV:
-				case KEY_CLONE:
-				case KEY_CLEAR:
-				case KEY_GATE:
-				case KEY_LOOP:
-				case KEY_PAGE:
-				case KEY_LAYER:
-				case KEY_RUN:
+				if(param) {
 					m_action_key = param;
 					m_encoder_moved = 0;
 					m_combo_clicks = 0;

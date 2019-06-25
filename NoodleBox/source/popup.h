@@ -193,13 +193,36 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
-	void text(const char *sz, int len) {
-		m_len = 0;
-		while(m_len < len) {
+	void text(const char *sz, byte append = 0) {
+		if(!append) {
+			m_len = 0;
+		}
+		while(*sz) {
 			m_text[m_len++] = *sz++;
 		}
 		m_render = 1;
 		m_timeout = DISPLAY_TIMEOUT;
+	}
+
+	void text_value(const char *values, int which, byte append = 0) {
+		const char *ch = values;
+		while(*ch) {
+			char this_value[10];
+			int len = 0;
+			while(*ch && *ch != '|' && len<8) {
+				this_value[len++] = *ch++;
+			}
+			this_value[len] = '\0';
+			if(!which) {
+				text(this_value, append);
+				break;
+			}
+			if(!*ch) {
+				break;
+			}
+			++ch;
+			--which;
+		}
 	}
 
 	void repaint() {
