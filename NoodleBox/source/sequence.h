@@ -96,11 +96,16 @@ public:
 		// ensure the sequencer is running
 		if(m_is_running) {
 
+			// get a random dice roll for any random triggers
+			// this is a number between 1 and 16
+			srand(g_clock.m_ms);
+			int dice_roll = 1+rand()%16;
+
 			// tick each layer
 			byte any_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer& layer = m_cfg.m_layers[i];
-				layer.tick(ticks, parts_tick);
+				layer.tick(ticks, parts_tick, dice_roll);
 				if(layer.is_stepped() && layer.get_enabled()) {
 					any_step = 1;
 				}
@@ -108,6 +113,7 @@ public:
 
 			// did the tick cause any enabled layer to step?
 			if(any_step) {
+
 				// process each layer
 				long prev_output = 0;
 				for(int i=0; i<NUM_LAYERS; ++i) {

@@ -212,7 +212,7 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_page_list(int value) {
-		g_popup.text_value("    |A   |AB  |ABC |ABCD", value);
+		g_popup.text_value("A   |AB  |ABC |ABCD", value);
 		g_popup.avoid(m_cursor);
 	}
 
@@ -1369,7 +1369,7 @@ public:
 
 	void run() {
 		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		if(layer.is_page_advanced() && layer.get_page_list_count()!=1) {
+		if(layer.is_page_advanced() && layer.get_page_list_count()>0) {
 			m_ppi_timeout = PPI_MS;
 		}
 		else if(m_ppi_timeout) {
