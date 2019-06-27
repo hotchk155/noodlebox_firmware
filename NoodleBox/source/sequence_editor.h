@@ -54,6 +54,7 @@ class CSequenceEditor {
 
 	enum {
 		GATE_VIEW_GATE_TIE,
+		GATE_VIEW_VELOCITY,
 		GATE_VIEW_PROB,
 		GATE_VIEW_RETRIG,
 		GATE_VIEW_MAX = GATE_VIEW_RETRIG
@@ -173,17 +174,16 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-/*
-	void show_gate_tie(CSequenceStep& step) {
-		char text[4] = {
-			step.get_gate()? 'G':'.',
-			step.get_tie()? 'T':'.',
-			step.get_prob()? 'P':'.',
-			step.get_retrig()? 'R': '.'
-		};
-		g_popup.text(text,4);
+	void show_gate_vel(CSequenceStep& step) {
+		g_popup.text("VEL.");
+		if(!step.get_velocity()) {
+			g_popup.text("--",1);
+		}
+		else {
+			g_popup.num2digits(step.get_velocity(),1);
+		}
 		g_popup.avoid(m_cursor);
-	}*/
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	const char *get_layer() {
@@ -675,6 +675,10 @@ class CSequenceEditor {
 				m_gate_view = GATE_VIEW_RETRIG;
 				show_gate_retrig(step);
 				break;
+			case KEY_GATE|KEY2_GATE_VEL:
+				m_gate_view = GATE_VIEW_VELOCITY;
+				show_gate_vel(step);
+				break;
 			}
 			break;
 		case ACTION_ENC_LEFT:
@@ -691,6 +695,12 @@ class CSequenceEditor {
 				layer.set_step(m_cur_page, m_cursor, step);
 				show_gate_retrig(step);
 				m_gate_view = GATE_VIEW_RETRIG;
+				break;
+			case KEY_GATE|KEY2_GATE_VEL:
+				step.set_velocity(inc_value(what, step.get_velocity(), 0, CSequenceStep::VELOCITY_MAX, 0));
+				layer.set_step(m_cur_page, m_cursor, step);
+				show_gate_vel(step);
+				m_gate_view = GATE_VIEW_VELOCITY;
 				break;
 			default:
 				if(what == ACTION_ENC_RIGHT) {
@@ -1311,6 +1321,14 @@ public:
 					break;
 				case GATE_VIEW_RETRIG:
 					if(!!step.get_retrig()) {
+						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
+					}
+					else if(gate_or_tie){
+						bri = BRIGHT_LOW;
+					}
+					break;
+				case GATE_VIEW_VELOCITY:
+					if(!!step.get_velocity()) {
 						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
 					else if(gate_or_tie){

@@ -25,16 +25,28 @@
 // layer type
 //
 class CSequenceStep {
-	byte m_gate:1;
-	byte m_tie:1;
-	byte m_prob:4;			// probabitity 0=Always, 1,2,3 = high medium low
-	byte m_retrig:4;			// Retrig 0=Never, 1,2,3 = high medium low
-	byte m_is_data_point:1; // is the CV value user defined rather than auto filled
-	byte m_value;	// CV value
+
+	typedef struct {
+		byte m_trig:1;
+		byte m_tie:1;
+		byte m_prob:4;
+		byte m_retrig:4;
+		byte m_velocity:4;
+	} GATE_TYPE;
+
+	typedef struct {
+		byte m_value:7;	// CV value
+		byte m_is_data_point:1; // is the CV value user defined rather than auto filled
+	} CV_TYPE;
+
+	GATE_TYPE 	m_gate;
+	CV_TYPE 	m_cv;
 public:
 	enum {
+		VALUE_MAX = 127,
 		PROB_MAX = 15,
-		RETRIG_MAX = 15
+		RETRIG_MAX = 15,
+		VELOCITY_MAX = 15
 	};
 
 	typedef enum: byte {
@@ -44,77 +56,92 @@ public:
 	} DATA;
 
 	///////////////////////////////////////////////////////////////////////////////////
+	CSequenceStep() {
+		clear(ALL_DATA);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_value() {
-		return m_value;
+		return m_cv.m_value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline void set_value(byte value) {
-		m_value = value;
+		ASSERT(value<=VALUE_MAX);
+		m_cv.m_value = value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte is_data_point() {
-		return m_is_data_point;
+		return m_cv.m_is_data_point;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline void set_data_point(byte value) {
-		m_is_data_point = !!value;
+		m_cv.m_is_data_point = !!value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline void set_gate(byte gate) {
-		m_gate = !!gate;
+		m_gate.m_trig = !!gate;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline int get_gate() {
-		return m_gate;
+		return m_gate.m_trig;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline void set_tie(byte tie) {
-		m_tie = !!tie;
+		m_gate.m_tie = !!tie;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_tie() {
-		return m_tie;
+		return m_gate.m_tie;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_prob() {
-		return m_prob;
+		return m_gate.m_prob;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	void set_prob(byte prob) {
-		m_prob = prob;
+		ASSERT(prob<=PROB_MAX);
+		m_gate.m_prob = prob;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	inline byte get_retrig() {
-		return m_retrig;
+		return m_gate.m_retrig;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	void set_retrig(byte retrig) {
-		m_retrig = retrig;
+		ASSERT(retrig<=RETRIG_MAX);
+		m_gate.m_retrig = retrig;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	inline byte get_velocity() {
+		return m_gate.m_velocity;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	void set_velocity(byte vel) {
+		ASSERT(vel<=VELOCITY_MAX);
+		m_gate.m_velocity = vel;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// clear data point and gates
 	void clear(DATA what) {
 		if(what&CV_DATA) {
-			m_is_data_point = 0;
-			m_value = 0;
+			memset(&m_cv, 0, sizeof m_cv);
 		}
 		if(what&GATE_DATA) {
-			m_gate = 0;
-			m_tie = 0;
-			m_prob = 0;
-			m_retrig = 0;
+			memset(&m_gate, 0, sizeof m_gate);
 		}
 	}
 
@@ -122,14 +149,10 @@ public:
 	// clear data point and gates
 	void copy(CSequenceStep &other, DATA what) {
 		if(what&CV_DATA) {
-			m_value = other.m_value;
-			m_is_data_point = other.m_is_data_point;
+			m_cv = other.m_cv;
 		}
 		if(what&GATE_DATA) {
 			m_gate = other.m_gate;
-			m_tie = other.m_tie;
-			m_prob = other.m_prob;
-			m_retrig = other.m_retrig;
 		}
 	}
 
