@@ -122,11 +122,12 @@ public:
 						prev_output = layer.process_cv(i,prev_output);
 						if(layer.is_stepped()) {
 							layer.process_gate(i);
+							layer.process_midi_note();
 						}
 					}
 					else {
 						// ensure the gate for a disabled layer is closed
-						g_outs.gate(i, COuts::GATE_CLOSED, 0);
+						layer.stop_note(i);
 					}
 				}
 			}

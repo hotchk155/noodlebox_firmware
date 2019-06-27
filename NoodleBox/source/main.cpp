@@ -170,9 +170,11 @@ void fire_event(int event, uint32_t param) {
 	}
 }
 
+/*
 void fire_note(byte midi_note, byte midi_vel) {
 	g_midi.send_note(0, midi_note, midi_vel);
 }
+*/
 
 void force_full_repaint() {
 	g_popup.force_repaint();
@@ -195,7 +197,7 @@ void test() {
     		if(++gate_tmr > 50) {
     			gate_tmr = 0;
     			gate = !gate;
-    			g_outs.gate(3, gate? COuts::GATE_OPEN: COuts::GATE_CLOSED, 0);
+    			g_outs.gate(3, gate? COuts::GATE_OPEN: COuts::GATE_CLOSED);
 
     		}
 

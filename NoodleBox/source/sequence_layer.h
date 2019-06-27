@@ -40,6 +40,10 @@ private:
 		MAX_PAGE_LIST = 16
 	};
 
+	enum :byte {
+		NO_MIDI_NOTE = 0xff
+	};
+
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
 		CSequencePage 	m_page[MAX_PAGES];	// sequencer page
@@ -57,6 +61,7 @@ private:
 		V_SQL_CVGLIDE	m_cv_glide;
 		V_SQL_COMBINE	m_combine_prev;
 		byte 			m_midi_vel;
+		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		byte 			m_loop_per_page :1;
 		int				m_interpolate:1;
@@ -79,11 +84,15 @@ private:
 		byte m_suppress_step;
 		byte m_page_advanced;
 		byte m_midi_note; 					// last midi note played on channel
+		int m_midi_bend;
+		byte m_midi_vel;
 		long m_output;						// current output value
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;
 		uint32_t m_step_timeout;
+		uint32_t m_retrig_ms;
+		uint32_t m_retrig_count;
 	} STATE;
 
 	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -221,6 +230,7 @@ public:
 		m_cfg.m_cv_shift = V_SQL_CVSHIFT_NONE;
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
+		m_cfg.m_midi_bend = 0;
 		m_cfg.m_interpolate = 0;
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_page_advance = 0;
@@ -236,7 +246,9 @@ public:
 	void init_state() {
 		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
-		m_state.m_midi_note = 0;
+		m_state.m_midi_note = NO_MIDI_NOTE;
+		m_state.m_midi_bend = 0;
+		m_state.m_midi_vel = 0;
 		m_state.m_view = VIEW_PITCH;
 		m_state.m_page_list_pos = 0;
 		reset();
@@ -256,6 +268,8 @@ public:
 		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
 		m_state.m_output = 0;
+		m_state.m_retrig_ms = 0;
+		m_state.m_retrig_count = 0;
 	}
 
 	//
@@ -274,6 +288,7 @@ public:
 		case P_SQL_CVSCALE: m_cfg.m_cv_scale = (V_SQL_CVSCALE)value; break;
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
+		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points_all_pages(); break;
 		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
@@ -297,6 +312,7 @@ public:
 		case P_SQL_CVSCALE: return m_cfg.m_cv_scale;
 		case P_SQL_CVGLIDE: return m_cfg.m_cv_glide;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
+		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
 		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
 		case P_SQL_SCALE_TYPE: return g_scale.get_type();
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
@@ -312,6 +328,7 @@ public:
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
 		case P_SQL_MIDI_VEL:
+		case P_SQL_MIDI_BEND:
 			return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET);
 		case P_SQL_MIDI_CC:	return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
 		case P_SQL_MIX: return (m_id!=0);
@@ -570,9 +587,11 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void send_midi_note(byte note, byte velocity) {
-		if(m_cfg.m_midi_channel > V_SQL_MIDI_CHAN_NONE) {
-			g_midi.send_note(m_cfg.m_midi_channel-V_SQL_MIDI_CHAN_1, note, velocity);
+	void stop_midi_note() {
+		if(m_cfg.m_midi_channel > V_SQL_MIDI_CHAN_NONE && m_state.m_midi_note != NO_MIDI_NOTE) {
+			byte midi_channel = (int)m_cfg.m_midi_channel-V_SQL_MIDI_CHAN_1;
+			g_midi.stop_note(midi_channel, m_state.m_midi_note);
+			m_state.m_midi_note = NO_MIDI_NOTE;
 		}
 	}
 
@@ -617,18 +636,35 @@ public:
 		}
 	}
 
+	void stop_note(int which) {
+		g_outs.gate(which, COuts::GATE_CLOSED);
+		m_state.m_retrig_ms = 0;
+		m_state.m_retrig_count = 0;
+		stop_midi_note();
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms
 	void ms_tick(int which) {
 		if(m_state.m_gate_timeout) {
 			if(!--m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED, 0);
-				send_midi_note(m_state.m_midi_note, 0);
-				m_state.m_midi_note = 0;
+				stop_note(which);
 			}
 		}
 		if(m_state.m_step_timeout) {
 			--m_state.m_step_timeout;
+		}
+		if(m_state.m_retrig_ms) {
+			if(m_state.m_retrig_count) {
+				--m_state.m_retrig_count;
+			}
+			else {
+				m_state.m_retrig_count = m_state.m_retrig_ms;
+				g_outs.gate(which, COuts::GATE_TRIG);
+				if(m_cfg.m_midi_channel != V_SQL_MIDI_CHAN_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
+					byte midi_channel = ((int)m_cfg.m_midi_channel)-1;
+					g_midi.start_note(midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
+				}
+			}
 		}
 	}
 
@@ -716,7 +752,7 @@ public:
 	void process_gate(byte which) {
 		if(m_state.m_suppress_step) {
 			if(!m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED, 0);
+				g_outs.gate(which, COuts::GATE_CLOSED);
 			}
 		}
 		else if(m_state.m_step_value.get_gate() || m_state.m_step_value.get_retrig()>0) {
@@ -742,25 +778,106 @@ public:
 				}
 			}
 
-			int retrig;
 			if(m_state.m_step_value.get_retrig() > 0) {
-				retrig = ((16-(int)m_state.m_step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
+				m_state.m_retrig_ms = ((16-(int)m_state.m_step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
 			}
 			else {
-				retrig = 0;
+				m_state.m_retrig_ms = 0;
 			}
-			g_outs.gate(which, COuts::GATE_TRIG, retrig);
+			m_state.m_retrig_count = m_state.m_retrig_ms;
+			g_outs.gate(which, COuts::GATE_TRIG);
 		}
 		else if(m_state.m_step_value.get_tie()) {
 			m_state.m_gate_timeout = 0;
-			g_outs.gate(which, COuts::GATE_OPEN, 0);
+			g_outs.gate(which, COuts::GATE_OPEN);
 		}
 		else {
 			if(!m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED, 0);
+				g_outs.gate(which, COuts::GATE_CLOSED);
 			}
 		}
 	}
+
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	void process_midi_note() {
+
+		// check if a MIDI channel is set (if not then MIDI is off)
+		if(m_cfg.m_midi_channel != V_SQL_MIDI_CHAN_NONE) {
+			byte midi_channel = ((int)m_cfg.m_midi_channel)-1;
+
+			if(m_state.m_suppress_step) {
+				// suppressed step functionality
+				if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
+					g_midi.stop_note(midi_channel, m_state.m_midi_note);
+					m_state.m_midi_note = NO_MIDI_NOTE;
+				}
+			}
+			else if(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()){
+
+				// round the output pitch to the closest MIDI note
+				int note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
+
+				// work out pitch bend
+				int bend = 0;
+				if(m_cfg.m_midi_bend) {
+					// if a pitch bend range is specified, then work out how many pitch bend units
+					// are needed to get the note to bend to the appropriate pitch
+					bend = (((m_state.m_output - (note * COuts::SCALING))*8192)/m_cfg.m_midi_bend)/COuts::SCALING;
+				}
+
+				// work out the velocity
+				m_state.m_midi_vel = m_cfg.m_midi_vel;
+				if(m_state.m_step_value.get_velocity()) {
+					m_state.m_midi_vel = (m_state.m_midi_vel * m_state.m_step_value.get_velocity())/10; // step velocity is 1-15. Allow up to 1.5 * base velocity
+					if(m_state.m_midi_vel > 127) {
+						m_state.m_midi_vel = 127;
+					}
+				}
+
+				// is a MIDI note playing on the channel?
+				if(m_state.m_midi_note != NO_MIDI_NOTE) {
+
+					if(m_state.m_step_value.get_tie()||m_cfg.m_note_dur == V_SQL_NOTE_DUR_LEGA || m_cfg.m_note_dur == V_SQL_NOTE_DUR_OPEN) {
+						// legato play
+						g_midi.start_note(midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
+						g_midi.stop_note(midi_channel, note);
+						if(m_state.m_midi_bend != bend) {
+							g_midi.bend(midi_channel, bend);
+							m_state.m_midi_bend = bend;
+						}
+					}
+					else {
+						g_midi.stop_note(midi_channel, m_state.m_midi_note);
+						if(m_state.m_midi_bend != bend) {
+							g_midi.bend(midi_channel, bend);
+							m_state.m_midi_bend = bend;
+						}
+						g_midi.start_note(midi_channel, note, m_state.m_midi_vel);
+					}
+				}
+				else {
+					if(m_state.m_midi_bend != bend) {
+						g_midi.bend(midi_channel, bend);
+						m_state.m_midi_bend = bend;
+					}
+					g_midi.start_note(midi_channel, note, m_state.m_midi_vel);
+
+				}
+				m_state.m_midi_note = note;
+			}
+			else {
+				if(!m_state.m_gate_timeout) {
+					stop_midi_note();
+				}
+			}
+		}
+	}
+	void process_midi_cc() {
+
+	}
+
 };
 
 #endif /* SEQUENCE_LAYER_H_ */

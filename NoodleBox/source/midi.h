@@ -63,10 +63,27 @@ public:
 		while(!(kUART_TxDataRegEmptyFlag & UART_GetStatusFlags(UART0)));
 		UART_WriteByte(UART0, ch);
 	}
-	void send_note(byte chan, byte note, byte velocity) {
+	void start_note(byte chan, byte note, byte velocity) {
 		send_byte(0x90 | chan);
 		send_byte(note & 0x7F);
 		send_byte(velocity & 0x7F);
+	}
+	void stop_note(byte chan, byte note) {
+		send_byte(0x90 | chan);
+		send_byte(note & 0x7F);
+		send_byte(0x00);
+	}
+	void bend(byte chan, int amount) {
+		amount += 8192;
+		if(amount<0) {
+			amount = 0;
+		}
+		else if(amount > 0x3FFF) {
+			amount = 0x3FFF;
+		}
+		send_byte(0xe0 | chan);
+		send_byte(amount&0x7F);
+		send_byte((amount>>7)&0x7F);
 	}
 
 	inline void irq_handler() {

@@ -67,7 +67,7 @@ public:
 	typedef struct {
 		GATE_STATUS	gate_status;	// current state of the gate
 		byte trig_delay;	// delay
-		int retrig_period;
+//		int retrig_period;
 
 		int pitch;			// 32-bit current pitch value (dac << 16)
 		int target;  		// 32-bit current target value (dac << 16)
@@ -153,8 +153,8 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void gate(byte which, GATE_STATUS gate, int retrig_period) {
-		m_chan[which].retrig_period = 0;
+	void gate(byte which, GATE_STATUS gate) {
+//		m_chan[which].retrig_period = 0;
 		m_chan[which].trig_delay = 0;
 		if(m_chan[which].gate_status != gate) {
 			switch(gate) {
@@ -163,9 +163,9 @@ public:
 					m_chan[which].gate_status = GATE_CLOSED;
 					break;
 				case GATE_TRIG:
-					if(retrig_period > TRIG_DELAY_MS) {
-						m_chan[which].retrig_period = retrig_period - TRIG_DELAY_MS;
-					}
+//					if(retrig_period > TRIG_DELAY_MS) {
+//						m_chan[which].retrig_period = retrig_period - TRIG_DELAY_MS;
+//					}
 					if(m_chan[which].gate_status == GATE_OPEN) {
 						// gate is open so need to generate a new rising edge
 						impl_gate_off(which);
@@ -339,6 +339,7 @@ public:
 
 
 
+			/*
 			// processing for retrigs
 			if(m_chan[i].gate_status == GATE_TRIG) {
 				if(m_chan[i].trig_delay) {
@@ -368,7 +369,7 @@ public:
 						impl_gate_off(i);
 					}
 				}
-			}
+			}*/
 		}
 	}
 
