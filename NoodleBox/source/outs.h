@@ -61,7 +61,7 @@ public:
 	};
 
 	enum : long {
-		SCALING = 0x10000
+		SCALING = 0x10000L
 	};
 
 	typedef struct {

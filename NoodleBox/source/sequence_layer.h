@@ -95,7 +95,7 @@ private:
 		uint32_t m_retrig_count;
 	} STATE;
 
-	const uint32_t INFINITE_GATE = (uint32_t)(-1);
+//	const uint32_t INFINITE_GATE = (uint32_t)(-1);
 
 	CONFIG m_cfg;				// instance of config
 	STATE m_state;
@@ -762,10 +762,10 @@ public:
 			else {
 				// set the appropriate note duration
 				switch(m_cfg.m_note_dur) {
-				case V_SQL_NOTE_DUR_OPEN:
-				case V_SQL_NOTE_DUR_LEGA:
-					m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
-					break;
+//				case V_SQL_NOTE_DUR_OPEN:
+//				case V_SQL_NOTE_DUR_LEGA:
+//					m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
+//					break;
 				case V_SQL_NOTE_DUR_TRIG:
 					m_state.m_gate_timeout = COuts::TRIG_DURATION; // just a short trigger pulse
 					break;
@@ -807,24 +807,27 @@ public:
 		if(m_cfg.m_midi_channel != V_SQL_MIDI_CHAN_NONE) {
 			byte midi_channel = ((int)m_cfg.m_midi_channel)-1;
 
-			if(m_state.m_suppress_step) {
-				// suppressed step functionality
+			// is this a nonplaying step?
+			if(!(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()) || m_state.m_suppress_step) {
+
 				if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
 					g_midi.stop_note(midi_channel, m_state.m_midi_note);
 					m_state.m_midi_note = NO_MIDI_NOTE;
 				}
 			}
-			else if(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()){
+			else { // step should play
 
 				// round the output pitch to the closest MIDI note
-				int note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
+				byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
 
 				// work out pitch bend
 				int bend = 0;
 				if(m_cfg.m_midi_bend) {
 					// if a pitch bend range is specified, then work out how many pitch bend units
 					// are needed to get the note to bend to the appropriate pitch
-					bend = (((m_state.m_output - (note * COuts::SCALING))*8192)/m_cfg.m_midi_bend)/COuts::SCALING;
+					bend = m_state.m_output - (note * COuts::SCALING); // required pitch bend in scaled MIDI notes
+					bend = (bend * 8192)/m_cfg.m_midi_bend;
+					bend = bend / COuts::SCALING;
 				}
 
 				// work out the velocity
@@ -836,41 +839,29 @@ public:
 					}
 				}
 
-				// is a MIDI note playing on the channel?
-				if(m_state.m_midi_note != NO_MIDI_NOTE) {
-
-					if(m_state.m_step_value.get_tie()||m_cfg.m_note_dur == V_SQL_NOTE_DUR_LEGA || m_cfg.m_note_dur == V_SQL_NOTE_DUR_OPEN) {
-						// legato play
+				// check if we need to ties notes together
+				if(m_state.m_step_value.get_tie() && m_state.m_midi_note != NO_MIDI_NOTE) {
+					// check that we're not simply extending the same note
+					if(m_state.m_midi_note != note) {
 						g_midi.start_note(midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
 						g_midi.stop_note(midi_channel, note);
-						if(m_state.m_midi_bend != bend) {
-							g_midi.bend(midi_channel, bend);
-							m_state.m_midi_bend = bend;
-						}
 					}
-					else {
-						g_midi.stop_note(midi_channel, m_state.m_midi_note);
-						if(m_state.m_midi_bend != bend) {
-							g_midi.bend(midi_channel, bend);
-							m_state.m_midi_bend = bend;
-						}
-						g_midi.start_note(midi_channel, note, m_state.m_midi_vel);
+					// check if any change to pitch bend needed
+					if(m_state.m_midi_bend != bend) {
+						g_midi.bend(midi_channel, bend);
+						m_state.m_midi_bend = bend;
 					}
 				}
 				else {
+					// not tying notes
+					g_midi.stop_note(midi_channel, m_state.m_midi_note);
 					if(m_state.m_midi_bend != bend) {
 						g_midi.bend(midi_channel, bend);
 						m_state.m_midi_bend = bend;
 					}
 					g_midi.start_note(midi_channel, note, m_state.m_midi_vel);
-
 				}
 				m_state.m_midi_note = note;
-			}
-			else {
-				if(!m_state.m_gate_timeout) {
-					stop_midi_note();
-				}
 			}
 		}
 	}
