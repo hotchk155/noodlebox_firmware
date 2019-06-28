@@ -41,7 +41,8 @@ private:
 	};
 
 	enum :byte {
-		NO_MIDI_NOTE = 0xff
+		NO_MIDI_NOTE = 0xff,
+		NO_MIDI_CC_VALUE = 0xff
 	};
 
 	// This structure holds the layer information that gets saved with the patch
@@ -54,7 +55,8 @@ private:
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
 		char			m_transpose;		// manual transpose amount for the layer
 		V_SQL_NOTE_DUR	m_note_dur;
-		V_SQL_MIDI_CHAN m_midi_channel;		// MIDI channel
+		V_SQL_MIDI_OUT  m_midi_out;
+		byte 			m_midi_channel;		// MIDI channel
 		byte 			m_midi_cc;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
 		V_SQL_CVSHIFT	m_cv_shift;
@@ -86,6 +88,7 @@ private:
 		byte m_midi_note; 					// last midi note played on channel
 		int m_midi_bend;
 		byte m_midi_vel;
+		byte m_midi_cc_value;
 		long m_output;						// current output value
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
@@ -105,7 +108,18 @@ private:
 	// PRIVATE METHODS
 	//
 
-
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte clamp7bit(int in) {
+		if(in>127) {
+			return 127;
+		}
+		else if(in<0) {
+			return 0;
+		}
+		else {
+			return (byte)in;
+		}
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	// accessor for a page
 	inline CSequencePage& get_page(byte page_no) {
@@ -223,7 +237,7 @@ public:
 		m_cfg.m_note_dur	= V_SQL_NOTE_DUR_100;
 		m_cfg.m_combine_prev= V_SQL_COMBINE_OFF;
 		m_cfg.m_transpose	= 0;
-		m_cfg.m_midi_channel 	= V_SQL_MIDI_CHAN_NONE;
+		m_cfg.m_midi_channel 	= m_id;	// default to midi chans 1-4
 		m_cfg.m_midi_cc = 1;
 		m_cfg.m_enabled = 1;
 		m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
@@ -236,6 +250,7 @@ public:
 		m_cfg.m_page_advance = 0;
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_page_list_count = 0;
+		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -249,6 +264,7 @@ public:
 		m_state.m_midi_note = NO_MIDI_NOTE;
 		m_state.m_midi_bend = 0;
 		m_state.m_midi_vel = 0;
+		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_view = VIEW_PITCH;
 		m_state.m_page_list_pos = 0;
 		reset();
@@ -283,7 +299,7 @@ public:
 		case P_SQL_QUANTIZE: m_cfg.m_quantize = (V_SQL_QUANTIZE)value; break;
 		case P_SQL_STEP_RATE: m_cfg.m_step_rate = (V_SQL_STEP_RATE)value; break;
 		case P_SQL_NOTE_DUR: m_cfg.m_note_dur = (V_SQL_NOTE_DUR)value; break;
-		case P_SQL_MIDI_CHAN: m_cfg.m_midi_channel = (V_SQL_MIDI_CHAN)value; break;
+		case P_SQL_MIDI_CHAN: m_cfg.m_midi_channel = value; break;
 		case P_SQL_MIDI_CC: m_cfg.m_midi_cc = value; break;
 		case P_SQL_CVSCALE: m_cfg.m_cv_scale = (V_SQL_CVSCALE)value; break;
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
@@ -296,6 +312,7 @@ public:
 		case P_SQL_AUTO_PAGE_ADVANCE: m_cfg.m_page_advance = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
+		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
 		default: break;
 		}
 	}
@@ -320,6 +337,7 @@ public:
 		case P_SQL_AUTO_PAGE_ADVANCE: return m_cfg.m_page_advance;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
+		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
 		default:return 0;
 		}
 	}
@@ -327,10 +345,13 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
+		case P_SQL_MIDI_CHAN:
+			return (m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE);
 		case P_SQL_MIDI_VEL:
 		case P_SQL_MIDI_BEND:
-			return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH||m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET);
-		case P_SQL_MIDI_CC:	return !!(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD);
+			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE);
+		case P_SQL_MIDI_CC:
+			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_CC);
 		case P_SQL_MIX: return (m_id!=0);
 		}
 		return 1;
@@ -363,6 +384,12 @@ public:
 			break;
 		}
 		m_cfg.m_mode = value;
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline V_SQL_MIDI_OUT get_midi_out_mode() {
+		return m_cfg.m_midi_out;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -540,6 +567,7 @@ public:
 		return 0;
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_stepped() {
 		return m_state.m_stepped;
@@ -588,9 +616,8 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
-		if(m_cfg.m_midi_channel > V_SQL_MIDI_CHAN_NONE && m_state.m_midi_note != NO_MIDI_NOTE) {
-			byte midi_channel = (int)m_cfg.m_midi_channel-V_SQL_MIDI_CHAN_1;
-			g_midi.stop_note(midi_channel, m_state.m_midi_note);
+		if(m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE && m_state.m_midi_note != NO_MIDI_NOTE) {
+			g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
 			m_state.m_midi_note = NO_MIDI_NOTE;
 		}
 	}
@@ -660,9 +687,8 @@ public:
 			else {
 				m_state.m_retrig_count = m_state.m_retrig_ms;
 				g_outs.gate(which, COuts::GATE_TRIG);
-				if(m_cfg.m_midi_channel != V_SQL_MIDI_CHAN_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
-					byte midi_channel = ((int)m_cfg.m_midi_channel)-1;
-					g_midi.start_note(midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
+				if(m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
+					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
 				}
 			}
 		}
@@ -803,70 +829,71 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void process_midi_note() {
 
-		// check if a MIDI channel is set (if not then MIDI is off)
-		if(m_cfg.m_midi_channel != V_SQL_MIDI_CHAN_NONE) {
-			byte midi_channel = ((int)m_cfg.m_midi_channel)-1;
+		// is this a nonplaying step?
+		if(!(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()) || m_state.m_suppress_step) {
 
-			// is this a nonplaying step?
-			if(!(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()) || m_state.m_suppress_step) {
-
-				if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
-					g_midi.stop_note(midi_channel, m_state.m_midi_note);
-					m_state.m_midi_note = NO_MIDI_NOTE;
-				}
-			}
-			else { // step should play
-
-				// round the output pitch to the closest MIDI note
-				byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
-
-				// work out pitch bend
-				int bend = 0;
-				if(m_cfg.m_midi_bend) {
-					// if a pitch bend range is specified, then work out how many pitch bend units
-					// are needed to get the note to bend to the appropriate pitch
-					bend = m_state.m_output - (note * COuts::SCALING); // required pitch bend in scaled MIDI notes
-					bend = (bend * 8192)/m_cfg.m_midi_bend;
-					bend = bend / COuts::SCALING;
-				}
-
-				// work out the velocity
-				m_state.m_midi_vel = m_cfg.m_midi_vel;
-				if(m_state.m_step_value.get_velocity()) {
-					m_state.m_midi_vel = (m_state.m_midi_vel * m_state.m_step_value.get_velocity())/10; // step velocity is 1-15. Allow up to 1.5 * base velocity
-					if(m_state.m_midi_vel > 127) {
-						m_state.m_midi_vel = 127;
-					}
-				}
-
-				// check if we need to ties notes together
-				if(m_state.m_step_value.get_tie() && m_state.m_midi_note != NO_MIDI_NOTE) {
-					// check that we're not simply extending the same note
-					if(m_state.m_midi_note != note) {
-						g_midi.start_note(midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
-						g_midi.stop_note(midi_channel, note);
-					}
-					// check if any change to pitch bend needed
-					if(m_state.m_midi_bend != bend) {
-						g_midi.bend(midi_channel, bend);
-						m_state.m_midi_bend = bend;
-					}
-				}
-				else {
-					// not tying notes
-					g_midi.stop_note(midi_channel, m_state.m_midi_note);
-					if(m_state.m_midi_bend != bend) {
-						g_midi.bend(midi_channel, bend);
-						m_state.m_midi_bend = bend;
-					}
-					g_midi.start_note(midi_channel, note, m_state.m_midi_vel);
-				}
-				m_state.m_midi_note = note;
+			if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
+				g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
+				m_state.m_midi_note = NO_MIDI_NOTE;
 			}
 		}
-	}
-	void process_midi_cc() {
+		else { // step should play
 
+			// round the output pitch to the closest MIDI note
+			byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
+
+			// work out pitch bend
+			int bend = 0;
+			if(m_cfg.m_midi_bend) {
+				// if a pitch bend range is specified, then work out how many pitch bend units
+				// are needed to get the note to bend to the appropriate pitch
+				bend = m_state.m_output - (note * COuts::SCALING); // required pitch bend in scaled MIDI notes
+				bend = (bend * 8192)/m_cfg.m_midi_bend;
+				bend = bend / COuts::SCALING;
+			}
+
+			// work out the velocity
+			m_state.m_midi_vel = m_cfg.m_midi_vel;
+			if(m_state.m_step_value.get_velocity()) {
+				m_state.m_midi_vel = (m_state.m_midi_vel * m_state.m_step_value.get_velocity())/10; // step velocity is 1-15. Allow up to 1.5 * base velocity
+				if(m_state.m_midi_vel > 127) {
+					m_state.m_midi_vel = 127;
+				}
+			}
+
+			// check if we need to ties notes together
+			if(m_state.m_step_value.get_tie() && m_state.m_midi_note != NO_MIDI_NOTE) {
+				// check that we're not simply extending the same note
+				if(m_state.m_midi_note != note) {
+					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
+					g_midi.stop_note(m_cfg.m_midi_channel, note);
+				}
+				// check if any change to pitch bend needed
+				if(m_state.m_midi_bend != bend) {
+					g_midi.bend(m_cfg.m_midi_channel, bend);
+					m_state.m_midi_bend = bend;
+				}
+			}
+			else {
+				// not tying notes
+				g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
+				if(m_state.m_midi_bend != bend) {
+					g_midi.bend(m_cfg.m_midi_channel, bend);
+					m_state.m_midi_bend = bend;
+				}
+				g_midi.start_note(m_cfg.m_midi_channel, note, m_state.m_midi_vel);
+			}
+			m_state.m_midi_note = note;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void process_midi_cc() {
+		byte value = clamp7bit(((m_state.m_output+COuts::SCALING/2)/COuts::SCALING));
+		if(m_state.m_midi_cc_value != value) {
+			m_state.m_midi_cc_value = value;
+			g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, m_state.m_midi_cc_value);
+		}
 	}
 
 };

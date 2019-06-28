@@ -122,7 +122,14 @@ public:
 						prev_output = layer.process_cv(i,prev_output);
 						if(layer.is_stepped()) {
 							layer.process_gate(i);
-							layer.process_midi_note();
+							switch(layer.get_midi_out_mode()) {
+							case V_SQL_MIDI_OUT_NOTE:
+								layer.process_midi_note();
+								break;
+							case V_SQL_MIDI_OUT_CC:
+								layer.process_midi_cc();
+								break;
+							}
 						}
 					}
 					else {

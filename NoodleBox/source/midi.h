@@ -63,6 +63,11 @@ public:
 		while(!(kUART_TxDataRegEmptyFlag & UART_GetStatusFlags(UART0)));
 		UART_WriteByte(UART0, ch);
 	}
+	void send_cc(byte chan, byte cc, byte value) {
+		send_byte(0xB0 | chan);
+		send_byte(cc & 0x7F);
+		send_byte(value & 0x7F);
+	}
 	void start_note(byte chan, byte note, byte velocity) {
 		send_byte(0x90 | chan);
 		send_byte(note & 0x7F);
