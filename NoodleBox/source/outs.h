@@ -66,14 +66,12 @@ public:
 
 	typedef struct {
 		GATE_STATUS	gate_status;	// current state of the gate
-		byte trig_delay;	// delay
-//		int retrig_period;
+		byte trig_delay;			// ms remaining before rising edge in trig state
+		int pitch;					// 32-bit current pitch value (dac << 16)
+		int target;  				// 32-bit current target value (dac << 16)
+		int glide_rate;  			// glide rate applied per ms to the pitch
 
-		int pitch;			// 32-bit current pitch value (dac << 16)
-		int target;  		// 32-bit current target value (dac << 16)
-		int glide_rate;  	// glide rate applied per ms to the pitch
-
-		uint16_t dac;		// raw 12-bit DAC value
+		uint16_t dac;				// raw 12-bit DAC value
 	} CHAN_STATE;
 
 
@@ -85,9 +83,7 @@ public:
 	};
 
 	CHAN_STATE m_chan[MAX_CV];
-	//GATE_STATUS m_gate[MAX_GATE];
 	byte m_dac_state;
-	//byte m_gate_pending;
 	byte m_i2c_buf[I2C_BUF_SIZE];
 	volatile CI2CBus::TRANSACTION m_txn;
 
@@ -154,7 +150,6 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void gate(byte which, GATE_STATUS gate) {
-//		m_chan[which].retrig_period = 0;
 		m_chan[which].trig_delay = 0;
 		if(m_chan[which].gate_status != gate) {
 			switch(gate) {
@@ -163,9 +158,6 @@ public:
 					m_chan[which].gate_status = GATE_CLOSED;
 					break;
 				case GATE_TRIG:
-//					if(retrig_period > TRIG_DELAY_MS) {
-//						m_chan[which].retrig_period = retrig_period - TRIG_DELAY_MS;
-//					}
 					if(m_chan[which].gate_status == GATE_OPEN) {
 						// gate is open so need to generate a new rising edge
 						impl_gate_off(which);
@@ -317,7 +309,11 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////
 	// called once per ms
 	void run() {
+
+		// processing for each output
 		for(int i=0; i<MAX_CV; ++i) {
+
+			// handle pitch glide
 			if(m_chan[i].glide_rate) {
 				m_chan[i].pitch += m_chan[i].glide_rate;
 				if(m_chan[i].glide_rate < 0) {
@@ -337,39 +333,13 @@ public:
 			}
 
 
-
-
-			/*
-			// processing for retrigs
-			if(m_chan[i].gate_status == GATE_TRIG) {
-				if(m_chan[i].trig_delay) {
-					--m_chan[i].trig_delay;
-				}
-				if(!m_chan[i].trig_delay) {
+			// handle pre-trig delay
+			if(m_chan[i].gate_status == GATE_TRIG && m_chan[i].trig_delay) {
+				if(!--m_chan[i].trig_delay) {
 					m_chan[i].gate_status = GATE_OPEN;
 					impl_gate_on(i);
-					if(m_chan[i].retrig_period > TRIG_DELAY_MS) {
-						m_chan[i].trig_delay = m_chan[i].retrig_period - TRIG_DELAY_MS;
-					}
 				}
 			}
-			else if(m_chan[i].retrig_period) {
-				if(m_chan[i].trig_delay) {
-					--m_chan[i].trig_delay;
-				}
-				else {
-					if(m_chan[i].gate_status == GATE_CLOSED) {
-						m_chan[i].gate_status = GATE_OPEN;
-						m_chan[i].trig_delay = m_chan[i].retrig_period;
-						impl_gate_on(i);
-					}
-					else {
-						m_chan[i].gate_status = GATE_CLOSED;
-						m_chan[i].trig_delay = TRIG_DELAY_MS;
-						impl_gate_off(i);
-					}
-				}
-			}*/
 		}
 	}
 

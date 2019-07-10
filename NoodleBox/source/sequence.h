@@ -134,7 +134,7 @@ public:
 					}
 					else {
 						// ensure the gate for a disabled layer is closed
-						layer.stop_note(i);
+						layer.silence(i);
 					}
 				}
 			}

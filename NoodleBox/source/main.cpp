@@ -131,7 +131,7 @@ void fire_event(int event, uint32_t param) {
 			}
 			break;
 		case KEY_RUN:
-			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
+			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_RESTART, 0);
 			break;
 		default:
 			dispatch_event(event, param);

@@ -54,10 +54,11 @@ private:
 		V_SQL_QUANTIZE 	m_quantize;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
 		char			m_transpose;		// manual transpose amount for the layer
-		V_SQL_NOTE_DUR	m_note_dur;
+		V_SQL_TRIG_DUR	m_trig_dur;
 		V_SQL_MIDI_OUT  m_midi_out;
 		byte 			m_midi_channel;		// MIDI channel
 		byte 			m_midi_cc;			// MIDI CC
+		byte 			m_midi_cc_smooth;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
 		V_SQL_CVSHIFT	m_cv_shift;
 		V_SQL_CVGLIDE	m_cv_glide;
@@ -88,14 +89,17 @@ private:
 		byte m_midi_note; 					// last midi note played on channel
 		int m_midi_bend;
 		byte m_midi_vel;
-		byte m_midi_cc_value;
+		long m_midi_cc_value;
+		long m_midi_cc_target;
+		long m_midi_cc_inc;
 		long m_output;						// current output value
 		uint32_t m_next_tick;
 		byte m_last_tick_lsb;
-		uint32_t m_gate_timeout;
-		uint32_t m_step_timeout;
-		uint32_t m_retrig_ms;
-		uint32_t m_retrig_count;
+		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
+		uint32_t m_step_timeout;		// this is the number of ms remaining of the current full step time
+		uint32_t m_retrig_ms;			// this is the number of ms between retriggers
+		uint32_t m_retrig_timeout;		// this is the time remaining until the next retrigger
+		uint32_t m_trig_dur;					// the duration of the current trigger
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -234,11 +238,12 @@ public:
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_PITCH;
 		m_cfg.m_quantize 	= V_SQL_SEQ_QUANTIZE_CHROMATIC;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
-		m_cfg.m_note_dur	= V_SQL_NOTE_DUR_100;
+		m_cfg.m_trig_dur	= V_SQL_NOTE_DUR_8;
 		m_cfg.m_combine_prev= V_SQL_COMBINE_OFF;
 		m_cfg.m_transpose	= 0;
 		m_cfg.m_midi_channel 	= m_id;	// default to midi chans 1-4
 		m_cfg.m_midi_cc = 1;
+		m_cfg.m_midi_cc_smooth = 0;
 		m_cfg.m_enabled = 1;
 		m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 		m_cfg.m_cv_shift = V_SQL_CVSHIFT_NONE;
@@ -285,7 +290,8 @@ public:
 		m_state.m_page_advanced = 0;
 		m_state.m_output = 0;
 		m_state.m_retrig_ms = 0;
-		m_state.m_retrig_count = 0;
+		m_state.m_retrig_timeout = 0;
+		m_state.m_trig_dur = 0;
 	}
 
 	//
@@ -298,9 +304,10 @@ public:
 		case P_SQL_SEQ_MODE: set_mode((V_SQL_SEQ_MODE)value); break;
 		case P_SQL_QUANTIZE: m_cfg.m_quantize = (V_SQL_QUANTIZE)value; break;
 		case P_SQL_STEP_RATE: m_cfg.m_step_rate = (V_SQL_STEP_RATE)value; break;
-		case P_SQL_NOTE_DUR: m_cfg.m_note_dur = (V_SQL_NOTE_DUR)value; break;
+		case P_SQL_TRIG_DUR: m_cfg.m_trig_dur = (V_SQL_TRIG_DUR)value; break;
 		case P_SQL_MIDI_CHAN: m_cfg.m_midi_channel = value; break;
 		case P_SQL_MIDI_CC: m_cfg.m_midi_cc = value; break;
+		case P_SQL_MIDI_CC_SMOOTH: m_cfg.m_midi_cc_smooth = value; break;
 		case P_SQL_CVSCALE: m_cfg.m_cv_scale = (V_SQL_CVSCALE)value; break;
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
@@ -323,9 +330,10 @@ public:
 		case P_SQL_SEQ_MODE: return m_cfg.m_mode;
 		case P_SQL_QUANTIZE: return m_cfg.m_quantize;
 		case P_SQL_STEP_RATE: return m_cfg.m_step_rate;
-		case P_SQL_NOTE_DUR: return m_cfg.m_note_dur;
+		case P_SQL_TRIG_DUR: return m_cfg.m_trig_dur;
 		case P_SQL_MIDI_CHAN: return m_cfg.m_midi_channel;
 		case P_SQL_MIDI_CC: return m_cfg.m_midi_cc;
+		case P_SQL_MIDI_CC_SMOOTH: return m_cfg.m_midi_cc_smooth;
 		case P_SQL_CVSCALE: return m_cfg.m_cv_scale;
 		case P_SQL_CVGLIDE: return m_cfg.m_cv_glide;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
@@ -351,6 +359,7 @@ public:
 		case P_SQL_MIDI_BEND:
 			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE);
 		case P_SQL_MIDI_CC:
+		case P_SQL_MIDI_CC_SMOOTH:
 			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_CC);
 		case P_SQL_MIX: return (m_id!=0);
 		}
@@ -663,34 +672,69 @@ public:
 		}
 	}
 
-	void stop_note(int which) {
+	void silence(byte which) {
 		g_outs.gate(which, COuts::GATE_CLOSED);
 		m_state.m_retrig_ms = 0;
-		m_state.m_retrig_count = 0;
+		m_state.m_retrig_timeout = 0;
 		stop_midi_note();
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms
 	void ms_tick(int which) {
 		if(m_state.m_gate_timeout) {
 			if(!--m_state.m_gate_timeout) {
-				stop_note(which);
+				g_outs.gate(which, COuts::GATE_CLOSED);
+				stop_midi_note();
+
 			}
 		}
-		if(m_state.m_step_timeout) {
-			--m_state.m_step_timeout;
-		}
-		if(m_state.m_retrig_ms) {
-			if(m_state.m_retrig_count) {
-				--m_state.m_retrig_count;
+
+		if(m_state.m_midi_cc_inc) {
+			int value = m_state.m_midi_cc_value>>16;
+			m_state.m_midi_cc_value += m_state.m_midi_cc_inc;
+			if(m_state.m_midi_cc_inc>0) {
+				if(m_state.m_midi_cc_value > m_state.m_midi_cc_target) {
+					m_state.m_midi_cc_value = m_state.m_midi_cc_target;
+					m_state.m_midi_cc_inc = 0;
+				}
 			}
 			else {
-				m_state.m_retrig_count = m_state.m_retrig_ms;
+				if(m_state.m_midi_cc_value < m_state.m_midi_cc_target) {
+					m_state.m_midi_cc_value = m_state.m_midi_cc_target;
+					m_state.m_midi_cc_inc = 0;
+				}
+			}
+			if((m_state.m_midi_cc_value>>16) != value) {
+				g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, m_state.m_midi_cc_value>>16);
+			}
+		}
+
+
+		// is retrigger active on this step?
+		if(m_state.m_retrig_ms) {
+			if(m_state.m_retrig_timeout) {
+				// sill waiting for the next retrig to be due
+				--m_state.m_retrig_timeout;
+			}
+			else {
+				// retrigger the gate
 				g_outs.gate(which, COuts::GATE_TRIG);
+				m_state.m_gate_timeout = m_state.m_trig_dur;
+
+				// retrigger the MIDI note
 				if(m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
 					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
 				}
+
+				// schedule the next retrigger
+				m_state.m_retrig_timeout = m_state.m_retrig_ms;
 			}
+		}
+
+		// one less ms of this step
+		if(m_state.m_step_timeout) {
+			--m_state.m_step_timeout;
 		}
 	}
 
@@ -783,34 +827,31 @@ public:
 		}
 		else if(m_state.m_step_value.get_gate() || m_state.m_step_value.get_retrig()>0) {
 			if(m_state.m_step_value.get_tie()) {
-				m_state.m_gate_timeout = 0; // until the next step
+				m_state.m_trig_dur = 0; // until next step
 			}
 			else {
 				// set the appropriate note duration
-				switch(m_cfg.m_note_dur) {
-//				case V_SQL_NOTE_DUR_OPEN:
-//				case V_SQL_NOTE_DUR_LEGA:
-//					m_state.m_gate_timeout = INFINITE_GATE;	// stay open until the next gate
-//					break;
-				case V_SQL_NOTE_DUR_TRIG:
-					m_state.m_gate_timeout = COuts::TRIG_DURATION; // just a short trigger pulse
+				switch(m_cfg.m_trig_dur) {
+				case V_SQL_NOTE_DUR_16:
+					m_state.m_trig_dur = 0; // until next step
 					break;
-				case V_SQL_NOTE_DUR_100:
-					m_state.m_gate_timeout = 0; // until the next step
+				case V_SQL_NOTE_DUR_1:
+					m_state.m_trig_dur = COuts::TRIG_DURATION; // until next step
 					break;
-				default: // other enumerations have integer values 0-10
-					m_state.m_gate_timeout = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * m_cfg.m_note_dur ) / 10;
+				default: // other enumerations have integer values 0-15
+					m_state.m_trig_dur = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * (1+m_cfg.m_trig_dur)) / 16;
 					break;
 				}
 			}
+			m_state.m_gate_timeout = m_state.m_trig_dur;
 
-			if(m_state.m_step_value.get_retrig() > 0) {
+			if(m_state.m_step_value.get_retrig()) {
 				m_state.m_retrig_ms = ((16-(int)m_state.m_step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
 			}
 			else {
 				m_state.m_retrig_ms = 0;
 			}
-			m_state.m_retrig_count = m_state.m_retrig_ms;
+			m_state.m_retrig_timeout = m_state.m_retrig_ms;
 			g_outs.gate(which, COuts::GATE_TRIG);
 		}
 		else if(m_state.m_step_value.get_tie()) {
@@ -890,9 +931,17 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void process_midi_cc() {
 		byte value = clamp7bit(((m_state.m_output+COuts::SCALING/2)/COuts::SCALING));
-		if(m_state.m_midi_cc_value != value) {
-			m_state.m_midi_cc_value = value;
-			g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, m_state.m_midi_cc_value);
+
+		m_state.m_midi_cc_target = value * COuts::SCALING;
+		if(m_cfg.m_midi_cc_smooth) {
+			m_state.m_midi_cc_target = value * COuts::SCALING;
+			m_state.m_midi_cc_inc = (m_state.m_midi_cc_target - m_state.m_midi_cc_value) / (int)m_state.m_step_timeout;
+		}
+		else {
+			if(m_state.m_midi_cc_value != m_state.m_midi_cc_target) {
+				m_state.m_midi_cc_value = m_state.m_midi_cc_target;
+				g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, value);
+			}
 		}
 	}
 
