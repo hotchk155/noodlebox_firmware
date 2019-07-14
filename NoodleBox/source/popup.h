@@ -50,7 +50,7 @@ public:
 	int m_timeout;
 	CPopup() {
 		m_len = 0;
-		m_align = ALIGN_LEFT;
+		m_align = ALIGN_RIGHT;
 		m_timeout = 0;
 		m_row = 2;
 		m_render = 0;
@@ -152,6 +152,7 @@ public:
 		// octave
 		format_number(note/12-1, 1);
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
@@ -161,6 +162,7 @@ public:
 		}
 		format_number(value, 1);
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
@@ -170,6 +172,7 @@ public:
 		}
 		format_number(value, 10);
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
@@ -180,6 +183,7 @@ public:
 		}
 		format_number(value, 100);
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
@@ -190,6 +194,7 @@ public:
 		}
 		format_number(value, 10);
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
@@ -201,6 +206,7 @@ public:
 			m_text[m_len++] = *sz++;
 		}
 		m_render = 1;
+		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 

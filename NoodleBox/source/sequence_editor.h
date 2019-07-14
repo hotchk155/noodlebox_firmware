@@ -174,14 +174,9 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void show_gate_vel(CSequenceStep& step) {
-		g_popup.text("VEL.");
-		if(!step.get_velocity()) {
-			g_popup.text("--",1);
-		}
-		else {
-			g_popup.num2digits(step.get_velocity(),1);
-		}
+	void show_gate_accent(CSequenceStep& step) {
+		g_popup.text("ACC.");
+		g_popup.text_value("--|LO|ME|HI", step.get_accent(), 1);
 		g_popup.avoid(m_cursor);
 	}
 
@@ -426,7 +421,6 @@ class CSequenceEditor {
 		else {
 			g_popup.text_value(m_cmd_values,m_edit_value);
 		}
-		g_popup.align(CPopup::ALIGN_RIGHT);
 		g_popup.no_hide();
 	}
 
@@ -489,16 +483,20 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void toggle(PARAM_ID param, const char* prompt, const char* values) {
+	void toggle(PARAM_ID param, const char* prompt, const char* values, int num_values = 2) {
 		if(m_edit_param != param) {
 			m_edit_param = param;
 		}
 		else {
-			set(param, !get(param));
+			int value = get(param);
+			if(++value >= num_values) {
+				value = 0;
+			}
+			set(param, value);
 		}
 		m_cmd_prompt = prompt;
 		m_cmd_values = values;
-		m_edit_value = get(param)?1:0;
+		m_edit_value = get(param);
 		command_prompt();
 	}
 
@@ -641,12 +639,10 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT");
-				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				m_edit_value = 0;
 				g_popup.text("HORZ");
-				g_popup.align(CPopup::ALIGN_RIGHT);
 				break;
 			}
 			break;
@@ -677,7 +673,7 @@ class CSequenceEditor {
 				break;
 			case KEY_GATE|KEY2_GATE_VEL:
 				m_gate_view = GATE_VIEW_VELOCITY;
-				show_gate_vel(step);
+				show_gate_accent(step);
 				break;
 			}
 			break;
@@ -697,9 +693,9 @@ class CSequenceEditor {
 				m_gate_view = GATE_VIEW_RETRIG;
 				break;
 			case KEY_GATE|KEY2_GATE_VEL:
-				step.set_velocity(inc_value(what, step.get_velocity(), 0, CSequenceStep::VELOCITY_MAX, 0));
+				step.set_accent(inc_value(what, step.get_accent(), 0, CSequenceStep::ACCENT_MAX, 0));
 				layer.set_step(m_cur_page, m_cursor, step);
-				show_gate_vel(step);
+				show_gate_accent(step);
 				m_gate_view = GATE_VIEW_VELOCITY;
 				break;
 			default:
@@ -866,17 +862,26 @@ class CSequenceEditor {
 			{
 				int page = -1;
 				switch(m_key_combo) {
-				case KEY_LOOP|KEY2_PAGE_A:
+				case KEY_LOOP|KEY2_LOOP_CUE_A:
 					page = 0;
 					break;
-				case KEY_LOOP|KEY2_PAGE_B:
+				case KEY_LOOP|KEY2_LOOP_CUE_B:
 					page = 1;
 					break;
-				case KEY_LOOP|KEY2_PAGE_C:
+				case KEY_LOOP|KEY2_LOOP_CUE_C:
 					page = 2;
 					break;
-				case KEY_LOOP|KEY2_PAGE_D:
+				case KEY_LOOP|KEY2_LOOP_CUE_D:
 					page = 3;
+					break;
+				case KEY_LOOP|KEY2_LOOP_CUE_CURRENT:
+					layer.clear_page_list();
+					layer.add_to_page_list(m_cur_page);
+					g_popup.num2digits(1);
+					break;
+				case KEY_LOOP|KEY2_LOOP_CUE_ALL:
+					layer.clear_page_list();
+					g_popup.text("ALL");
 					break;
 				}
 				if(page>=0) {
@@ -885,7 +890,6 @@ class CSequenceEditor {
 					}
 					if(layer.add_to_page_list(page)) {
 						g_popup.num2digits(layer.get_page_list_count());
-						g_popup.align(CPopup::ALIGN_RIGHT);
 					}
 				}
 				break;
@@ -944,7 +948,7 @@ class CSequenceEditor {
 					m_cur_page = cur_page;
 					layer.prepare_page(m_cur_page);
 					m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
-					if(!layer.get(P_SQL_AUTO_PAGE_ADVANCE)) {
+					if(!layer.get(P_SQL_CUE_MODE)) {
 						layer.set_play_page(m_cur_page);
 					}
 					show_layer_page();
@@ -1016,13 +1020,13 @@ class CSequenceEditor {
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
 			case KEY_FUNC|KEY_FUNC_SCALE_MODE:
-				toggle(P_EDIT_SCALE_GRID, "NOTE:", "CHR|SCA");
+				toggle(P_EDIT_SCALE_GRID, "ROWS:", "CHR|SCA");
 				break;
 			case KEY_FUNC|KEY_FUNC_AUTO_GATE:
 				toggle(P_EDIT_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
 				break;
 			case KEY_FUNC|KEY_FUNC_INTERPOLATE:
-				toggle(P_SQL_INTERPOLATE, "FILL:", "FLA|CUR");
+				toggle(P_SQL_FILL_MODE, "FILL:", "OFF|PAD|INT",3);
 				break;
 			case KEY_FUNC|KEY_FUNC_GRID:
 				toggle(P_EDIT_SHOW_GRID, "GRID:", "HID|SHO");
@@ -1031,7 +1035,7 @@ class CSequenceEditor {
 				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
 				break;
 			case KEY_FUNC|KEY_FUNC_PAGE_ADV:
-				toggle(P_SQL_AUTO_PAGE_ADVANCE, "PAGE:", "FGD|BKG");
+				toggle(P_SQL_CUE_MODE, "PAGE:", "FGD|BKG");
 				break;
 			}
 			break;
@@ -1328,7 +1332,7 @@ public:
 					}
 					break;
 				case GATE_VIEW_VELOCITY:
-					if(!!step.get_velocity()) {
+					if(!!step.get_accent()) {
 						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
 					else if(gate_or_tie){
@@ -1387,7 +1391,7 @@ public:
 
 	void run() {
 		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		if(layer.is_page_advanced() && layer.get_page_list_count()>0) {
+		if(layer.is_page_advanced()) {
 			m_ppi_timeout = PPI_MS;
 		}
 		else if(m_ppi_timeout) {

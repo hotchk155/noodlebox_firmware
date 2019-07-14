@@ -31,7 +31,7 @@ class CSequenceStep {
 		byte m_tie:1;
 		byte m_prob:4;
 		byte m_retrig:4;
-		byte m_velocity:4;
+		byte m_accent:4;
 	} GATE_TYPE;
 
 	typedef struct {
@@ -46,7 +46,7 @@ public:
 		VALUE_MAX = 127,
 		PROB_MAX = 15,
 		RETRIG_MAX = 15,
-		VELOCITY_MAX = 15
+		ACCENT_MAX = 3
 	};
 
 	typedef enum: byte {
@@ -124,14 +124,14 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline byte get_velocity() {
-		return m_gate.m_velocity;
+	inline byte get_accent() {
+		return m_gate.m_accent;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	void set_velocity(byte vel) {
-		ASSERT(vel<=VELOCITY_MAX);
-		m_gate.m_velocity = vel;
+	void set_accent(byte acc) {
+		ASSERT(acc<=ACCENT_MAX);
+		m_gate.m_accent = acc;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////

@@ -98,7 +98,7 @@ private:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void fill(byte value)
+	void pad(byte value)
 	{
 		int i;
 		int first_data_point = -1;
@@ -120,6 +120,16 @@ private:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void zero_fill()
+	{
+		for(int i=0; i<MAX_STEPS; ++i) {
+			if(!m_step[i].is_data_point()) {
+				m_step[i].set_value(0);
+			}
+		}
+	}
+
 public:
 	CSequencePage() :
 		m_loop_from(DEFAULT_LOOP_FROM),
@@ -127,12 +137,17 @@ public:
 		{}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void recalc(byte interpolation, byte default_value) {
-		if(interpolation) {
+	void recalc(V_SQL_FILL_MODE fill_mode, byte default_value) {
+		switch(fill_mode) {
+		case V_SQL_FILL_MODE_PAD:
+			pad(default_value);
+			break;
+		case V_SQL_FILL_MODE_INTERPOLATE:
 			interpolate(default_value);
-		}
-		else {
-			fill(default_value);
+			break;
+		case V_SQL_FILL_MODE_OFF:
+			zero_fill();
+			break;
 		}
 	}
 
@@ -144,17 +159,17 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step, byte interpolate, byte default_value, CSequenceStep::DATA what) {
+	void set_step(byte index, CSequenceStep& step, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
 		m_step[index].copy(step, what);
-		recalc(interpolate, default_value);
+		recalc(fill_mode, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_step(byte index, byte interpolate, byte default_value, CSequenceStep::DATA what) {
+	void clear_step(byte index, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
 		m_step[index].clear(what);
-		recalc(0, default_value);
+		recalc(fill_mode, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -183,14 +198,14 @@ public:
 		for(int i=0; i<MAX_STEPS; ++i) {
 			m_step[i].clear(CSequenceStep::ALL_DATA);
 		}
-		recalc(0, default_value);
+		recalc(V_SQL_FILL_MODE_OFF, default_value);
 		m_loop_from = DEFAULT_LOOP_FROM;
 		m_loop_to = DEFAULT_LOOP_TO;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
-	byte shift_vertical(int dir, CScale *scale, byte interpolate, byte default_value) {
+	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte default_value) {
 		int value[MAX_STEPS];
 		for(int i=0; i<MAX_STEPS; ++i) {
 			if(m_step[i].is_data_point()) {
@@ -217,7 +232,7 @@ public:
 			m_step[i].set_value(value[i]);
 		}
 
-		recalc(interpolate, default_value);
+		recalc(fill_mode, default_value);
 		return 1;
 	}
 

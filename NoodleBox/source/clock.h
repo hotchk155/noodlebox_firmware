@@ -28,19 +28,43 @@ CPulseOut<kGPIO_PORTC, 5> g_clock_out;
 // current BPM or the external MIDI clock. Internal clock is
 // generated based on a once-per-millisecond interrupt
 class CClock {
+public:
+	// Define different musical beat intervals based on
+	// number of 24ppqn ticks
+	enum
+	{
+	  RATE_1    	= 96,
+	  RATE_2D   	= 72,
+	  RATE_2    	= 48,
+	  RATE_4D   	= 36,
+	  RATE_2T   	= 32,
+	  RATE_4    	= 24,
+	  RATE_8D   	= 18,
+	  RATE_4T   	= 16,
+	  RATE_8    	= 12,
+	  RATE_16D  	= 9,
+	  RATE_8T   	= 8,
+	  RATE_16   	= 6,
+	  RATE_16T  	= 4,
+	  RATE_32   	= 3,
+	  RATE_24PPQN	= 1
+	};
 
+
+private:
 	enum {
 		CLOCK_OUT_WIDTH = 15, //ms
 		CLOCK_OUT_WIDTH_24PPQN = 5 //ms
 	};
+
+	static const byte c_clock_in_rate[V_CLOCK_IN_RATE_MAX];
+	static const byte c_clock_out_rate[V_CLOCK_OUT_RATE_MAX];
+
+//TODO alignment of beat clock, pulse clock and seqn
+
 	/////////////////////////////////////////////////////////////////
 	// called on a 24ppqn tick
 	inline void private_on_tick() {
-		static const byte c_out_clock_rate[V_CLOCK_OUT_RATE_MAX] = {
-				  RATE_1,	RATE_2D,	RATE_2,		RATE_4D,	RATE_2T,
-				  RATE_4,	RATE_8D,	RATE_4T,	RATE_8,		RATE_16D,
-				  RATE_8T,  RATE_16,	RATE_16T,	RATE_32,   RATE_24PPQN
-		};
 		if(!m_beat_count) {
 			g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
 		}
@@ -48,7 +72,7 @@ class CClock {
 			m_beat_count = 0;
 		}
 
-		byte out_clock_div = c_out_clock_rate[m_cfg.m_clock_out_rate];
+		byte out_clock_div = c_clock_out_rate[m_cfg.m_clock_out_rate];
 		if(!m_pulse_clock_count) {
 			if(m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PPQN) {
 				g_clock_out.blink(CLOCK_OUT_WIDTH_24PPQN);
@@ -80,50 +104,18 @@ public:
 	}
 
 
-	// Define different musical beat intervals based on
-	// number of 24ppqn ticks
-	enum
-	{
-	  RATE_1    	= 96,
-	  RATE_2D   	= 72,
-	  RATE_2    	= 48,
-	  RATE_4D   	= 36,
-	  RATE_2T   	= 32,
-	  RATE_4    	= 24,
-	  RATE_8D   	= 18,
-	  RATE_4T   	= 16,
-	  RATE_8    	= 12,
-	  RATE_16D  	= 9,
-	  RATE_8T   	= 8,
-	  RATE_16   	= 6,
-	  RATE_16T  	= 4,
-	  RATE_32   	= 3,
-	  RATE_24PPQN	= 1
-	};
 
-	// the actual tick counter, based on a 24ppqn tick and floating point part ticks
-	volatile uint32_t m_ticks;
-	volatile double m_part_tick;
-
-	//int m_ext_clock_rate;		// the number of 24ppqn ticks represented by external clock event
-	volatile uint32_t m_next_ext_tick;	// the number of ticks that have passed when next external clock event received
-
-	float m_bpm;
-	volatile double m_ticks_per_ms;
-	volatile byte m_ms_tick;
-	//uint32_t m_midi_ticks;
-	volatile byte m_beat_count;
-	volatile byte m_pulse_clock_count;
-	//byte m_pulse_clock_div;
-	volatile unsigned int m_ms;
-	volatile uint32_t m_clock_in_ms_last;
-	volatile uint32_t m_clock_in_ticks_now;
-	volatile uint32_t m_clock_in_ticks_next;
-
-	//volatile uint32_t m_ticks_at_next_ext_event;
-	//volatile uint32_t m_ticks_absolute;
-
-	//volatile uint32_t m_ticks_at_next_ext_event;
+	volatile uint32_t m_ticks; 					// whole 24ppqn ticks
+	volatile double m_part_tick;				// fractional 24ppqn ticks
+	volatile double m_ticks_per_ms;				// how many ticks happen each ms
+	volatile byte m_beat_count;					// used to blink the tempo LED
+	volatile byte m_pulse_clock_count;			// used to time pulses on pulse clock counter
+	volatile uint32_t m_clock_in_ms_last;		// m_ms value of the last input pulse
+	volatile uint32_t m_clock_in_ticks_now;		// counter of clock in ticks, which cause incrememnt of m_ticks
+	volatile uint32_t m_clock_in_ticks_next;	//
+	volatile byte m_ms_tick;					// flag set each time 1ms is up
+	volatile unsigned int m_ms;					// ms counter
+	float m_bpm;								// tempo
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Config structure that defines info to store at power off
@@ -157,8 +149,8 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
 		m_cfg.m_source = V_CLOCK_SRC_INTERNAL;
-		m_cfg.m_clock_in_rate = V_CLOCK_IN_RATE_8;
-		m_cfg.m_clock_out_rate = V_CLOCK_OUT_RATE_8;
+		m_cfg.m_clock_in_rate = V_CLOCK_IN_RATE_16;
+		m_cfg.m_clock_out_rate = V_CLOCK_OUT_RATE_16;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -266,8 +258,6 @@ public:
 		m_clock_in_ticks_now = 0;
 		m_clock_in_ticks_next = 0;
 		m_clock_in_ms_last = 0;
-
-
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -333,15 +323,13 @@ public:
 				m_part_tick -= whole_tick;
 				private_on_tick();
 			}
+//TODO - when counter is zero at start need a tick before incrementing it!
 		}
 	}
 
 	inline void ext_clock_isr() {
-		static const byte c_in_clock_rate[V_CLOCK_IN_RATE_MAX] = {
-			RATE_16, RATE_8, RATE_4, RATE_24PPQN
-		};
 		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
-			on_clock_in(c_in_clock_rate[m_cfg.m_clock_in_rate]);
+			on_clock_in(c_clock_in_rate[m_cfg.m_clock_in_rate]);
 		}
 	}
 };
@@ -352,8 +340,16 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+
 // define the clock instance
 CClock g_clock;
+
+const byte CClock::c_clock_in_rate[V_CLOCK_IN_RATE_MAX] = {
+		  RATE_32,	RATE_16,	RATE_8,		RATE_4,	RATE_24PPQN
+};
+const byte CClock::c_clock_out_rate[V_CLOCK_OUT_RATE_MAX] = {
+		  RATE_32,	RATE_16,	RATE_8,		RATE_4,	RATE_24PPQN
+};
 
 
 // ISR for the millisecond timer

@@ -89,6 +89,13 @@
 #define KEY2_CLEAR_PAGE			KEY_B7
 #define KEY2_CLEAR_LAYER		KEY_B8
 
+#define KEY2_LOOP_CUE_A			KEY_B1
+#define KEY2_LOOP_CUE_B			KEY_B2
+#define KEY2_LOOP_CUE_C			KEY_B3
+#define KEY2_LOOP_CUE_D			KEY_B4
+#define KEY2_LOOP_CUE_CURRENT		KEY_B7
+#define KEY2_LOOP_CUE_ALL		KEY_B8
+
 #define KEY2_PAGE_A				KEY_B1
 #define KEY2_PAGE_B				KEY_B2
 #define KEY2_PAGE_C				KEY_B3

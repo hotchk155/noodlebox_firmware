@@ -67,9 +67,9 @@ private:
 		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		byte 			m_loop_per_page :1;
-		int				m_interpolate:1;
+		V_SQL_FILL_MODE	m_fill_mode;
 		int 			m_enabled:1;
-		int 			m_page_advance:1;
+		int 			m_cue_mode:1;
 	} CONFIG;
 
 
@@ -150,10 +150,14 @@ private:
 
 		CSequencePage& page = get_page(page_no);
 		page_switch=0;
-		if(step_no == page.get_loop_to()) {
 
-			if(m_cfg.m_page_advance) { // automatic advance at end of page?
-				if(m_cfg.m_page_list_count) { // has user got a page list?
+		// have we reached end of the current page
+		if(step_no == page.get_loop_to()) {
+			// are we in cue page mode?
+			if(m_cfg.m_cue_mode) {
+
+				// do we have a page list?
+				if(m_cfg.m_page_list_count) {
 					if(page_list_pos < m_cfg.m_page_list_count - 1) {
 						++page_list_pos;
 					}
@@ -168,6 +172,7 @@ private:
 					}
 				}
 				else {
+					// no page list
 					if(page_no < m_cfg.m_max_page_no) {
 						// automatic page advance to the next page
 						++page_no;
@@ -185,7 +190,8 @@ private:
 			step_no = new_page.get_loop_from();
 		}
 		else {
-			if(page.get_loop_to() < page.get_loop_from()) { // run backwards
+			// have not reached end of page yet...
+			if(page.get_loop_to() < page.get_loop_from()) { // running backwards
 				if(--step_no < 0) {
 					step_no = CSequencePage::MAX_STEPS-1;
 				}
@@ -214,7 +220,7 @@ private:
 	void recalc_data_points_all_pages() {
 		for(int i=0; i<MAX_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
-			page.recalc(m_cfg.m_interpolate, get_default_value());
+			page.recalc(m_cfg.m_fill_mode, get_default_value());
 		}
 	}
 
@@ -250,9 +256,9 @@ public:
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_midi_bend = 0;
-		m_cfg.m_interpolate = 0;
+		m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 		m_cfg.m_max_page_no = 0;
-		m_cfg.m_page_advance = 0;
+		m_cfg.m_cue_mode = 0;
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_page_list_count = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
@@ -312,11 +318,11 @@ public:
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
 		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
-		case P_SQL_INTERPOLATE: m_cfg.m_interpolate = value; recalc_data_points_all_pages(); break;
+		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
 		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
 		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
-		case P_SQL_AUTO_PAGE_ADVANCE: m_cfg.m_page_advance = value; break;
+		case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
@@ -338,11 +344,11 @@ public:
 		case P_SQL_CVGLIDE: return m_cfg.m_cv_glide;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
 		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
-		case P_SQL_INTERPOLATE: return m_cfg.m_interpolate;
+		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
 		case P_SQL_SCALE_TYPE: return g_scale.get_type();
 		case P_SQL_SCALE_ROOT: return g_scale.get_root();
 		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
-		case P_SQL_AUTO_PAGE_ADVANCE: return m_cfg.m_page_advance;
+		case P_SQL_CUE_MODE: return m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
@@ -378,18 +384,18 @@ public:
 		switch (value) {
 		case V_SQL_SEQ_MODE_PITCH:
 			m_state.m_view = VIEW_TYPE::VIEW_PITCH;
-			m_cfg.m_interpolate = 0;
+			m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 			m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 			break;
 		case V_SQL_SEQ_MODE_OFFSET:
 			m_state.m_view = VIEW_TYPE::VIEW_PITCH_OFFSET;
 			m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
-			m_cfg.m_interpolate = 0;
+			m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 			break;
 		case V_SQL_SEQ_MODE_MOD:
 			m_state.m_view = VIEW_TYPE::VIEW_MODULATION;
 			m_cfg.m_cv_scale = V_SQL_CVSCALE_5V;
-			m_cfg.m_interpolate = 1;
+			m_cfg.m_fill_mode = V_SQL_FILL_MODE_INTERPOLATE;
 			break;
 		}
 		m_cfg.m_mode = value;
@@ -410,13 +416,13 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
 		CSequencePage& page = get_page(page_no);
-		page.set_step(index, step, m_cfg.m_interpolate, get_default_value(), what);
+		page.set_step(index, step, m_cfg.m_fill_mode, get_default_value(), what);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte page_no, byte index, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
 		CSequencePage& page = get_page(page_no);
-		page.clear_step(index, m_cfg.m_interpolate, get_default_value(), what);
+		page.clear_step(index, m_cfg.m_fill_mode, get_default_value(), what);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -456,7 +462,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	byte shift_vertical(byte page_no, int dir, int scaled) {
 		CSequencePage& page = get_page(page_no);
-		return page.shift_vertical(dir, scaled? &g_scale : NULL, m_cfg.m_interpolate, get_default_value());
+		return page.shift_vertical(dir, scaled? &g_scale : NULL, m_cfg.m_fill_mode, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -894,12 +900,23 @@ public:
 			}
 
 			// work out the velocity
-			m_state.m_midi_vel = m_cfg.m_midi_vel;
-			if(m_state.m_step_value.get_velocity()) {
-				m_state.m_midi_vel = (m_state.m_midi_vel * m_state.m_step_value.get_velocity())/10; // step velocity is 1-15. Allow up to 1.5 * base velocity
-				if(m_state.m_midi_vel > 127) {
-					m_state.m_midi_vel = 127;
-				}
+			int vel = m_cfg.m_midi_vel;
+			switch(m_state.m_step_value.get_accent()) {
+			case 1:
+				vel = vel * 1.25;
+				break;
+			case 2:
+				vel = vel * 1.5;
+				break;
+			case 3:
+				vel = vel * 2;
+				break;
+			}
+			if(vel > 127) {
+				m_state.m_midi_vel = 127;
+			}
+			else {
+				m_state.m_midi_vel = vel;
 			}
 
 			// check if we need to ties notes together

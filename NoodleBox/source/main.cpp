@@ -131,7 +131,7 @@ void fire_event(int event, uint32_t param) {
 			}
 			break;
 		case KEY_RUN:
-			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_RESTART, 0);
+			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
 			break;
 		default:
 			dispatch_event(event, param);
@@ -143,12 +143,10 @@ void fire_event(int event, uint32_t param) {
 		g_sequence.stop();
 		g_outs.close_all_gates();
 		g_popup.text("STOP");
-		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
 	///////////////////////////////////
 	case EV_SEQ_RESTART:
 		g_popup.text("RST");
-		g_popup.align(CPopup::ALIGN_RIGHT);
 		g_clock.on_restart();
 		g_sequence.reset();
 		g_sequence.start();
@@ -157,7 +155,6 @@ void fire_event(int event, uint32_t param) {
 	case EV_SEQ_START:
 		g_sequence.start();
 		g_popup.text("RUN");
-		g_popup.align(CPopup::ALIGN_RIGHT);
 		break;
 	///////////////////////////////////
 	case EV_CLOCK_RESET:
