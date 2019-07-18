@@ -23,6 +23,17 @@
 	#define ASSERT(e)
 #endif
 
+#if DEBUGcc
+	#include "stdio.h"
+	#define DBGLOG0(s) printf("%s\r\n",s)
+	#define DBGLOG1(s,t) printf(s,t)
+	#define DBGLOG2(s,t,u) printf(s,t,u)
+#else
+	#define DBGLOG0(s)
+	#define DBGLOG1(s,t)
+	#define DBGLOG2(s,t,u)
+#endif
+
 enum {
 	EV_NONE,
 	EV_ENCODER,
@@ -39,6 +50,9 @@ enum {
 #define I2C_ADDR_DAC 	0b1100000
 #define I2C_ADDR_EEPROM	0b1010000
 
+#define PATCH_SLOT_SIZE		2048
+#define PATCH_DATA_COOKIE1	0x12
+#define PATCH_DATA_COOKIE2	0x34
 
 typedef unsigned char byte;
 

@@ -27,9 +27,12 @@ public:
 		MAX_STEPS = 32,					// number of steps in page
 	};
 private:
-	CSequenceStep m_step[MAX_STEPS];	// data value and gate for each step
-	byte 			m_loop_from;		// loop start point
-	byte 			m_loop_to;			// loop end point
+	typedef struct {
+		CSequenceStep 	m_step[MAX_STEPS];	// data value and gate for each step
+		byte 			m_loop_from;		// loop start point
+		byte 			m_loop_to;			// loop end point
+	} CONFIG;
+	CONFIG m_cfg;
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Create interpolated points between two waypoints
@@ -44,15 +47,15 @@ private:
 		if(num_points > 0) {
 
 			// starting point and gradient
-			double value =  m_step[pos].get_value();
-			double gradient = (m_step[end].get_value() - value)/num_points;
+			double value =  m_cfg.m_step[pos].get_value();
+			double gradient = (m_cfg.m_step[end].get_value() - value)/num_points;
 			while(--num_points > 0) {
 				// wrap around the column
 				if(++pos >= MAX_STEPS) {
 					pos = 0;
 				}
 				value += gradient;
-				m_step[pos].set_value((byte)(value+0.5));
+				m_cfg.m_step[pos].set_value((byte)(value+0.5));
 			}
 		}
 	}
@@ -66,7 +69,7 @@ private:
 		int first_waypoint = -1;
 		int prev_waypoint = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is_data_point()) {
 				if(prev_waypoint < 0) {
 					first_waypoint = i;
 				}
@@ -80,14 +83,14 @@ private:
 		if(first_waypoint < 0) {
 			// no waypoints defined
 			for(i=0; i<MAX_STEPS; ++i) {
-				m_step[i].set_value(value);
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 		else if(prev_waypoint == first_waypoint) {
 			// only one waypoint defined
 			for(i=0; i<MAX_STEPS; ++i) {
 				if(i!=prev_waypoint) {
-					m_step[i].set_value(m_step[first_waypoint].get_value());
+					m_cfg.m_step[i].set_value(m_cfg.m_step[first_waypoint].get_value());
 				}
 			}
 		}
@@ -103,19 +106,19 @@ private:
 		int i;
 		int first_data_point = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is_data_point()) {
 				if(first_data_point < 0) {
 					first_data_point = i;
 				}
-				value = m_step[i].get_value();
+				value = m_cfg.m_step[i].get_value();
 			}
 			else {
-				m_step[i].set_value(value);
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 		if(first_data_point >= 0) {
 			for(i=0; i<first_data_point; ++i) {
-				m_step[i].set_value(value);
+				m_cfg.m_step[i].set_value(value);
 			}
 		}
 	}
@@ -124,17 +127,17 @@ private:
 	void zero_fill()
 	{
 		for(int i=0; i<MAX_STEPS; ++i) {
-			if(!m_step[i].is_data_point()) {
-				m_step[i].set_value(0);
+			if(!m_cfg.m_step[i].is_data_point()) {
+				m_cfg.m_step[i].set_value(0);
 			}
 		}
 	}
 
 public:
-	CSequencePage() :
-		m_loop_from(DEFAULT_LOOP_FROM),
-		m_loop_to(DEFAULT_LOOP_TO)
-		{}
+	CSequencePage() {
+		m_cfg.m_loop_from = DEFAULT_LOOP_FROM;
+		m_cfg.m_loop_to = DEFAULT_LOOP_TO;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void recalc(V_SQL_FILL_MODE fill_mode, byte default_value) {
@@ -154,53 +157,53 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	inline CSequenceStep get_step(int index) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		return m_step[index];
+		return m_cfg.m_step[index];
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte index, CSequenceStep& step, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_step[index].copy(step, what);
+		m_cfg.m_step[index].copy(step, what);
 		recalc(fill_mode, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte index, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_step[index].clear(what);
+		m_cfg.m_step[index].clear(what);
 		recalc(fill_mode, default_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline void set_loop_from(byte index) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_loop_from = index;
+		m_cfg.m_loop_from = index;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline byte get_loop_from() {
-		return m_loop_from;
+		return m_cfg.m_loop_from;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline void set_loop_to(byte index) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-		m_loop_to = index;
+		m_cfg.m_loop_to = index;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline byte get_loop_to() {
-		return m_loop_to;
+		return m_cfg.m_loop_to;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void clear(byte default_value) {
 		for(int i=0; i<MAX_STEPS; ++i) {
-			m_step[i].clear(CSequenceStep::ALL_DATA);
+			m_cfg.m_step[i].clear(CSequenceStep::ALL_DATA);
 		}
 		recalc(V_SQL_FILL_MODE_OFF, default_value);
-		m_loop_from = DEFAULT_LOOP_FROM;
-		m_loop_to = DEFAULT_LOOP_TO;
+		m_cfg.m_loop_from = DEFAULT_LOOP_FROM;
+		m_cfg.m_loop_to = DEFAULT_LOOP_TO;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -208,8 +211,8 @@ public:
 	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte default_value) {
 		int value[MAX_STEPS];
 		for(int i=0; i<MAX_STEPS; ++i) {
-			if(m_step[i].is_data_point()) {
-				value[i] = m_step[i].get_value();
+			if(m_cfg.m_step[i].is_data_point()) {
+				value[i] = m_cfg.m_step[i].get_value();
 				if(scale) {
 					if(!scale->inc_note_in_scale(value[i],dir)) {
 						return 0;
@@ -229,7 +232,7 @@ public:
 
 		// perform the actual shift of all the data points
 		for(int i = 0; i<MAX_STEPS; ++i) {
-			m_step[i].set_value(value[i]);
+			m_cfg.m_step[i].set_value(value[i]);
 		}
 
 		recalc(fill_mode, default_value);
@@ -242,19 +245,41 @@ public:
 	void shift_horizontal(int dir) {
 		CSequenceStep step;
 		if(dir<0) {
-			step = m_step[0];
+			step = m_cfg.m_step[0];
 			for(int i = 0; i<MAX_STEPS-1; ++i) {
-				m_step[i] = m_step[i+1];
+				m_cfg.m_step[i] = m_cfg.m_step[i+1];
 			}
-			m_step[MAX_STEPS-1] = step;
+			m_cfg.m_step[MAX_STEPS-1] = step;
 		}
 		else {
-			step = m_step[MAX_STEPS-1];
+			step = m_cfg.m_step[MAX_STEPS-1];
 			for(int i = MAX_STEPS-1; i>0; --i) {
-				m_step[i] = m_step[i-1];
+				m_cfg.m_step[i] = m_cfg.m_step[i-1];
 			}
-			m_step[0] = step;
+			m_cfg.m_step[0] = step;
 		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void init_state() {
+
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	static int get_cfg_size() {
+		return sizeof(CONFIG);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void get_cfg(byte **dest) {
+		memcpy((*dest), &m_cfg, sizeof m_cfg);
+		(*dest) += sizeof m_cfg;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void set_cfg(byte **src) {
+		memcpy(&m_cfg, (*src), sizeof m_cfg);
+		(*src) += sizeof m_cfg;
 	}
 
 };

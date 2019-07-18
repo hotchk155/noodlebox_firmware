@@ -109,13 +109,21 @@
 #define KEY2_LAYER_4			KEY_B4
 #define KEY2_LAYER_MUTE			KEY_B7
 
-#define KEY_FUNC_SCALE_MODE		KEY_B1
-#define KEY_FUNC_AUTO_GATE		KEY_B2
-#define KEY_FUNC_INTERPOLATE	KEY_B3
-#define KEY_FUNC_GRID			KEY_B4
-#define KEY_FUNC_LOOP_MODE		KEY_B6
-#define KEY_FUNC_PAGE_ADV		KEY_B7
+#define KEY2_FUNC_SCALE_MODE	KEY_B1
+#define KEY2_FUNC_AUTO_GATE		KEY_B2
+#define KEY2_FUNC_INTERPOLATE	KEY_B3
+#define KEY2_FUNC_GRID			KEY_B4
+#define KEY2_FUNC_LOOP_MODE		KEY_B6
+#define KEY2_FUNC_PAGE_ADV		KEY_B7
 
+#define KEY2_MEMO_1				KEY_B1
+#define KEY2_MEMO_2				KEY_B2
+#define KEY2_MEMO_3				KEY_B3
+#define KEY2_MEMO_4				KEY_B4
+#define KEY2_MEMO_5				KEY_B5
+#define KEY2_MEMO_6				KEY_B6
+#define KEY2_MEMO_7				KEY_B7
+#define KEY2_MEMO_8				KEY_B8
 
 
 // debounce times (ms)
@@ -412,29 +420,6 @@ public:
 			fire_event(EV_KEY_PRESS, m_shift|m_key);
 			m_button_hold_timeout = LONG_PRESS_TIME;
 		}
-
-		/*
-		m_button_hold_timeout = 0;
-		if(key & (KEY_CV|KEY_MENU)) { // a shift key pressed
-			if(!m_key) {	// only valid if pressed when no other keys held
-				if(m_shift) {
-					m_key = key;
-				}
-				else {
-					m_shift = key;
-				}
-				fire_event(EV_KEY_PRESS, m_shift|m_key);
-				m_button_hold_timeout = LONG_PRESS_TIME;
-			}
-		}
-		else {
-			if(m_key == 0) { // only valid if it is first non-shift key pressed
-				m_key = key;
-				fire_event(EV_KEY_PRESS, m_shift|m_key);
-				m_button_hold_timeout = LONG_PRESS_TIME;
-			}
-		}
-		*/
 	}
 	void key_up(uint32_t key) {
 		if(key == m_shift) { // has the current shift key been released?
@@ -453,6 +438,11 @@ public:
 			m_key = 0;
 		}
 		m_button_hold_timeout = 0;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	byte is_key_down(uint32_t key) {
+		return !!(m_key_state & key);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -511,6 +501,11 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////
 	inline void clear() {
 		memset((byte*)m_render_buf, 0, sizeof m_render_buf);
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	void bitmap(const uint32_t *src) {
+		memcpy((byte*)m_render_buf, (byte*)src, 16*sizeof(uint32_t));
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////

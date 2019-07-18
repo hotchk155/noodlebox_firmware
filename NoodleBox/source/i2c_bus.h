@@ -23,35 +23,31 @@ void i2c_master_callback(I2C_Type *base, i2c_master_handle_t *handle, status_t s
 class CI2CBus{
 
 public:
+	///////////////////////////////////////////////////////////////////////////////////
+	// Users of the I2C bus provide all the required transaction info in one of these
+	// transaction structures
 	typedef struct {
-		byte addr;				// i2c address of device
-		uint16_t location;		// "subaddress" (e.g. EEPROM address)
-		byte location_size;		// size of sub address
-		byte *data;				// pointer to data buffer
-		int data_len;			// amount of data in the buffer
-		status_t status;		// status of the transaction
-		byte pending;
+		volatile byte addr;				// i2c address of device
+		volatile uint16_t location;		// "subaddress" (e.g. EEPROM address)
+		volatile byte location_size;		// size of sub address
+		volatile byte *data;				// pointer to data buffer
+		volatile int data_len;			// amount of data in the buffer
+		volatile status_t status;		// status of the transaction
+		volatile byte pending;
 	} TRANSACTION;
 private:
-//	enum {
-	//	BUFFER_SIZE = 100
-		//DAC_ADDRESS = 0b1100000,
-		//EEPROM_ADDRESS = 0b1010000
-	//};
 	i2c_master_handle_t m_handle;
 	i2c_master_transfer_t m_xfer;
-	//volatile byte m_busy;
 	volatile TRANSACTION *m_txn;
-	//volatile status_t m_status;
-	//byte m_buf[BUFFER_SIZE];
-	//size_t m_len;
 public:
 
 
+	///////////////////////////////////////////////////////////////////////////////////
 	CI2CBus() :
-		m_txn(NULL)
-	{
+		m_txn(NULL)	{
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////
 	void init() {
 		i2c_master_config_t masterConfig;
 		I2C_MasterGetDefaultConfig(&masterConfig);
@@ -60,66 +56,71 @@ public:
 
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////
+	// poll to check if the I2C bus is busy
 	inline byte busy() {
 		return !!m_txn;
 	}
 
-	//inline byte transaction() {
-		//return m_transaction;
-	//}
-	//void wait() {
-		//while(s_busy);
-	//}
-
-	//	void transmit(byte addr, uint16_t subaddress, byte subaddressSize, byte *buf, int len) {
+	///////////////////////////////////////////////////////////////////////////////////
+	// Request a transmit transaction. Returns zero if the I2C bus is busy
 	byte transmit(volatile TRANSACTION *txn) {
+		//DBGLOG0("+transmit");
 		if(!m_txn) {
 			m_xfer.slaveAddress = txn->addr;
 			m_xfer.direction = kI2C_Write;
 			m_xfer.subaddress = txn->location;
 			m_xfer.subaddressSize = txn->location_size;
-			m_xfer.data = txn->data;
+			m_xfer.data = (byte*)txn->data;
 			m_xfer.dataSize = txn->data_len;
 			m_xfer.flags = kI2C_TransferDefaultFlag;
 			I2C_MasterTransferCreateHandle(I2C0, &m_handle, i2c_master_callback, NULL);
 			m_txn = txn;
 			m_txn->pending = 1;
 			I2C_MasterTransferNonBlocking(I2C0, &m_handle, &m_xfer);
+			DBGLOG0("-transmit : started");
 			return 1;
 		}
 		else {
+			DBGLOG0("-transmit : busy");
 			return 0;
 		}
 	}
 
 
+	///////////////////////////////////////////////////////////////////////////////////
+	// Request a recieve transaction. Returns zero if the I2C bus is busy
 	byte receive(volatile TRANSACTION *txn) {
-//	void receive(byte addr, uint16_t subaddress, byte subaddressSize, byte *data, int size) {
+		DBGLOG0("+receive");
 		if(!m_txn) {
 			m_xfer.slaveAddress = txn->addr;
 			m_xfer.direction = kI2C_Read;
 			m_xfer.subaddress = txn->location;
 			m_xfer.subaddressSize = txn->location_size;
-			m_xfer.data = txn->data;
+			m_xfer.data = (byte*)txn->data;
 			m_xfer.dataSize = txn->data_len;
 			m_xfer.flags = kI2C_TransferDefaultFlag;
 			I2C_MasterTransferCreateHandle(I2C0, &m_handle, i2c_master_callback, NULL);
 			m_txn = txn;
 			m_txn->pending = 1;
 			I2C_MasterTransferNonBlocking(I2C0, &m_handle, &m_xfer);
+			DBGLOG0("-receive started");
 			return 1;
 		}
 		else {
+			DBGLOG0("-receive busy");
 			return 0;
 		}
 	}
 
 	inline void on_txn_complete(I2C_Type *base, i2c_master_handle_t *handle, status_t status, void *userData) {
+		DBGLOG0("on_txn_complete");
 		if(m_txn) {
 			m_txn->status = status;
 			m_txn->data_len = m_xfer.dataSize;
 			m_txn->pending = 0;
 			m_txn = NULL;
+			DBGLOG0("on_txn_complete done");
 		}
 	}
 

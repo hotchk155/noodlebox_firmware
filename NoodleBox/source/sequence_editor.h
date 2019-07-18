@@ -49,7 +49,8 @@ class CSequenceEditor {
 		CMD_CLEAR_PAGE,
 		CMD_CLEAR_LAYER,
 		CMD_CLONE_PAGE,
-		CMD_CLONE_LAYER
+		CMD_CLONE_LAYER,
+		CMD_MEMORY
 	} COMMAND;
 
 	enum {
@@ -105,7 +106,7 @@ class CSequenceEditor {
 	//byte m_confirm_pending;
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
-
+	byte m_memo_slot;
 	byte m_ppi_timeout;			// play page indicator timeout
 	//
 	// PRIVATE METHODS
@@ -134,6 +135,7 @@ class CSequenceEditor {
 		m_cmd_values = NULL;
 		m_num_values = 0;
 		m_edit_param = P_NONE;
+		m_memo_slot = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -197,6 +199,15 @@ class CSequenceEditor {
 		return text;
 	}
 	///////////////////////////////////////////////////////////////////////////////
+	const char *get_memo_slot() {
+		static char text[4];
+		text[0] = 'M' ;
+		text[1] = '0' + m_memo_slot;
+		text[2] = ':';
+		text[3] = '\0';
+		return text;
+	}
+	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
 		g_popup.text(get_layer_page());
 		if(!g_sequence.get_layer(m_cur_layer).get_enabled()) {
@@ -220,7 +231,7 @@ class CSequenceEditor {
 		switch (layer.get_view()) {
 		case CSequenceLayer::VIEW_PITCH:
 			if(m_cfg.m_scaled_pitch) {
-				notes_per_octave = layer.get_scale().get_notes_per_octave();	// e.g. 7
+				notes_per_octave = CScale::instance().get_notes_per_octave();	// e.g. 7
 				n = layer.get_scroll_ofs() + 15; // note at top row of screen
 				n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
 				row = 12 - n + layer.get_scroll_ofs(); // now take scroll offset into account
@@ -259,7 +270,7 @@ class CSequenceEditor {
 	void set_scroll_for(CSequenceLayer& layer, int value, int margin = SCROLL_MARGIN) {
 
 		if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
-			value = g_scale.note_to_index(value);
+			value = CScale::instance().note_to_index(value);
 		}
 
 		int scroll_ofs = layer.get_scroll_ofs();
@@ -309,10 +320,10 @@ class CSequenceEditor {
 			break;
 		case CSequenceLayer::VIEW_PITCH:
 			if(m_cfg.m_scaled_pitch && !fine) {
-				value = g_scale.note_to_index(value);
+				value = CScale::instance().note_to_index(value);
 				value += delta;
-				value = g_scale.index_to_note(value);
-				max_value = g_scale.max_index();
+				value = CScale::instance().index_to_note(value);
+				max_value = CScale::instance().max_index();
 				break;
 			} // else fall thru
 		case CSequenceLayer::VIEW_PITCH_OFFSET:
@@ -448,6 +459,12 @@ class CSequenceEditor {
 			m_cmd_prompt = get_layer();
 			m_cmd_values = ">??|>L1|>L2|>L3|>L4";
 			break;
+		case CMD_MEMORY:
+			m_edit_value = 1;
+			m_num_values = 3;
+			m_cmd_prompt = get_memo_slot();
+			m_cmd_values = "EXIT|LOAD|SAVE";
+			break;
 		}
 		command_prompt();
 	}
@@ -546,7 +563,13 @@ class CSequenceEditor {
 				}
 			}
 			break;
-
+		case CMD_MEMORY:
+			if(value == 1) {
+				g_sequence.load_patch(m_memo_slot);
+			}
+			else if(value == 2) {
+				g_sequence.save_patch(m_memo_slot);
+			}
 		}
 		return 0;
 	}
@@ -921,7 +944,7 @@ class CSequenceEditor {
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			if(m_encoder_moved) {
-				encoder_action(what, m_edit_value, 0, CSequenceLayer::MAX_PAGES-1, 0);
+				encoder_action(what, m_edit_value, 0, CSequenceLayer::NUM_PAGES-1, 0);
 			}
 			show_page_list(m_edit_value);
 			break;
@@ -1019,22 +1042,22 @@ class CSequenceEditor {
 			break;
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
-			case KEY_FUNC|KEY_FUNC_SCALE_MODE:
+			case KEY_FUNC|KEY2_FUNC_SCALE_MODE:
 				toggle(P_EDIT_SCALE_GRID, "ROWS:", "CHR|SCA");
 				break;
-			case KEY_FUNC|KEY_FUNC_AUTO_GATE:
+			case KEY_FUNC|KEY2_FUNC_AUTO_GATE:
 				toggle(P_EDIT_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
 				break;
-			case KEY_FUNC|KEY_FUNC_INTERPOLATE:
+			case KEY_FUNC|KEY2_FUNC_INTERPOLATE:
 				toggle(P_SQL_FILL_MODE, "FILL:", "OFF|PAD|INT",3);
 				break;
-			case KEY_FUNC|KEY_FUNC_GRID:
+			case KEY_FUNC|KEY2_FUNC_GRID:
 				toggle(P_EDIT_SHOW_GRID, "GRID:", "HID|SHO");
 				break;
-			case KEY_FUNC|KEY_FUNC_LOOP_MODE:
+			case KEY_FUNC|KEY2_FUNC_LOOP_MODE:
 				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
 				break;
-			case KEY_FUNC|KEY_FUNC_PAGE_ADV:
+			case KEY_FUNC|KEY2_FUNC_PAGE_ADV:
 				toggle(P_SQL_CUE_MODE, "PAGE:", "FGD|BKG");
 				break;
 			}
@@ -1045,6 +1068,30 @@ class CSequenceEditor {
 			break;
 		}
 	}
+	///////////////////////////////////////////////////////////////////////////////
+	void memo_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+		case ACTION_KEY_COMBO:
+			m_memo_slot = 0;
+			switch(m_key_combo) {
+			case KEY_MEMO|KEY2_MEMO_1: m_memo_slot = 1; break;
+			case KEY_MEMO|KEY2_MEMO_2: m_memo_slot = 2; break;
+			case KEY_MEMO|KEY2_MEMO_3: m_memo_slot = 3; break;
+			case KEY_MEMO|KEY2_MEMO_4: m_memo_slot = 4; break;
+			case KEY_MEMO|KEY2_MEMO_5: m_memo_slot = 5; break;
+			case KEY_MEMO|KEY2_MEMO_6: m_memo_slot = 6; break;
+			case KEY_MEMO|KEY2_MEMO_7: m_memo_slot = 7; break;
+			case KEY_MEMO|KEY2_MEMO_8: m_memo_slot = 8; break;
+			}
+			if(m_memo_slot) {
+				command_mode(CMD_MEMORY);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// function to dispatch an action to the correct handler based on which
@@ -1078,6 +1125,9 @@ class CSequenceEditor {
 				break;
 			case KEY_FUNC:
 				func_action(layer, what);
+				break;
+			case KEY_MEMO:
+				memo_action(layer, what);
 				break;
 			}
 		}
@@ -1274,7 +1324,7 @@ public:
 			}
 			else {
 				if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
-					n = layer.get_scale().note_to_index(n);
+					n = CScale::instance().note_to_index(n);
 				}
 				n = 12 - n + layer.get_scroll_ofs();
 			}
@@ -1398,6 +1448,20 @@ public:
 			--m_ppi_timeout;
 		}
 	}
+/*
+	int get_cfg(byte *dest, int size) {
+		int len = sizeof(CONFIG);
+		ASSERT(size >= len);
+		memcpy(dest, &m_cfg, len);
+		return len;
+	}
+	void set_cfg(byte *src, int size) {
+		int len = sizeof(CONFIG);
+		ASSERT(size >= len);
+		memcpy(&m_cfg, src, len);
+		return;
+	}*/
+
 };
 CSequenceEditor g_sequence_editor;
 

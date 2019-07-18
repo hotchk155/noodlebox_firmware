@@ -58,7 +58,9 @@
 #include "ui_driver.h"
 #include "leds.h"
 #include "clock.h"
+#include "popup.h"
 #include "i2c_bus.h"
+#include "storage.h"
 #include "midi.h"
 #include "scale.h"
 #include "outs.h"
@@ -66,15 +68,30 @@
 #include "sequence_page.h"
 #include "sequence_layer.h"
 #include "sequence.h"
-#include "popup.h"
 #include "sequence_editor.h"
 #include "params.h"
 #include "menu.h"
 #include "selector.h"
-#include "storage.h"
 
 
-
+const uint32_t title_screen[] = {
+	(uint32_t)0x1C63390C,
+	(uint32_t)0x2294A512,
+	(uint32_t)0x4294A490,
+	(uint32_t)0x2294951C,
+	(uint32_t)0x22949510,
+	(uint32_t)0x4452A516,
+	(uint32_t)0x4461B9C8,
+	(uint32_t)0x0,
+	(uint32_t)0x618800,
+	(uint32_t)0x596504,
+	(uint32_t)0x3049220A,
+	(uint32_t)0x4871220A,
+	(uint32_t)0x40492502,
+	(uint32_t)0x21452942,
+	(uint32_t)0x1E7CC93C,
+	(uint32_t)0x0
+};
 
 
 
@@ -167,6 +184,9 @@ void fire_event(int event, uint32_t param) {
 	}
 }
 
+
+
+
 /*
 void fire_note(byte midi_note, byte midi_vel) {
 	g_midi.send_note(0, midi_note, midi_vel);
@@ -214,21 +234,31 @@ int main(void) {
     BOARD_InitBootPeripherals();
 
     g_clock.init();
-    g_clock.wait_ms(500);
+    g_ui.init();
+    for(int i=15; i>=0; --i) {
+        g_ui.lock_for_update();
+        for(int j=0; j<16; ++j) {
+        	g_ui.raster(j) = title_screen[j];
+        	if(j>=i) {
+        		g_ui.hilite(j) = title_screen[j];
+        	}
+        	else {
+        		g_ui.hilite(j) = 0;
+        	}
+        }
+        g_ui.unlock_for_update();
+        g_clock.wait_ms(80);
+    }
     PowerControl.set(1);
-
     g_i2c_bus.init();
     g_midi.init();
-
-    //g_storage.test();
-
-    //test();
-
-
-    g_ui.init();
-    //g_sequencer.m_layers[0].test();
-
     g_sequence.init();
+    if(!g_ui.is_key_down(KEY_CV)) {
+        g_sequence.load_patch(0);
+    }
+
+
+
 
     //byte i2c_priority = 0;
     while(1) {
@@ -260,7 +290,7 @@ int main(void) {
 			g_ui.unlock_for_update();
 
     		if(!OffSwitch.get()) {
-    			PowerControl.set(0);
+    			break;
     		}
 
     		g_cv_led.run();
@@ -286,5 +316,7 @@ g_outs.run_i2c();
     		i2c_priority = !i2c_priority;
     	}*/
     }
+    g_sequence.save_patch(0);
+	PowerControl.set(0);
     return 0 ;
 }

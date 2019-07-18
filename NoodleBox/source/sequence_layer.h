@@ -29,7 +29,7 @@ public:
 
 	enum {
 		OFFSET_ZERO = 64,		// step value for zero transpose offset
-		MAX_PAGES = 4					// number of pages
+		NUM_PAGES = 4					// number of pages
 	};
 
 private:
@@ -47,7 +47,6 @@ private:
 
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
-		CSequencePage 	m_page[MAX_PAGES];	// sequencer page
 		byte 			m_page_list[MAX_PAGE_LIST];
 		byte			m_page_list_count;
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
@@ -66,11 +65,12 @@ private:
 		byte 			m_midi_vel;
 		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
-		byte 			m_loop_per_page :1;
 		V_SQL_FILL_MODE	m_fill_mode;
+		int 			m_loop_per_page:1;
 		int 			m_enabled:1;
 		int 			m_cue_mode:1;
 	} CONFIG;
+	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
 
 
@@ -127,8 +127,8 @@ private:
 	///////////////////////////////////////////////////////////////////////////////
 	// accessor for a page
 	inline CSequencePage& get_page(byte page_no) {
-		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
-		return m_cfg.m_page[page_no];
+		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
+		return m_page[page_no];
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -137,7 +137,7 @@ private:
 			case V_SQL_SEQ_MODE_OFFSET:
 				return OFFSET_ZERO;
 			case V_SQL_SEQ_MODE_PITCH:
-				return g_scale.default_note();
+				return CScale::instance().default_note();
 			case V_SQL_SEQ_MODE_MOD:
 			default:
 				return 0;
@@ -218,7 +218,7 @@ private:
 
 
 	void recalc_data_points_all_pages() {
-		for(int i=0; i<MAX_PAGES; ++i) {
+		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
 			page.recalc(m_cfg.m_fill_mode, get_default_value());
 		}
@@ -226,16 +226,15 @@ private:
 
 
 public:
+
+
 	///////////////////////////////////////////////////////////////////////////////
 	void init(byte id) {
 		m_id = id;
 		init_config();
 		init_state();
 	}
-	///////////////////////////////////////////////////////////////////////////////
-	inline CScale& get_scale() {
-		return g_scale;
-	}
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Assign valid default values to the sequence layer configuration (i.e.
@@ -278,6 +277,10 @@ public:
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_view = VIEW_PITCH;
 		m_state.m_page_list_pos = 0;
+
+		for(int i=0; i<NUM_PAGES; ++i) {
+			m_page[i].init_state();
+		}
 		reset();
 	}
 
@@ -319,8 +322,8 @@ public:
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
 		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
-		case P_SQL_SCALE_TYPE: g_scale.build((V_SQL_SCALE_TYPE)value, g_scale.get_root()); break;
-		case P_SQL_SCALE_ROOT: g_scale.build(g_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
+		case P_SQL_SCALE_TYPE: CScale::instance().set((V_SQL_SCALE_TYPE)value, CScale::instance().get_root()); break;
+		case P_SQL_SCALE_ROOT: CScale::instance().set(CScale::instance().get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
@@ -345,8 +348,8 @@ public:
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
 		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
 		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
-		case P_SQL_SCALE_TYPE: return g_scale.get_type();
-		case P_SQL_SCALE_ROOT: return g_scale.get_root();
+		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
+		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
 		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
 		case P_SQL_CUE_MODE: return m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
@@ -433,19 +436,19 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void get_page_content(byte page_no, CSequencePage* page) {
-		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
-		*page = m_cfg.m_page[page_no];
+		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
+		*page = m_page[page_no];
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_page_content(byte page_no, CSequencePage* page) {
-		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
-		m_cfg.m_page[page_no] = *page;
+		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
+		m_page[page_no] = *page;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
-		for(int i=0; i<MAX_PAGES; ++i) {
+		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
 			page.clear(get_default_value());
 		}
@@ -462,7 +465,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	byte shift_vertical(byte page_no, int dir, int scaled) {
 		CSequencePage& page = get_page(page_no);
-		return page.shift_vertical(dir, scaled? &g_scale : NULL, m_cfg.m_fill_mode, get_default_value());
+		return page.shift_vertical(dir, scaled? &CScale::instance() : NULL, m_cfg.m_fill_mode, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -521,7 +524,7 @@ public:
 			get_page(page_no).set_loop_from(from);
 		}
 		else {
-			for(int i=0; i<MAX_PAGES; ++i) {
+			for(int i=0; i<NUM_PAGES; ++i) {
 				get_page(i).set_loop_from(from);
 			}
 		}
@@ -533,7 +536,7 @@ public:
 			get_page(page_no).set_loop_to(to);
 		}
 		else {
-			for(int i=0; i<MAX_PAGES; ++i) {
+			for(int i=0; i<NUM_PAGES; ++i) {
 				get_page(i).set_loop_to(to);
 			}
 		}
@@ -571,7 +574,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte add_to_page_list(byte page_no) {
-		ASSERT(page_no >= 0 && page_no < MAX_PAGES);
+		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
 		if(page_no > m_cfg.m_max_page_no) {
 			return 0;
 		}
@@ -799,7 +802,7 @@ public:
 				if(m_state.m_output < 0) {
 					m_state.m_output = 0;
 				}
-				m_state.m_output = COuts::SCALING * g_scale.force_to_scale(m_state.m_output/COuts::SCALING);
+				m_state.m_output = COuts::SCALING * CScale::instance().force_to_scale(m_state.m_output/COuts::SCALING);
 				break;
 			}
 
@@ -962,6 +965,30 @@ public:
 		}
 	}
 
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	static int get_cfg_size() {
+		return sizeof(CONFIG) + NUM_PAGES * CSequencePage::get_cfg_size();
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void get_cfg(byte **dest) {
+		memcpy((*dest), &m_cfg, sizeof m_cfg);
+		(*dest) += sizeof m_cfg;
+		for(int i=0; i<NUM_PAGES; ++i) {
+			m_page[i].get_cfg(dest);
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void set_cfg(byte **src) {
+		memcpy(&m_cfg, (*src), sizeof m_cfg);
+		(*src) += sizeof m_cfg;
+		for(int i=0; i<NUM_PAGES; ++i) {
+			m_page[i].set_cfg(src);
+		}
+	}
 };
+
 
 #endif /* SEQUENCE_LAYER_H_ */

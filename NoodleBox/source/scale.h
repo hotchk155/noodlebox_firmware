@@ -27,44 +27,27 @@ class CScale {
 		MAX_NOTE = 128,
 		MAX_INDEX = ((7*MAX_NOTE)/12)
 	};
+	typedef struct {
+		V_SQL_SCALE_TYPE m_type;
+		V_SQL_SCALE_ROOT m_root;
+	} CONFIG;
+
+	CONFIG m_cfg;
 	byte m_index_to_note[MAX_INDEX];
 	byte m_note_to_index[MAX_NOTE];
 	byte m_max_index;
-	V_SQL_SCALE_TYPE m_type;
-	V_SQL_SCALE_ROOT m_root;
-public:
-	///////////////////////////////////////////////////////////////////////////////
-	// constructor
-	CScale()  {
-		m_max_index = 0;
-	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	inline V_SQL_SCALE_TYPE get_type() {
-		return m_type;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	inline V_SQL_SCALE_ROOT get_root() {
-		return m_root;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	inline byte get_notes_per_octave() {
-		return 7;
-	}
+	static CScale *m_instance;
 
 	///////////////////////////////////////////////////////////////////////////////
 	// build the note mapping tables for the selected scale type and root
-	void build(V_SQL_SCALE_TYPE scale_type, V_SQL_SCALE_ROOT scale_root) {
+	void build() {
 		byte interval[7] = {
 			2, 2, 1, 2, 2, 2, 1
 		};
-		byte ofs = (int)scale_type; // 0 = ionian
-		byte note_number = scale_root;
+		byte ofs = (int)m_cfg.m_type; // 0 = ionian
+		byte note_number = m_cfg.m_root;
 		byte n2i_index = 0;
-		m_type = scale_type;
-		m_root = scale_root;
 		m_max_index = 0;
 		while(note_number < MAX_NOTE && m_max_index < MAX_INDEX) {
 			m_index_to_note[m_max_index] = note_number;
@@ -77,6 +60,43 @@ public:
 			}
 			++m_max_index;
 		}
+	}
+
+public:
+	///////////////////////////////////////////////////////////////////////////////
+	// constructor
+	CScale()  {
+		m_instance = this;
+		m_cfg.m_type = V_SQL_SCALE_TYPE_IONIAN;
+		m_cfg.m_root = V_SQL_SCALE_ROOT_C;
+		build();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	static inline CScale& instance() {
+		return *m_instance;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline V_SQL_SCALE_TYPE get_type() {
+		return m_cfg.m_type;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline V_SQL_SCALE_ROOT get_root() {
+		return m_cfg.m_root;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte get_notes_per_octave() {
+		return 7;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set(V_SQL_SCALE_TYPE scale_type, V_SQL_SCALE_ROOT scale_root) {
+		m_cfg.m_type = scale_type;
+		m_cfg.m_root = scale_root;
+		build();
 	}
 
 	/////////////////////////////////////////////////////////////////
@@ -129,7 +149,24 @@ public:
 		note = m_index_to_note[index];
 		return 1;
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	static int get_cfg_size() {
+		return sizeof(CONFIG);
+	}
+
+	/////////////////////////////////////////////////////////////////
+	void get_cfg(byte **dest) {
+		memcpy((*dest), &m_cfg, sizeof m_cfg);
+		(*dest) += sizeof m_cfg;
+	}
+
+	/////////////////////////////////////////////////////////////////
+	void set_cfg(byte **src) {
+		memcpy(&m_cfg, (*src), sizeof m_cfg);
+		(*src) += sizeof m_cfg;
+	}
 };
-CScale g_scale;
+CScale *CScale::m_instance = NULL;
 
 #endif /* SCALE_H_ */
