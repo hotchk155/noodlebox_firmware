@@ -393,7 +393,7 @@ class CSequenceEditor {
 				return 1;
 			}
 			else if(wrap) {
-				value = 0;
+				value = min;
 				return 1;
 			}
 			break;
@@ -403,7 +403,7 @@ class CSequenceEditor {
 				return 1;
 			}
 			else if(wrap) {
-				value = min;
+				value = max;
 				return 1;
 			}
 		}
@@ -449,7 +449,7 @@ class CSequenceEditor {
 			break;
 		case CMD_CLONE_PAGE:
 			m_edit_value = 1 + 4 * m_cur_layer + m_cur_page;
-			m_num_values = 13;
+			m_num_values = 17;
 			m_cmd_prompt = get_layer_page();
 			m_cmd_values = ">??|>1A|>1B|>1C|>1D|>2A|>2B|>2C|>2D|>3A|>3B|>3C|>3D|>4A|>4B|>4C|>4D";
 			break;
@@ -505,8 +505,8 @@ class CSequenceEditor {
 			m_edit_param = param;
 		}
 		else {
-			int value = get(param);
-			if(++value >= num_values) {
+			int value = get(param)+1;
+			if(value > num_values-1) {
 				value = 0;
 			}
 			set(param, value);
@@ -795,9 +795,9 @@ class CSequenceEditor {
 				CSequenceStep source = layer.get_step(m_cur_page, m_clone_source);
 				layer.set_step(m_cur_page, m_cursor, source, data_type);
 				cursor_action(what, 1);
+				encoder_action(what, m_clone_source, 0, GRID_WIDTH-1, 1);
 				m_clone_status = CLONE_ACTIONED;
 			}
-
 			break;
 		case ACTION_END:
 			if(m_clone_status == CLONE_ACTIONED) {
@@ -871,7 +871,7 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
-			cursor_action(what, 1);
+			cursor_action(what, 0);
 			m_sel_to = m_cursor;
 			if(m_sel_to > m_sel_from) {
 				g_popup.num2digits(m_sel_to - m_sel_from + 1);

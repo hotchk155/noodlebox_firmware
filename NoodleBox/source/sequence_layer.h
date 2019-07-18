@@ -350,8 +350,8 @@ public:
 		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
 		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
 		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
-		case P_SQL_LOOP_PER_PAGE: return m_cfg.m_loop_per_page;
-		case P_SQL_CUE_MODE: return m_cfg.m_cue_mode;
+		case P_SQL_LOOP_PER_PAGE: return !!m_cfg.m_loop_per_page;
+		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
