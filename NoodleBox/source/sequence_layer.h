@@ -443,7 +443,8 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_page_content(byte page_no, CSequencePage* page) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
-		m_page[page_no] = *page;
+		prepare_page(page_no);
+		get_page(page_no) = *page;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

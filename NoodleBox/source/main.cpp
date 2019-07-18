@@ -300,21 +300,8 @@ int main(void) {
 
     	}
 
-    	// run the i2c bus. If the bus is currently idle then check if we need to send
-    	// out CV information to the DAC, or transfer data to/from EEPROM. We alternately
-    	// prioritize each to allow interleavng of data when both are busy
-g_outs.run_i2c();
-/*    	if(!g_i2c_bus.busy()) {
-    		if(i2c_priority) {
-    			g_cv_gate.run_i2c();
-    			g_storage.run_i2c();
-    		}
-    		else {
-    			g_storage.run_i2c();
-    			g_cv_gate.run_i2c();
-    		}
-    		i2c_priority = !i2c_priority;
-    	}*/
+    	// run the i2c bus.
+    	g_outs.run_i2c();
     }
     g_sequence.save_patch(0);
 	PowerControl.set(0);

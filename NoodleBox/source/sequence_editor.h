@@ -950,26 +950,24 @@ class CSequenceEditor {
 			break;
 		case ACTION_KEY_COMBO: {
 
-				int cur_page = -1;
+				int new_page = -1;
 				switch(m_key_combo) {
 				case KEY_PAGE|KEY2_PAGE_A:
-					cur_page = 0;
+					new_page = 0;
 					break;
 				case KEY_PAGE|KEY2_PAGE_B:
-					cur_page = 1;
+					new_page = 1;
 					break;
 				case KEY_PAGE|KEY2_PAGE_C:
-					cur_page = 2;
+					new_page = 2;
 					break;
 				case KEY_PAGE|KEY2_PAGE_D:
-					cur_page = 3;
-					break;
-				case KEY_PAGE|KEY2_PAGE_ADVANCE:
+					new_page = 3;
 					break;
 				}
-				if(cur_page >= 0) {
-					m_cur_page = cur_page;
-					layer.prepare_page(m_cur_page);
+				if(new_page >= 0) {
+					layer.prepare_page(new_page);
+					m_cur_page = new_page;
 					m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
 					if(!layer.get(P_SQL_CUE_MODE)) {
 						layer.set_play_page(m_cur_page);
