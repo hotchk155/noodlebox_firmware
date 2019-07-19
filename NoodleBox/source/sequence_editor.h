@@ -228,8 +228,8 @@ class CSequenceEditor {
 		int notes_per_octave;
 		int row;
 		int spacing = 0;
-		switch (layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH:
+		switch (layer.get_mode()) {
+		case V_SQL_SEQ_MODE_PITCH:
 			if(m_cfg.m_scaled_pitch) {
 				notes_per_octave = CScale::instance().get_notes_per_octave();	// e.g. 7
 				n = layer.get_scroll_ofs() + 15; // note at top row of screen
@@ -244,10 +244,10 @@ class CSequenceEditor {
 				spacing = 12;
 			}
 			break;
-		case CSequenceLayer::VIEW_PITCH_OFFSET:
+		case V_SQL_SEQ_MODE_OFFSET:
 			row = CSequenceLayer::OFFSET_ZERO;
 			break;
-		case CSequenceLayer::VIEW_MODULATION:
+		case V_SQL_SEQ_MODE_MOD:
 		default:
 			row =-1; // no grid
 			break;
@@ -269,7 +269,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void set_scroll_for(CSequenceLayer& layer, int value, int margin = SCROLL_MARGIN) {
 
-		if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
+		if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_pitch) {
 			value = CScale::instance().note_to_index(value);
 		}
 
@@ -290,14 +290,14 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
 	void show_step_value(CSequenceLayer& layer, int value) {
-		switch(layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH:
+		switch(layer.get_mode()) {
+		case V_SQL_SEQ_MODE_PITCH:
 			g_popup.note_name(value);
 			break;
-		case CSequenceLayer::VIEW_PITCH_OFFSET:
+		case V_SQL_SEQ_MODE_OFFSET:
 			g_popup.show_offset(value-CSequenceLayer::OFFSET_ZERO);
 			break;
-		case CSequenceLayer::VIEW_MODULATION:
+		case V_SQL_SEQ_MODE_MOD:
 			g_popup.num3digits(value);
 			break;
 		}
@@ -309,8 +309,8 @@ class CSequenceEditor {
 		int value;
 		int max_value = 127;
 		value = step.get_value();
-		switch(layer.get_view()) {
-		case CSequenceLayer::VIEW_MODULATION:
+		switch(layer.get_mode()) {
+		case V_SQL_SEQ_MODE_MOD:
 			if(fine) {
 				value += delta;
 			}
@@ -318,7 +318,7 @@ class CSequenceEditor {
 				value = 10*(value/10 + delta);
 			}
 			break;
-		case CSequenceLayer::VIEW_PITCH:
+		case V_SQL_SEQ_MODE_PITCH:
 			if(m_cfg.m_scaled_pitch && !fine) {
 				value = CScale::instance().note_to_index(value);
 				value += delta;
@@ -326,7 +326,7 @@ class CSequenceEditor {
 				max_value = CScale::instance().max_index();
 				break;
 			} // else fall thru
-		case CSequenceLayer::VIEW_PITCH_OFFSET:
+		case V_SQL_SEQ_MODE_OFFSET:
 		default:
 			value += delta;
 			break;
@@ -347,9 +347,9 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// scroll display up or down
 	void scroll(CSequenceLayer& layer, int dir) {
-		switch(layer.get_view()) {
-		case CSequenceLayer::VIEW_PITCH:
-		case CSequenceLayer::VIEW_PITCH_OFFSET:
+		switch(layer.get_mode()) {
+		case V_SQL_SEQ_MODE_PITCH:
+		case V_SQL_SEQ_MODE_OFFSET:
 			{
 				int scroll_ofs = layer.get_scroll_ofs();
 				scroll_ofs += dir;
@@ -362,7 +362,7 @@ class CSequenceEditor {
 				layer.set_scroll_ofs(scroll_ofs);
 				break;
 			}
-		case CSequenceLayer::VIEW_MODULATION:
+		case V_SQL_SEQ_MODE_MOD:
 		default:
 			break;
 		}
@@ -1314,14 +1314,14 @@ public:
 			// get the current step value and map to display row
 			CSequenceStep step = layer.get_step(m_cur_page,i);
 			int n = step.get_value();
-			if(layer.get_view() == CSequenceLayer::VIEW_MODULATION) {
+			if(layer.get_mode() == V_SQL_SEQ_MODE_MOD) {
 				n = 12 - step.get_value()/10;
 				if(n<0) {
 					n=0;
 				}
 			}
 			else {
-				if(layer.get_view() == CSequenceLayer::VIEW_PITCH && m_cfg.m_scaled_pitch) {
+				if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_pitch) {
 					n = CScale::instance().note_to_index(n);
 				}
 				n = 12 - n + layer.get_scroll_ofs();

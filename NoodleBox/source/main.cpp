@@ -124,13 +124,6 @@ void dispatch_event(int event, uint32_t param) {
 	}
 }
 
-/*
-void select_layer(byte layer) {
-	g_sequencer.set_cur_layer(layer);
-	g_popup.layer_page(layer, g_sequencer.cur_layer().get_view_page(), g_sequencer.cur_layer().get_enabled());
-	force_full_repaint();
-}
-*/
 void fire_event(int event, uint32_t param) {
 
 	switch(event) {
@@ -185,14 +178,6 @@ void fire_event(int event, uint32_t param) {
 }
 
 
-
-
-/*
-void fire_note(byte midi_note, byte midi_vel) {
-	g_midi.send_note(0, midi_note, midi_vel);
-}
-*/
-
 void force_full_repaint() {
 	g_popup.force_repaint();
 	g_menu.force_repaint();
@@ -224,11 +209,7 @@ void test() {
 	}
 }
 
-/*
- * @brief   Application entry point.
- */
 int main(void) {
-  	/* Init board hardware. */
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             BOARD_InitBootPins();
     BOARD_InitBootClocks();
     BOARD_InitBootPeripherals();
@@ -260,7 +241,6 @@ int main(void) {
 
 
 
-    //byte i2c_priority = 0;
     while(1) {
 
     	if(g_clock.m_ms_tick) {

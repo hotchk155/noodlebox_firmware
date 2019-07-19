@@ -21,11 +21,6 @@
 class CSequenceLayer {
 
 public:
-	typedef enum {
-		VIEW_PITCH,
-		VIEW_PITCH_OFFSET,
-		VIEW_MODULATION
-	} VIEW_TYPE;
 
 	enum {
 		OFFSET_ZERO = 64,		// step value for zero transpose offset
@@ -66,6 +61,7 @@ private:
 		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
+		byte m_scroll_ofs;					// lowest step value shown on grid
 		int 			m_loop_per_page:1;
 		int 			m_enabled:1;
 		int 			m_cue_mode:1;
@@ -75,8 +71,6 @@ private:
 
 
 	typedef struct {
-		VIEW_TYPE m_view;
-		byte m_scroll_ofs;					// lowest step value shown on grid
 		int m_play_page_no;				// the page number being played
 		int m_play_pos;
 		int m_page_list_pos;
@@ -129,19 +123,6 @@ private:
 	inline CSequencePage& get_page(byte page_no) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
 		return m_page[page_no];
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	byte get_default_value() {
-		switch(m_cfg.m_mode) {
-			case V_SQL_SEQ_MODE_OFFSET:
-				return OFFSET_ZERO;
-			case V_SQL_SEQ_MODE_PITCH:
-				return CScale::instance().default_note();
-			case V_SQL_SEQ_MODE_MOD:
-			default:
-				return 0;
-		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -261,6 +242,7 @@ public:
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_page_list_count = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
+		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -269,13 +251,11 @@ public:
 	// Initialise the state of a configured sequence layer (e.g. when the layer
 	// has been loaded from EEPROM)
 	void init_state() {
-		m_state.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = NO_MIDI_NOTE;
 		m_state.m_midi_bend = 0;
 		m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
-		m_state.m_view = VIEW_PITCH;
 		m_state.m_page_list_pos = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
@@ -375,6 +355,19 @@ public:
 		return 1;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	byte get_default_value() {
+		switch(m_cfg.m_mode) {
+			case V_SQL_SEQ_MODE_OFFSET:
+				return OFFSET_ZERO;
+			case V_SQL_SEQ_MODE_PITCH:
+				return CScale::instance().default_note();
+			case V_SQL_SEQ_MODE_MOD:
+			default:
+				return 0;
+		}
+	}
+
 	//
 	// EDIT FUNCTIONS
 	//
@@ -386,22 +379,21 @@ public:
 	void set_mode(V_SQL_SEQ_MODE value) {
 		switch (value) {
 		case V_SQL_SEQ_MODE_PITCH:
-			m_state.m_view = VIEW_TYPE::VIEW_PITCH;
 			m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 			m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 			break;
 		case V_SQL_SEQ_MODE_OFFSET:
-			m_state.m_view = VIEW_TYPE::VIEW_PITCH_OFFSET;
-			m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 			m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
+			m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 			break;
 		case V_SQL_SEQ_MODE_MOD:
-			m_state.m_view = VIEW_TYPE::VIEW_MODULATION;
-			m_cfg.m_cv_scale = V_SQL_CVSCALE_5V;
 			m_cfg.m_fill_mode = V_SQL_FILL_MODE_INTERPOLATE;
+			m_cfg.m_cv_scale = V_SQL_CVSCALE_5V;
 			break;
 		}
 		m_cfg.m_mode = value;
+		recalc_data_points_all_pages();
+		m_cfg.m_scroll_ofs = get_default_value() + 6;
 	}
 
 
@@ -497,10 +489,6 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline VIEW_TYPE get_view() {
-		return m_state.m_view;
-	}
-	///////////////////////////////////////////////////////////////////////////////
 	byte get_enabled() {
 		return m_cfg.m_enabled;
 	}
@@ -512,12 +500,12 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_scroll_ofs() {
-		return m_state.m_scroll_ofs;
+		return m_cfg.m_scroll_ofs;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_scroll_ofs(int scroll_ofs) {
-		m_state.m_scroll_ofs = scroll_ofs;
+		m_cfg.m_scroll_ofs = scroll_ofs;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_from(byte page_no, int from) {
