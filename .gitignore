@@ -46,6 +46,16 @@ x64/
 build/
 [Bb]in/
 [Oo]bj/
+Noodlebox/SYX/source
+Noodlebox/SYX/startup
+Noodlebox/SYX/makefile
+*.d
+*.o
+*.mk
+*.map
+*.axf
+
+
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
