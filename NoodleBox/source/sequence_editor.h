@@ -25,8 +25,7 @@ class CSequenceEditor {
 		GRID_WIDTH = 32,	// number of columns in the grid
 		GRID_HEIGHT = 16,	// number of rows in the grid
 		POPUP_MS = 2000,		// how long popup window is to be displayed
-		PPI_MS = 100,		// play page indicator timeout
-		SCROLL_MARGIN = 3
+		PPI_MS = 100		// play page indicator timeout
 	};
 
 	// enumeration of the "gestures" or actions that the user can perform
@@ -77,7 +76,6 @@ class CSequenceEditor {
 	typedef struct {
 		int m_show_grid:1;
 		int m_auto_gate:1;
-		int m_scaled_pitch:1;
 	} CONFIG;
 	CONFIG m_cfg;
 
@@ -230,7 +228,7 @@ class CSequenceEditor {
 		int spacing = 0;
 		switch (layer.get_mode()) {
 		case V_SQL_SEQ_MODE_PITCH:
-			if(m_cfg.m_scaled_pitch) {
+			if(layer.is_scaled_view()) {
 				notes_per_octave = CScale::instance().get_notes_per_octave();	// e.g. 7
 				n = layer.get_scroll_ofs() + 15; // note at top row of screen
 				n = notes_per_octave*(n/notes_per_octave); // C at bottom of that octave
@@ -267,27 +265,6 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_scroll_for(CSequenceLayer& layer, int value, int margin = SCROLL_MARGIN) {
-
-		if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_pitch) {
-			value = CScale::instance().note_to_index(value);
-		}
-
-		int scroll_ofs = layer.get_scroll_ofs();
-		if((value-margin)<scroll_ofs) {
-			scroll_ofs = value-margin;
-		}
-		else if((value+margin)>scroll_ofs+12) {
-			scroll_ofs = value-12+margin;
-		}
-
-		if(scroll_ofs < 0) {
-			scroll_ofs = 0;
-		}
-		layer.set_scroll_ofs(scroll_ofs);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
 	// display a popup window with info about the current step
 	void show_step_value(CSequenceLayer& layer, int value) {
 		switch(layer.get_mode()) {
@@ -319,7 +296,7 @@ class CSequenceEditor {
 			}
 			break;
 		case V_SQL_SEQ_MODE_PITCH:
-			if(m_cfg.m_scaled_pitch && !fine) {
+			if(layer.is_scaled_view() && !fine) {
 				value = CScale::instance().note_to_index(value);
 				value += delta;
 				value = CScale::instance().index_to_note(value);
@@ -592,7 +569,7 @@ class CSequenceEditor {
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			set_scroll_for(layer, step.get_value());
+			layer.set_scroll_for(step.get_value());
 			break;
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
@@ -612,18 +589,18 @@ class CSequenceEditor {
 				// fine adjustment of value. show the new value and copy
 				value_action(layer, step, what, 1);
 				layer.set_step(m_cur_page, m_cursor, step);
-				set_scroll_for(layer, step.get_value());
+				layer.set_scroll_for(step.get_value());
 				show_step_value(layer, step.get_value());
 				break;
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
-					if(layer.shift_vertical(m_cur_page, -1, m_cfg.m_scaled_pitch)) {
+					if(layer.shift_vertical(m_cur_page, -1)) {
 						--m_edit_value;
 					}
 				}
 				else {
-					if(layer.shift_vertical(m_cur_page, +1, m_cfg.m_scaled_pitch)) {
+					if(layer.shift_vertical(m_cur_page, +1)) {
 						++m_edit_value;
 					}
 				}
@@ -651,7 +628,7 @@ class CSequenceEditor {
 				}
 				// editing a step value
 				layer.set_step(m_cur_page, m_cursor, step);
-				set_scroll_for(layer, step.get_value());
+				layer.set_scroll_for(step.get_value());
 				show_step_value(layer, step.get_value());
 				break;
 			}
@@ -666,6 +643,9 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				m_edit_value = 0;
 				g_popup.text("HORZ");
+				break;
+			case KEY_CV|KEY2_CV_AUTO_SCROLL:
+				layer.set_scroll_for_page(m_cur_page);
 				break;
 			}
 			break;
@@ -1041,7 +1021,7 @@ class CSequenceEditor {
 		case ACTION_KEY_COMBO:
 			switch(m_key_combo) {
 			case KEY_FUNC|KEY2_FUNC_SCALE_MODE:
-				toggle(P_EDIT_SCALE_GRID, "ROWS:", "CHR|SCA");
+				toggle(P_SQL_SCALED_VIEW, "ROWS:", "CHR|SCA");
 				break;
 			case KEY_FUNC|KEY2_FUNC_AUTO_GATE:
 				toggle(P_EDIT_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
@@ -1151,7 +1131,6 @@ public:
 		switch(param) {
 		case P_EDIT_AUTO_GATE_INSERT: return !!m_cfg.m_auto_gate;
 		case P_EDIT_SHOW_GRID: return !!m_cfg.m_show_grid;
-		case P_EDIT_SCALE_GRID: return !!m_cfg.m_scaled_pitch;
 		default:
 			return g_sequence.get_layer(m_cur_layer).get(param);
 		}
@@ -1161,7 +1140,6 @@ public:
 		switch(param) {
 		case P_EDIT_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
 		case P_EDIT_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
-		case P_EDIT_SCALE_GRID: m_cfg.m_scaled_pitch = !!value; break;
 		default:
 			g_sequence.get_layer(m_cur_layer).set(param, value);
 		}
@@ -1172,7 +1150,6 @@ public:
 		switch(param) {
 			case P_EDIT_AUTO_GATE_INSERT:
 			case P_EDIT_SHOW_GRID:
-			case P_EDIT_SCALE_GRID:
 				return 1;
 			default:
 				return g_sequence.get_layer(m_cur_layer).is_valid_param(param);
@@ -1321,7 +1298,7 @@ public:
 				}
 			}
 			else {
-				if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_pitch) {
+				if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && layer.is_scaled_view()) {
 					n = CScale::instance().note_to_index(n);
 				}
 				n = 12 - n + layer.get_scroll_ofs();

@@ -75,6 +75,7 @@
 
 
 const uint32_t title_screen[] = {
+		/*
 	(uint32_t)0x1C63390C,
 	(uint32_t)0x2294A512,
 	(uint32_t)0x4294A490,
@@ -91,6 +92,23 @@ const uint32_t title_screen[] = {
 	(uint32_t)0x21452942,
 	(uint32_t)0x1E7CC93C,
 	(uint32_t)0x0
+	*/
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF,
+		(uint32_t)0xFFFFFFFF
 };
 
 
@@ -228,7 +246,7 @@ int main(void) {
         	}
         }
         g_ui.unlock_for_update();
-        g_clock.wait_ms(80);
+        g_clock.wait_ms(50);
     }
     PowerControl.set(1);
     g_i2c_bus.init();

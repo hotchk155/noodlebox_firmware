@@ -32,6 +32,7 @@ private:
 	enum {
 		MAX_PLAYING_NOTES = 8,
 		DEFAULT_SCROLL_OFS = 24,
+		SCROLL_MARGIN = 3,
 		MAX_PAGE_LIST = 16
 	};
 
@@ -62,20 +63,19 @@ private:
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
 		byte m_scroll_ofs;					// lowest step value shown on grid
+		int 			m_scaled_view:1;	// whether the pitch view is 7 rows/oct
 		int 			m_loop_per_page:1;
 		int 			m_enabled:1;
 		int 			m_cue_mode:1;
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
-
-
+	// Current playback state of the layer - stuff that is not saved
+	// as part of the patch
 	typedef struct {
 		int m_play_page_no;				// the page number being played
 		int m_play_pos;
 		int m_page_list_pos;
-
-
 		CSequenceStep m_step_value;			// the last value output by sequencer
 		byte m_stepped;						// stepped flag
 		byte m_suppress_step;
@@ -205,7 +205,6 @@ private:
 		}
 	}
 
-
 public:
 
 
@@ -243,6 +242,7 @@ public:
 		m_cfg.m_page_list_count = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
+		m_cfg.m_scaled_view = 0;
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -309,6 +309,7 @@ public:
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
+		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
 		default: break;
 		}
 	}
@@ -335,6 +336,7 @@ public:
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
+		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
 		default:return 0;
 		}
 	}
@@ -393,7 +395,7 @@ public:
 		}
 		m_cfg.m_mode = value;
 		recalc_data_points_all_pages();
-		m_cfg.m_scroll_ofs = get_default_value() + 6;
+		set_scroll_for_page(0);
 	}
 
 
@@ -450,15 +452,43 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void set_scroll_for(int value, byte centre = 0, int margin = SCROLL_MARGIN) {
+
+		if(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_view) {
+			value = CScale::instance().note_to_index(value);
+		}
+		int ofs = m_cfg.m_scroll_ofs;
+		if(centre) {
+			ofs = value-8;
+		}
+		else if((value-margin)<ofs) {
+			ofs = value-margin;
+		}
+		else if((value+margin)>ofs+12) {
+			ofs = value-12+margin;
+		}
+		if(ofs < 0) {
+			ofs = 0;
+		}
+		m_cfg.m_scroll_ofs = ofs;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_scroll_for_page(byte page_no) {
+		set_scroll_for(get_page(page_no).get_mean_data_point(get_default_value()),1);
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////////
 	void shift_horizontal(byte page_no, int dir) {
 		CSequencePage& page = get_page(page_no);
 		page.shift_horizontal(dir);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte shift_vertical(byte page_no, int dir, int scaled) {
+	byte shift_vertical(byte page_no, int dir) {
 		CSequencePage& page = get_page(page_no);
-		return page.shift_vertical(dir, scaled? &CScale::instance() : NULL, m_cfg.m_fill_mode, get_default_value());
+		return page.shift_vertical(dir, m_cfg.m_scaled_view? &CScale::instance() : NULL, m_cfg.m_fill_mode, get_default_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -486,6 +516,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	inline V_SQL_SEQ_MODE get_mode() {
 		return m_cfg.m_mode;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte is_scaled_view() {
+		return m_cfg.m_scaled_view;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

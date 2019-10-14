@@ -261,6 +261,19 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
+	int get_mean_data_point(int default_value) {
+		int sum = 0;
+		int count = 0;
+		for(int i = 0; i<MAX_STEPS-1; ++i) {
+			if(m_cfg.m_step[i].is_data_point()) {
+				sum += m_cfg.m_step[i].get_value();
+				++count;
+			}
+		}
+		return count? (int)(0.5+sum/count) : default_value;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
 	void init_state() {
 
 	}
