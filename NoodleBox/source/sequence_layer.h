@@ -27,13 +27,18 @@ public:
 		NUM_PAGES = 4					// number of pages
 	};
 
+	enum {
+		INIT_BLANK,
+		INIT_FIRST,
+		INIT_LAST
+	};
 private:
 
 	enum {
 		MAX_PLAYING_NOTES = 8,
-		DEFAULT_SCROLL_OFS = 24,
+		DEFAULT_SCROLL_OFS = 31,
 		SCROLL_MARGIN = 3,
-		MAX_PAGE_LIST = 16
+		MAX_CUE_LIST = 16
 	};
 
 	enum :byte {
@@ -41,10 +46,18 @@ private:
 		NO_MIDI_CC_VALUE = 0xff
 	};
 
+	enum {
+		CUE_NONE,
+		CUE_AUTO,
+		CUE_RANDOM,
+		CUE_MANUAL
+	};
+
 	// This structure holds the layer information that gets saved with the patch
 	typedef struct {
-		byte 			m_page_list[MAX_PAGE_LIST];
-		byte			m_page_list_count;
+		byte 			m_cue_list[MAX_CUE_LIST]; 	// cued pages list
+		byte			m_cue_list_count;			// index to cued pages list
+		byte 			m_cue_mode;
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_QUANTIZE 	m_quantize;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
@@ -62,11 +75,10 @@ private:
 		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
-		byte m_scroll_ofs;					// lowest step value shown on grid
+		byte 			m_scroll_ofs;					// lowest step value shown on grid
 		int 			m_scaled_view:1;	// whether the pitch view is 7 rows/oct
 		int 			m_loop_per_page:1;
 		int 			m_enabled:1;
-		int 			m_cue_mode:1;
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
@@ -75,7 +87,7 @@ private:
 	typedef struct {
 		int m_play_page_no;				// the page number being played
 		int m_play_pos;
-		int m_page_list_pos;
+		int m_cue_list_next;				// position of the next cued page within cued pages list
 		CSequenceStep m_step_value;			// the last value output by sequencer
 		byte m_stepped;						// stepped flag
 		byte m_suppress_step;
@@ -127,48 +139,25 @@ private:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Calculate the page and step
-	void calc_next_step(int &page_no, int &step_no, byte& page_switch, int &page_list_pos) {
+	byte calc_next_step(int &page_no, int &step_no) {
 
 		CSequencePage& page = get_page(page_no);
-		page_switch=0;
+		byte page_advance=0;
 
 		// have we reached end of the current page
 		if(step_no == page.get_loop_to()) {
-			// are we in cue page mode?
-			if(m_cfg.m_cue_mode) {
-
-				// do we have a page list?
-				if(m_cfg.m_page_list_count) {
-					if(page_list_pos < m_cfg.m_page_list_count - 1) {
-						++page_list_pos;
-					}
-					else {
-						page_list_pos = 0;
-					}
-					byte next_page_no = m_cfg.m_page_list[page_list_pos];
-					if(next_page_no <= m_cfg.m_max_page_no) {
-						// still a valid page
-						page_no = next_page_no;
-						page_switch = 1;
-					}
+			// do we have a cue list?
+			if(m_cfg.m_cue_list_count) {
+				byte cue_list_pos = m_state.m_cue_list_next;
+				if(++cue_list_pos >= m_cfg.m_cue_list_count - 1) {
+					cue_list_pos = 0;
 				}
-				else {
-					// no page list
-					if(page_no < m_cfg.m_max_page_no) {
-						// automatic page advance to the next page
-						++page_no;
-						page_switch = 1;
-					}
-					else {
-						// reached end of last page, going back to first
-						page_no = 0;
-						page_switch = 1;
-					}
-				}
+				page_no = m_cfg.m_cue_list[cue_list_pos];
 			}
 			// back to first step
 			CSequencePage& new_page = get_page(page_no); // could be same page
 			step_no = new_page.get_loop_from();
+			page_advance = 1;
 		}
 		else {
 			// have not reached end of page yet...
@@ -194,6 +183,26 @@ private:
 					step_no = page.get_loop_from();
 				}
 			}
+		}
+		return page_advance;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void cue_update() {
+		switch(m_cfg.m_cue_mode) {
+			case CUE_AUTO:
+				if(++m_cfg.m_cue_list[0] > m_cfg.m_max_page_no) {
+					m_cfg.m_cue_list[0] = 0;
+				}
+				break;
+			case CUE_RANDOM:
+				m_cfg.m_cue_list[0] = random()%(m_cfg.m_max_page_no+1);
+				break;
+			case CUE_MANUAL:
+				if(++m_state.m_cue_list_next >= m_cfg.m_cue_list_count) {
+					m_state.m_cue_list_next = 0;
+				}
+				break;
 		}
 	}
 
@@ -237,12 +246,12 @@ public:
 		m_cfg.m_midi_bend = 0;
 		m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 		m_cfg.m_max_page_no = 0;
-		m_cfg.m_cue_mode = 0;
 		m_cfg.m_loop_per_page = 0;
-		m_cfg.m_page_list_count = 0;
+		m_cfg.m_cue_list_count = 0;
+		m_cfg.m_cue_mode = CUE_NONE;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
-		m_cfg.m_scaled_view = 0;
+		m_cfg.m_scaled_view = 1;
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -256,7 +265,7 @@ public:
 		m_state.m_midi_bend = 0;
 		m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
-		m_state.m_page_list_pos = 0;
+		m_state.m_cue_list_next = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
@@ -305,7 +314,7 @@ public:
 		case P_SQL_SCALE_TYPE: CScale::instance().set((V_SQL_SCALE_TYPE)value, CScale::instance().get_root()); break;
 		case P_SQL_SCALE_ROOT: CScale::instance().set(CScale::instance().get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
-		case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
+		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
@@ -332,7 +341,7 @@ public:
 		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
 		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
 		case P_SQL_LOOP_PER_PAGE: return !!m_cfg.m_loop_per_page;
-		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
+//		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
@@ -369,6 +378,7 @@ public:
 				return 0;
 		}
 	}
+
 
 	//
 	// EDIT FUNCTIONS
@@ -437,7 +447,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_page_content(byte page_no, CSequencePage* page) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
-		prepare_page(page_no);
+		prepare_page(page_no, INIT_BLANK);
 		get_page(page_no) = *page;
 	}
 
@@ -448,7 +458,7 @@ public:
 			page.clear(get_default_value());
 		}
 		m_cfg.m_max_page_no = 0;
-		m_cfg.m_page_list_count = 0;
+		m_cfg.m_cue_list_count = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -499,9 +509,20 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Make sure that a page is available before trying to access it. When new
 	// pages are addeded, they are initialised from the last existing page
-	void prepare_page(int page) {
+	void prepare_page(int page, byte init_mode) {
 		while(m_cfg.m_max_page_no < page) {
-			get_page(m_cfg.m_max_page_no+1) = get_page(m_cfg.m_max_page_no);
+			switch(init_mode) {
+			case INIT_FIRST:
+				get_page(m_cfg.m_max_page_no+1) = get_page(0);
+				break;
+			case INIT_LAST:
+				get_page(m_cfg.m_max_page_no+1) = get_page(m_cfg.m_max_page_no);
+				break;
+			case INIT_BLANK:
+			default:
+				get_page(m_cfg.m_max_page_no+1).clear(get_default_value());
+				break;
+			}
 			++m_cfg.m_max_page_no;
 		}
 	}
@@ -509,7 +530,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Change the number of existing pages
 	void set_max_page_no(int page) {
-		prepare_page(page);	// in case the number of pages has increased
+		prepare_page(page, INIT_LAST);	// in case the number of pages has increased
 		m_cfg.m_max_page_no = page; // in case it has got less
 	}
 
@@ -586,29 +607,66 @@ public:
 		}
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_page_list() {
-		m_cfg.m_page_list_count = 0;
-		m_state.m_page_list_pos = 0;
-	}
+	//
+	// PAGE ARRANGER
+	//
 	///////////////////////////////////////////////////////////////////////////////
-	int get_page_list_count() {
-		return m_cfg.m_page_list_count;
+
+	///////////////////////////////////////////////////////////////////////////////
+	void cue_all() {
+		m_cfg.m_cue_mode = CUE_AUTO;
+		m_cfg.m_cue_list[0] = 0;
+		m_cfg.m_cue_list_count = 1;
+		m_state.m_cue_list_next = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte add_to_page_list(byte page_no) {
+	void cue_random() {
+		m_cfg.m_cue_mode = CUE_RANDOM;
+		m_cfg.m_cue_list_count = 1;
+		cue_update();
+		m_state.m_cue_list_next = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte cue_first(byte page_no) {
+		m_cfg.m_cue_mode = CUE_MANUAL;
+		m_cfg.m_cue_list_count = 0;
+		m_state.m_cue_list_next = 0;
+		return cue_next(page_no);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte cue_next(byte page_no) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
-		if(page_no > m_cfg.m_max_page_no) {
-			return 0;
-		}
-		if(m_cfg.m_page_list_count < MAX_PAGE_LIST) {
-			m_cfg.m_page_list[m_cfg.m_page_list_count++] = page_no;
-			return 1;
+		if(page_no <= m_cfg.m_max_page_no) {
+			if(m_cfg.m_cue_list_count<MAX_CUE_LIST) {
+				m_cfg.m_cue_list[m_cfg.m_cue_list_count++] = page_no;
+				return 1;
+			}
 		}
 		return 0;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void cue_cancel() {
+		m_cfg.m_cue_mode = CUE_NONE;
+		m_cfg.m_cue_list[0] = 0;
+		m_cfg.m_cue_list_count = 0;
+		m_state.m_cue_list_next = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int get_cue_list_count() {
+		return m_cfg.m_cue_list_count;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte is_cue_mode() {
+		return (m_cfg.m_cue_mode != CUE_NONE);
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_stepped() {
@@ -687,7 +745,14 @@ public:
 		if(ticks >= m_state.m_next_tick) {
 			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
 			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
-			calc_next_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_page_advanced, m_state.m_page_list_pos);
+			m_state.m_page_advanced = 0;
+			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
+				if(m_cfg.m_cue_mode != CUE_NONE) {
+					m_state.m_play_page_no = m_cfg.m_cue_list[m_state.m_cue_list_next];
+				}
+				cue_update();
+				m_state.m_page_advanced = 1;
+			}
 			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
 			m_state.m_stepped = 1;
 			m_state.m_suppress_step = 0;

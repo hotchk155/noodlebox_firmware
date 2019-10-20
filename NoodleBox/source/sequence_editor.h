@@ -877,22 +877,34 @@ class CSequenceEditor {
 				case KEY_LOOP|KEY2_LOOP_CUE_D:
 					page = 3;
 					break;
-				case KEY_LOOP|KEY2_LOOP_CUE_CURRENT:
-					layer.clear_page_list();
-					layer.add_to_page_list(m_cur_page);
-					g_popup.num2digits(1);
+				case KEY_LOOP|KEY2_LOOP_CUE_RANDOM:
+					layer.cue_random();
+					g_popup.text("=RND");
+					break;
+				case KEY_LOOP|KEY2_LOOP_CUE_FOREGROUND:
+					layer.cue_cancel();
+					layer.set_play_page(m_cur_page);
+					g_popup.text("=FGD");
 					break;
 				case KEY_LOOP|KEY2_LOOP_CUE_ALL:
-					layer.clear_page_list();
-					g_popup.text("ALL");
+					layer.cue_all();
+					g_popup.text("=ALL");
 					break;
 				}
 				if(page>=0) {
+					byte res;
 					if(m_combo_clicks<2) {
-						layer.clear_page_list();
+						res = layer.cue_first(page);
 					}
-					if(layer.add_to_page_list(page)) {
-						g_popup.num2digits(layer.get_page_list_count());
+					else {
+						res = layer.cue_next(page);
+					}
+					if(res) {
+						g_popup.text("=");
+						g_popup.num2digits(layer.get_cue_list_count(),1);
+					}
+					else {
+						g_popup.text("=IVL");
 					}
 				}
 				break;
@@ -946,10 +958,10 @@ class CSequenceEditor {
 					break;
 				}
 				if(new_page >= 0) {
-					layer.prepare_page(new_page);
+					layer.prepare_page(new_page, CSequenceLayer::INIT_BLANK);
 					m_cur_page = new_page;
 					m_edit_value = layer.get_max_page_no(); // we might have added new pages above...
-					if(!layer.get(P_SQL_CUE_MODE)) {
+					if(!layer.is_cue_mode()) {
 						layer.set_play_page(m_cur_page);
 					}
 					show_layer_page();
@@ -1036,7 +1048,7 @@ class CSequenceEditor {
 				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
 				break;
 			case KEY_FUNC|KEY2_FUNC_PAGE_ADV:
-				toggle(P_SQL_CUE_MODE, "PAGE:", "FGD|BKG");
+				//toggle(P_SQL_CUE_MODE, "PAGE:", "FGD|BKG");
 				break;
 			}
 			break;
@@ -1404,10 +1416,10 @@ public:
 					g_ui.raster(14) |= 0b01;
 					break;
 				case 2:
-					g_ui.raster(15) |= 0b01;
+					g_ui.raster(15) |= 0b10;
 					break;
 				case 3:
-					g_ui.raster(15) |= 0b10;
+					g_ui.raster(15) |= 0b01;
 					break;
 			}
 		}
@@ -1416,11 +1428,13 @@ public:
 
 	void run() {
 		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		if(layer.is_page_advanced()) {
-			m_ppi_timeout = PPI_MS;
-		}
-		else if(m_ppi_timeout) {
-			--m_ppi_timeout;
+		if(layer.is_cue_mode()) {
+			if(layer.is_page_advanced()) {
+				m_ppi_timeout = PPI_MS;
+			}
+			else if(m_ppi_timeout) {
+				--m_ppi_timeout;
+			}
 		}
 	}
 /*

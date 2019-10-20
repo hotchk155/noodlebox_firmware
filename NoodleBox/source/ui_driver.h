@@ -94,7 +94,8 @@
 #define KEY2_LOOP_CUE_B			KEY_B2
 #define KEY2_LOOP_CUE_C			KEY_B3
 #define KEY2_LOOP_CUE_D			KEY_B4
-#define KEY2_LOOP_CUE_CURRENT		KEY_B7
+#define KEY2_LOOP_CUE_RANDOM	KEY_B5
+#define KEY2_LOOP_CUE_FOREGROUND 	KEY_B7
 #define KEY2_LOOP_CUE_ALL		KEY_B8
 
 #define KEY2_PAGE_A				KEY_B1
@@ -548,6 +549,7 @@ public:
 		case '.': ch = CHAR4X5_DOT; break;
 		case '>': ch = CHAR4X5_GT; break;
 		case '$': ch = CHAR4X5_CROSS; break;
+		case '=': ch = CHAR4X5_LIST; break;
 		default:
 			if(ch >= '0' && ch <= '9') {
 				ch = CHAR4X5_NUMERIC + ch - '0';

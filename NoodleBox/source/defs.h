@@ -76,7 +76,7 @@ typedef enum:byte {
 	P_SQL_SEQ_MODE,
 	P_SQL_MIX,
 	P_SQL_FILL_MODE,
-	P_SQL_CUE_MODE,
+//	P_SQL_CUE_MODE,
 	P_SQL_LOOP_PER_PAGE,
 	P_SQL_SCALED_VIEW,
 	P_SQL_STEP_RATE,
@@ -113,6 +113,14 @@ typedef enum:byte {
 	PT_PATTERN
 } PARAM_TYPE;
 
+/*
+typedef enum:byte {
+	V_SQL_CUE_MODE_NONE,
+	V_SQL_CUE_MODE_AUTO,
+	V_SQL_CUE_MODE_RANDOM,
+	V_SQL_CUE_MODE_MANUAL
+} V_SQL_CUE_MODE;
+*/
 
 typedef enum:byte {
 	V_SQL_SEQ_MODE_PITCH = 0,
