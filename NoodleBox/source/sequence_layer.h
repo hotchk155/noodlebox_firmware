@@ -421,9 +421,9 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
+	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA, byte auto_data_point = 0) {
 		CSequencePage& page = get_page(page_no);
-		page.set_step(index, step, m_cfg.m_fill_mode, get_default_value(), what);
+		page.set_step(index, step, m_cfg.m_fill_mode, get_default_value(), what, auto_data_point);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -498,7 +498,12 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	byte shift_vertical(byte page_no, int dir) {
 		CSequencePage& page = get_page(page_no);
-		return page.shift_vertical(dir, m_cfg.m_scaled_view? &CScale::instance() : NULL, m_cfg.m_fill_mode, get_default_value());
+		return page.shift_vertical(
+			dir,
+			(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_view)? &CScale::instance() : NULL,
+			m_cfg.m_fill_mode,
+			get_default_value()
+		);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

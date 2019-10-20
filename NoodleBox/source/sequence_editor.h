@@ -106,6 +106,8 @@ class CSequenceEditor {
 	byte m_cur_page;			// the page within the layer that is being viewed
 	byte m_memo_slot;
 	byte m_ppi_timeout;			// play page indicator timeout
+
+	CSequenceStep m_clone_step;	// during clone operation..
 	//
 	// PRIVATE METHODS
 	//
@@ -608,7 +610,7 @@ class CSequenceEditor {
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				// action to shift all points left or right
-				if(encoder_action(what, m_edit_value, -(GRID_WIDTH-1), GRID_WIDTH-1, 0)) {
+				if(encoder_action(what, m_edit_value, -GRID_WIDTH, GRID_WIDTH, 0)) {
 					if(what == ACTION_ENC_LEFT) {
 						layer.shift_horizontal(m_cur_page, -1);
 					}
@@ -733,6 +735,10 @@ class CSequenceEditor {
 		CSequenceStep::DATA data_type;
 		switch(what) {
 		////////////////////////////////////////////////
+		case ACTION_BEGIN:
+			m_clone_step = layer.get_step(m_cur_page, m_cursor);
+			break;
+		////////////////////////////////////////////////
 		case ACTION_CLICK:
 			if(m_clone_status == CLONE_NONE) {
 				m_clone_source = m_cursor;
@@ -767,13 +773,12 @@ class CSequenceEditor {
 				break;
 			}
 			if(m_clone_status == CLONE_NONE) {
-				CSequenceStep source = layer.get_step(m_cur_page, m_cursor);
 				cursor_action(what, 1);
-				layer.set_step(m_cur_page, m_cursor, source, data_type);
+				layer.set_step(m_cur_page, m_cursor, m_clone_step, data_type, 1);
 			}
 			else {
 				CSequenceStep source = layer.get_step(m_cur_page, m_clone_source);
-				layer.set_step(m_cur_page, m_cursor, source, data_type);
+				layer.set_step(m_cur_page, m_cursor, source, data_type, 1);
 				cursor_action(what, 1);
 				encoder_action(what, m_clone_source, 0, GRID_WIDTH-1, 1);
 				m_clone_status = CLONE_ACTIONED;

@@ -143,7 +143,7 @@ public:
 	/////////////////////////////////////////////////////////////////
 	inline byte inc_note_in_scale(int& note, int dir) {
 		int index = (int)m_note_to_index[note] + dir;
-		if(index<0 || index>m_max_index) {
+		if(index<0 || index>=m_max_index) {
 			return 0;
 		}
 		note = m_index_to_note[index];

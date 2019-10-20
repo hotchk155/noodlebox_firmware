@@ -192,7 +192,12 @@ public:
 		if(value >= 0) {
 			m_text[m_len++] = '+';
 		}
-		format_number(value, 10);
+		if(value<-99 || value>99) {
+			format_number(value, 100);
+		}
+		else {
+			format_number(value, 10);
+		}
 		m_render = 1;
 		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
