@@ -502,7 +502,8 @@ public:
 			dir,
 			(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_view)? &CScale::instance() : NULL,
 			m_cfg.m_fill_mode,
-			get_default_value()
+			get_default_value(),
+			(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD)
 		);
 	}
 

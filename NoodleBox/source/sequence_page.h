@@ -216,19 +216,27 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
-	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte default_value) {
+	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte default_value, byte allow_clip) {
 		int value[MAX_STEPS];
+		byte changed = 0;
 		for(int i=0; i<MAX_STEPS; ++i) {
 			if(m_cfg.m_step[i].is_data_point()) {
 				value[i] = m_cfg.m_step[i].get_value();
 				if(scale) {
-					if(!scale->inc_note_in_scale(value[i],dir)) {
+					if(scale->inc_note_in_scale(value[i],dir)) {
+						changed = 1;
+					}
+					else if(!allow_clip) {
 						return 0;
 					}
 				}
 				else {
-					value[i] += dir;
-					if(value[i] < 0 || value[i] > 127) {
+					int new_value = value[i] + dir;
+					if(new_value >= 0 && new_value <= 127) {
+						value[i] = new_value;
+						changed = 1;
+					}
+					else if(!allow_clip) {
 						return 0;
 					}
 				}
@@ -236,6 +244,11 @@ public:
 			else {
 				value[i] = 0;
 			}
+		}
+
+		// any point changed?
+		if(!changed) {
+			return 0;
 		}
 
 		// perform the actual shift of all the data points
