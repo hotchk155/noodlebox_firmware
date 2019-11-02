@@ -183,6 +183,16 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_layer_mutes() {
+		g_popup.text("L");
+		g_popup.text(g_sequence.get_layer(0).get_enabled()? "1":"$",1);
+		g_popup.text(g_sequence.get_layer(1).get_enabled()? "2":"$",1);
+		g_popup.text(g_sequence.get_layer(2).get_enabled()? "3":"$",1);
+		g_popup.text(g_sequence.get_layer(3).get_enabled()? "4":"$",1);
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	const char *get_layer() {
 		static char text[3];
 		text[0] = 'L';
@@ -998,8 +1008,12 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// MENU BUTTON
 	void layer_action(CSequenceLayer& layer, ACTION what) {
+		static byte edit_mutes = 0;
 		switch(what) {
 			////////////////////////////////////////////////
+		case ACTION_BEGIN:
+			edit_mutes = 0;
+			break;
 		case ACTION_ENC_LEFT:
 			scroll(layer, -1);
 			break;
@@ -1007,31 +1021,56 @@ class CSequenceEditor {
 			scroll(layer, +1);
 			break;
 		case ACTION_KEY_COMBO:
-			switch(m_key_combo) {
-				case KEY_LAYER|KEY2_LAYER_1:
-					m_cur_layer = 0;
-					m_cur_page = 0;
-					show_layer_page();
-					break;
-				case KEY_LAYER|KEY2_LAYER_2:
-					m_cur_layer = 1;
-					m_cur_page = 0;
-					show_layer_page();
-					break;
-				case KEY_LAYER|KEY2_LAYER_3:
-					m_cur_layer = 2;
-					m_cur_page = 0;
-					show_layer_page();
-					break;
-				case KEY_LAYER|KEY2_LAYER_4:
-					m_cur_layer = 3;
-					m_cur_page = 0;
-					show_layer_page();
-					break;
-				case KEY_LAYER|KEY2_LAYER_MUTE:
-					layer.set_enabled(!layer.get_enabled());
-					show_layer_page();
-					break;
+			if(edit_mutes) {
+				int layer_no = -1;
+				switch(m_key_combo) {
+					case KEY_LAYER|KEY2_LAYER_1:
+						layer_no = 0;
+						break;
+					case KEY_LAYER|KEY2_LAYER_2:
+						layer_no = 1;
+						break;
+					case KEY_LAYER|KEY2_LAYER_3:
+						layer_no = 2;
+						break;
+					case KEY_LAYER|KEY2_LAYER_4:
+						layer_no = 3;
+						break;
+				}
+				if(layer_no >= 0) {
+					CSequenceLayer& other = g_sequence.get_layer(layer_no);
+					other.set_enabled(!other.get_enabled());
+				}
+				show_layer_mutes();
+				break;
+			}
+			else {
+				switch(m_key_combo) {
+					case KEY_LAYER|KEY2_LAYER_1:
+						m_cur_layer = 0;
+						m_cur_page = 0;
+						show_layer_page();
+						break;
+					case KEY_LAYER|KEY2_LAYER_2:
+						m_cur_layer = 1;
+						m_cur_page = 0;
+						show_layer_page();
+						break;
+					case KEY_LAYER|KEY2_LAYER_3:
+						m_cur_layer = 2;
+						m_cur_page = 0;
+						show_layer_page();
+						break;
+					case KEY_LAYER|KEY2_LAYER_4:
+						m_cur_layer = 3;
+						m_cur_page = 0;
+						show_layer_page();
+						break;
+					case KEY_LAYER|KEY2_LAYER_MUTE:
+						edit_mutes = 1;
+						show_layer_mutes();
+						break;
+				}
 			}
 			break;
 		default:
