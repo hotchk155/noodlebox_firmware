@@ -655,6 +655,9 @@ class CSequenceEditor {
 		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
+		case ACTION_BEGIN:
+			m_edit_value = 0;
+			break;
 		case ACTION_END:
 			m_gate_view = GATE_VIEW_GATE_TIE;
 			break;
@@ -697,12 +700,27 @@ class CSequenceEditor {
 				break;
 			default:
 				if(what == ACTION_ENC_RIGHT) {
-					step.set_tie(1);
+					// extend gate tie from current position
+					byte pos = m_cursor+m_edit_value;
+					if(pos < CSequencePage::MAX_STEPS-1) {
+						step = layer.get_step(m_cur_page, pos);
+						step.set_tie(1);
+						layer.set_step(m_cur_page, pos, step);
+					}
+					++m_edit_value;
 				}
 				else {
-					step.set_tie(0);
+					// remove gate ties
+					if(m_edit_value>=0) {
+						byte pos = m_cursor+m_edit_value;
+						step = layer.get_step(m_cur_page, pos);
+						step.set_tie(0);
+						layer.set_step(m_cur_page, pos, step);
+						if(m_edit_value>0) {
+							--m_edit_value;
+						}
+					}
 				}
-				layer.set_step(m_cur_page, m_cursor, step);
 				m_gate_view = GATE_VIEW_GATE_TIE;
 				break;
 			}
