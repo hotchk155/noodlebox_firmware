@@ -49,6 +49,7 @@ class CSequenceEditor {
 		CMD_CLEAR_LAYER,
 		CMD_CLONE_PAGE,
 		CMD_CLONE_LAYER,
+		CMD_MOVE_LAYER,
 		CMD_MEMORY
 	} COMMAND;
 
@@ -444,6 +445,26 @@ class CSequenceEditor {
 			m_cmd_prompt = get_layer();
 			m_cmd_values = ">??|>L1|>L2|>L3|>L4";
 			break;
+		case CMD_MOVE_LAYER:
+			m_edit_value = 1 + m_cur_layer;
+			m_num_values = 5;
+			m_cmd_prompt = get_layer();
+			switch(m_cur_layer) {
+			case 1:
+				m_cmd_values = ">CXL|>.134|>1.34|>13.4|>134.";
+				break;
+			case 2:
+				m_cmd_values = ">CXL|>.124|>1.24|>12.4|>124.";
+				break;
+			case 3:
+				m_cmd_values = ">CXL|>.123|>1.23|>12.3|>123.";
+				break;
+			default:
+			case 0:
+				m_cmd_values = ">CXL|>.234|>2.34|>23.4|>234.";
+				break;
+			}
+			break;
 		case CMD_MEMORY:
 			m_edit_value = 1;
 			m_num_values = 3;
@@ -548,6 +569,15 @@ class CSequenceEditor {
 				}
 			}
 			break;
+		case CMD_MOVE_LAYER:
+			if(value) {
+				byte target_layer = value - 1;
+				if(target_layer != m_cur_layer) {
+					g_sequence.move_layer(m_cur_layer, target_layer);
+					m_cur_layer = target_layer;
+ 					return 1;
+				}
+			}
 		case CMD_MEMORY:
 			if(value == 1) {
 				g_sequence.load_patch(m_memo_slot);
@@ -980,6 +1010,9 @@ class CSequenceEditor {
 					break;
 				case KEY_PAGE|KEY2_PAGE_D:
 					new_page = 3;
+					break;
+				case KEY_PAGE|KEY2_PAGE_MOVE_LAYER:
+					command_mode(CMD_MOVE_LAYER);
 					break;
 				}
 				if(new_page >= 0) {

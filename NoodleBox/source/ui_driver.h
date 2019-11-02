@@ -102,7 +102,7 @@
 #define KEY2_PAGE_B				KEY_B2
 #define KEY2_PAGE_C				KEY_B3
 #define KEY2_PAGE_D				KEY_B4
-#define KEY2_PAGE_ADVANCE		KEY_B6
+#define KEY2_PAGE_MOVE_LAYER	KEY_B8
 
 
 #define KEY2_LAYER_1			KEY_B1

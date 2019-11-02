@@ -26,18 +26,23 @@ class CSequence {
 	};
 
 	CScale m_scale;
-	CSequenceLayer m_layers[NUM_LAYERS];
+	CSequenceLayer m_layer_content[NUM_LAYERS];
+	CSequenceLayer *m_layers[NUM_LAYERS];
 
 	byte m_is_running;
 public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	CSequence() {
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i] = &m_layer_content[i];
+		}
 	}
 
 	void init() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].init(i);
+			m_layers[i]->init();
+			m_layers[i]->set_id(i);
 		}
 		m_is_running = 0;
 	}
@@ -45,7 +50,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].init_state();
+			m_layers[i]->init_state();
 		}
 	}
 
@@ -74,13 +79,30 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	CSequenceLayer& get_layer(int index) {
-		return m_layers[index];
+		return *m_layers[index];
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void move_layer(byte from, byte to) {
+		int i;
+		CSequenceLayer *layer = m_layers[from];
+		for(i=from; i<NUM_LAYERS-1; ++i) {
+			m_layers[i] = m_layers[i+1];
+		}
+		for(i=NUM_LAYERS-1; i>to; --i) {
+			m_layers[i] = m_layers[i-1];
+		}
+		m_layers[to] = layer;
+		for(i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->set_id(i);
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void start() {
 		m_is_running = 1;
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].start(g_clock.get_ticks(), g_clock.get_part_ticks());
+			m_layers[i]->start(g_clock.get_ticks(), g_clock.get_part_ticks());
 		}
 	}
 
@@ -88,14 +110,14 @@ public:
 	void stop() {
 		m_is_running = 0;
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].stop_all_notes();
+			m_layers[i]->stop_all_notes();
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void reset() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].reset();
+			m_layers[i]->reset();
 		}
 	}
 
@@ -111,7 +133,7 @@ public:
 
 		// once per ms housekeeping for layers
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].ms_tick(i);
+			m_layers[i]->ms_tick(i);
 		}
 
 		// ensure the sequencer is running
@@ -125,9 +147,9 @@ public:
 			// tick each layer
 			byte any_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
-				CSequenceLayer& layer = m_layers[i];
-				layer.tick(ticks, parts_tick, dice_roll);
-				if(layer.is_stepped() && layer.get_enabled()) {
+				CSequenceLayer *layer = m_layers[i];
+				layer->tick(ticks, parts_tick, dice_roll);
+				if(layer->is_stepped() && layer->get_enabled()) {
 					any_step = 1;
 				}
 			}
@@ -138,24 +160,24 @@ public:
 				// process each layer
 				long prev_output = 0;
 				for(int i=0; i<NUM_LAYERS; ++i) {
-					CSequenceLayer& layer = m_layers[i];
-					if(layer.get_enabled()) {
-						prev_output = layer.process_cv(i,prev_output);
-						if(layer.is_stepped()) {
-							layer.process_gate(i);
-							switch(layer.get_midi_out_mode()) {
+					CSequenceLayer *layer = m_layers[i];
+					if(layer->get_enabled()) {
+						prev_output = layer->process_cv(i,prev_output);
+						if(layer->is_stepped()) {
+							layer->process_gate(i);
+							switch(layer->get_midi_out_mode()) {
 							case V_SQL_MIDI_OUT_NOTE:
-								layer.process_midi_note();
+								layer->process_midi_note();
 								break;
 							case V_SQL_MIDI_OUT_CC:
-								layer.process_midi_cc();
+								layer->process_midi_cc();
 								break;
 							}
 						}
 					}
 					else {
 						// ensure the gate for a disabled layer is closed
-						layer.silence(i);
+						layer->silence(i);
 					}
 				}
 			}
@@ -171,7 +193,7 @@ public:
 	void get_cfg(byte **dest) {
 		m_scale.get_cfg(dest);
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].get_cfg(dest);
+			m_layers[i]->get_cfg(dest);
 		}
 	}
 
@@ -180,7 +202,7 @@ public:
 	void set_cfg(byte **src) {
 		m_scale.set_cfg(src);
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i].set_cfg(src);
+			m_layers[i]->set_cfg(src);
 		}
 	}
 
