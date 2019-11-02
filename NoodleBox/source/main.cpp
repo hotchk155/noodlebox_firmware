@@ -71,7 +71,6 @@
 #include "sequence_editor.h"
 #include "params.h"
 #include "menu.h"
-#include "selector.h"
 
 
 const uint32_t title_screen[] = {
@@ -120,8 +119,7 @@ const uint32_t title_screen[] = {
 
 typedef enum:byte {
 	 VIEW_SEQUENCER,
-	 VIEW_MENU,
-	 VIEW_SELECTOR
+	 VIEW_MENU
  } VIEW_TYPE;
 
 VIEW_TYPE g_view = VIEW_SEQUENCER;
@@ -135,9 +133,6 @@ void dispatch_event(int event, uint32_t param) {
 		break;
 	case VIEW_MENU:
 		g_menu.event(event, param);
-		break;
-	case VIEW_SELECTOR:
-		g_selector.event(event, param);
 		break;
 	}
 }
@@ -189,6 +184,11 @@ void fire_event(int event, uint32_t param) {
 		g_clock.on_restart();
 		g_sequence.reset();
 		break;
+	///////////////////////////////////
+	case EV_CHANGE_LAYER:
+		g_sequence_editor.event(event, param);
+		break;
+	///////////////////////////////////
 	default:
 		dispatch_event(event, param);
 		break;
@@ -199,7 +199,6 @@ void fire_event(int event, uint32_t param) {
 void force_full_repaint() {
 	g_popup.force_repaint();
 	g_menu.force_repaint();
-	g_selector.force_repaint();
 }
 
 void test() {
@@ -279,9 +278,6 @@ int main(void) {
 				break;
 			case VIEW_MENU:
 				g_menu.repaint();
-				break;
-			case VIEW_SELECTOR:
-				g_selector.repaint();
 				break;
 			}
 			g_popup.repaint();

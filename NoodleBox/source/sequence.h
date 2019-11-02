@@ -21,10 +21,12 @@
 // SEQUENCER CLASS
 class CSequence {
 
+public:
 	enum {
 		NUM_LAYERS = 4,	// number of layers in the sequence
 	};
 
+private:
 	CScale m_scale;
 	CSequenceLayer m_layer_content[NUM_LAYERS];
 	CSequenceLayer *m_layers[NUM_LAYERS];

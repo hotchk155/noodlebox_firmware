@@ -128,7 +128,23 @@ public:
 			}
 			m_action = ACTION_NONE;
 			break;
-
+		case EV_KEY_CLICK:
+			switch(param) {
+				case KEY_LAYER|KEY2_LAYER_1:
+					fire_event(EV_CHANGE_LAYER, 0);
+					break;
+				case KEY_LAYER|KEY2_LAYER_2:
+					fire_event(EV_CHANGE_LAYER, 1);
+					break;
+				case KEY_LAYER|KEY2_LAYER_3:
+					fire_event(EV_CHANGE_LAYER, 2);
+					break;
+				case KEY_LAYER|KEY2_LAYER_4:
+					fire_event(EV_CHANGE_LAYER, 3);
+					break;
+			}
+			m_repaint = 1;
+			break;
 		}
 	}
 

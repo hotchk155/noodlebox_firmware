@@ -145,23 +145,6 @@ class CSequenceEditor {
 		m_cfg.m_auto_gate = 1;
 	}
 
-	/*
-	///////////////////////////////////////////////////////////////////////////////
-	void show_gate_view() {
-		switch(m_gate_view) {
-		case GATE_VIEW_GATE_TIE:
-			g_popup.text("GATE", 4);
-			break;
-		case GATE_VIEW_PROB:
-			g_popup.text("PROB", 4);
-			break;
-		case GATE_VIEW_RETRIG:
-			g_popup.text("RETR", 4);
-			break;
-		}
-		g_popup.avoid(m_cursor);
-	}
-*/
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_prob(CSequenceStep& step) {
 		g_popup.text("PRB.");
@@ -218,6 +201,13 @@ class CSequenceEditor {
 		text[3] = '\0';
 		return text;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_layer() {
+		g_popup.text(get_layer());
+		g_popup.avoid(m_cursor);
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
 		g_popup.text(get_layer_page());
@@ -1306,6 +1296,12 @@ public:
 					g_popup.avoid(m_cursor);
 				}
 				break;
+			}
+		case EV_CHANGE_LAYER:
+			if(param < CSequence::NUM_LAYERS) {
+				m_cur_layer = param;
+				m_cur_page = 0;
+				show_layer();
 			}
 		}
 	}
