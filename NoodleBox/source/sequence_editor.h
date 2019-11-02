@@ -899,7 +899,7 @@ class CSequenceEditor {
 				case KEY_LOOP|KEY2_LOOP_CUE_FOREGROUND:
 					layer.cue_cancel();
 					layer.set_play_page(m_cur_page);
-					g_popup.text("=FGD");
+					g_popup.text("=OFF");
 					break;
 				case KEY_LOOP|KEY2_LOOP_CUE_ALL:
 					layer.cue_all();
