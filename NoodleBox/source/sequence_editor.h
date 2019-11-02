@@ -317,10 +317,6 @@ class CSequenceEditor {
 			value = max_value;
 		}
 		step.set_value(value);
-		if(m_cfg.m_auto_gate) {
-			step.set_gate(1);
-		}
-		step.set_data_point(1);	// the data point has been set by user
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -586,14 +582,6 @@ class CSequenceEditor {
 					scroll(layer,+1);
 				}
 				break;
-				// fine edit in mod mode
-			case KEY_CV|KEY2_CV_FINE:
-				// fine adjustment of value. show the new value and copy
-				value_action(layer, step, what, 1);
-				layer.set_step(m_cur_page, m_cursor, step);
-				layer.set_scroll_for(step.get_value());
-				show_step_value(layer, step.get_value());
-				break;
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
 				if(what == ACTION_ENC_LEFT) {
@@ -620,15 +608,19 @@ class CSequenceEditor {
 				}
 				g_popup.show_offset(m_edit_value);
 				break;
+			case KEY_CV|KEY2_CV_FINE:
 			default:
+				// the first turn sets as a data point
 				if(!step.is_data_point()) {
-					// the first turn sets as a data point
 					step.set_data_point(1);
+					if(m_cfg.m_auto_gate) {
+						step.set_gate(1);
+					}
 				}
 				else {
-					value_action(layer, step, what, 0);				// change the value
+					// change the value
+					value_action(layer, step, what, (m_key_combo&KEY2_CV_FINE));
 				}
-				// editing a step value
 				layer.set_step(m_cur_page, m_cursor, step);
 				layer.set_scroll_for(step.get_value());
 				show_step_value(layer, step.get_value());
