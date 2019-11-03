@@ -874,6 +874,10 @@ public:
 		if(m_state.m_step_timeout) {
 			--m_state.m_step_timeout;
 		}
+		else {
+			// ensure retrig stops at end of stpe
+			m_state.m_retrig_ms = 0;
+		}
 	}
 
 
@@ -958,6 +962,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step
 	void process_gate(byte which) {
+		m_state.m_retrig_ms = 0;
 		if(m_state.m_suppress_step) {
 			if(!m_state.m_gate_timeout) {
 				g_outs.gate(which, COuts::GATE_CLOSED);
