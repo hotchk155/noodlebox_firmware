@@ -60,6 +60,7 @@
 #define KEY_GATE		KEY_B2
 #define KEY_CLONE		KEY_B3
 #define KEY_CLEAR		KEY_B4
+#define KEY_RAND		KEY_B5
 #define KEY_LOOP		KEY_B6
 #define KEY_PAGE		KEY_B7
 #define KEY_LAYER		KEY_B8
@@ -89,6 +90,14 @@
 #define KEY2_CLEAR_GATE			KEY_B2
 #define KEY2_CLEAR_PAGE			KEY_B7
 #define KEY2_CLEAR_LAYER		KEY_B8
+
+#define KEY2_RAND_SAVE_A		KEY_B1
+#define KEY2_RAND_SAVE_B		KEY_B2
+#define KEY2_RAND_SAVE_C		KEY_B3
+#define KEY2_RAND_SAVE_D		KEY_B4
+#define KEY2_RAND_CREATE		KEY_B6
+#define KEY2_RAND_SAVE_CUR		KEY_B7
+
 
 #define KEY2_LOOP_CUE_A			KEY_B1
 #define KEY2_LOOP_CUE_B			KEY_B2

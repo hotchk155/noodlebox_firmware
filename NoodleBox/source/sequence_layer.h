@@ -441,6 +441,7 @@ public:
 		return page.get_step(index);
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA, byte auto_data_point = 0) {
 		CSequencePage& page = get_page(page_no);
@@ -460,16 +461,28 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void get_page_content(byte page_no, CSequencePage* page) {
-		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
-		*page = m_page[page_no];
+	void add_noise_to_page(byte page_no, int seed, int level) {
+		CSequencePage& page = get_page(page_no);
+		page.add_noise(seed, level, get_default_value(), m_cfg.m_fill_mode, get_zero_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_page_content(byte page_no, CSequencePage* page) {
+	void randomise_page(byte page_no, int seed) {
+		CSequencePage& page = get_page(page_no);
+		page.randomise(seed, get_default_value(), m_cfg.m_fill_mode, get_zero_value());
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void get_page_content(byte page_no, CSequencePage& page) {
+		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
+		page = m_page[page_no];
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_page_content(byte page_no, CSequencePage& page) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
 		prepare_page(page_no, INIT_BLANK);
-		get_page(page_no) = *page;
+		get_page(page_no) = page;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

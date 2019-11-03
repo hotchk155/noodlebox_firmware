@@ -305,6 +305,51 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
+	void add_noise(int seed, int level, byte default_value, V_SQL_FILL_MODE fill_mode, byte zero_value) {
+		srand(seed);
+		for(int i=0; i<MAX_STEPS; ++i) {
+
+			CSequenceStep& step = m_cfg.m_step[i];
+			int value = step.get_value();
+			value += (level * ((rand()&255)-(rand()&255)))/(255);
+			if(value<0) {
+				value = 0;
+			}
+			if(value>127) {
+				value = 127;
+			}
+			if(step.get_value() != value) {
+				if(!step.is_data_point()) {
+					step.set_data_point(1);
+				}
+				step.set_value(value);
+			}
+		}
+		recalc(fill_mode, zero_value);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void randomise(int seed, byte default_value, V_SQL_FILL_MODE fill_mode, byte zero_value) {
+
+		srand(seed);
+		for(int i=0; i<MAX_STEPS; ++i) {
+			CSequenceStep& step = m_cfg.m_step[i];
+			step.clear(CSequenceStep::ALL_DATA);
+			if((rand()%10)<5) {
+				step.set_value(default_value+(rand()%12)-(rand()%12));
+				step.set_data_point(1);
+			}
+			if((rand()%10)<2) {
+				step.set_gate(1);
+			}
+			if((rand()%10)<2) {
+				step.set_tie(1);
+			}
+		}
+		recalc(fill_mode, zero_value);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
 	void init_state() {
 
 	}

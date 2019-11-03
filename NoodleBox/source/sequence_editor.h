@@ -96,6 +96,7 @@ class CSequenceEditor {
 	const char *m_cmd_prompt;
 	const char *m_cmd_values;
 	int m_num_values;
+	int m_rand_seed;
 
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
@@ -109,6 +110,7 @@ class CSequenceEditor {
 	byte m_ppi_timeout;			// play page indicator timeout
 
 	CSequenceStep m_clone_step;	// during clone operation..
+	CSequencePage m_save_page; // during randomization
 	//
 	// PRIVATE METHODS
 	//
@@ -137,6 +139,7 @@ class CSequenceEditor {
 		m_num_values = 0;
 		m_edit_param = P_NONE;
 		m_memo_slot = 0;
+		m_rand_seed = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -543,9 +546,8 @@ class CSequenceEditor {
 				byte target_layer = (value-1)/4;
 				byte target_page = (value-1)%4;
 				if(target_layer != m_cur_layer || target_page != m_cur_page) {
-					CSequencePage page;
-					layer.get_page_content(m_cur_page, &page);
-					g_sequence.get_layer(target_layer).set_page_content(target_page, &page);
+					layer.get_page_content(m_cur_page, m_save_page);
+					g_sequence.get_layer(target_layer).set_page_content(target_page, m_save_page);
 					return 1;
 				}
 			}
@@ -884,6 +886,85 @@ class CSequenceEditor {
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void rand_action(CSequenceLayer& layer, ACTION what) {
+		switch(what) {
+		case ACTION_BEGIN:
+			// capture the page state so we can revert back to it
+			layer.get_page_content(m_cur_page, m_save_page);
+			m_rand_seed = g_clock.m_ms;
+			m_edit_value = 0;
+			break;
+		////////////////////////////////////////////////
+		case ACTION_ENC_LEFT:
+		case ACTION_ENC_RIGHT:
+			switch(m_key_combo) {
+			// creating a new random page?
+			case KEY_RAND|KEY2_RAND_CREATE:
+				if(encoder_action(what, m_edit_value, 0, 100, 0)) {
+					layer.randomise_page(m_cur_page, m_rand_seed + m_edit_value);
+				}
+				g_popup.num3digits(m_edit_value);
+				break;
+			// adding noise to an existing page
+			case KEY_RAND:
+				if(encoder_action(what, m_edit_value, -100, 100, 0)) {
+					layer.set_page_content(m_cur_page, m_save_page);
+					layer.add_noise_to_page(m_cur_page, m_rand_seed, m_edit_value);
+				}
+				g_popup.num3digits(m_edit_value);
+				break;
+			}
+			break;
+			////////////////////////////////////////////////
+		case ACTION_KEY_COMBO:
+			{
+				int page_no = -1;
+				switch(m_key_combo) {
+					// commit randomness to page slot
+					case KEY_RAND|KEY2_RAND_SAVE_A:
+						page_no = 0;
+						break;
+					case KEY_RAND|KEY2_RAND_SAVE_B:
+						page_no = 1;
+						break;
+					case KEY_RAND|KEY2_RAND_SAVE_C:
+						page_no = 2;
+						break;
+					case KEY_RAND|KEY2_RAND_SAVE_D:
+						page_no = 3;
+						break;
+					case KEY_RAND|KEY2_RAND_SAVE_CUR:
+						// commit to current page slot. This needs to update the saved
+						// page image and reset the level parameter
+						layer.get_page_content(m_cur_page, m_save_page);
+						m_edit_value = 0;
+						g_popup.text("DONE");
+						g_popup.avoid(m_cursor);
+						break;
+				}
+				if(page_no >= 0) {
+					// we cannot use this method to save to the current page because
+					// the changes will be overwritten by the saved page image
+					if(page_no != m_cur_page) {
+						CSequencePage this_page;
+						layer.get_page_content(m_cur_page, this_page);
+						layer.set_page_content(page_no, this_page);
+						g_popup.text("DONE");
+						g_popup.avoid(m_cursor);
+					}
+				}
+			}
+			break;
+		////////////////////////////////////////////////
+		case ACTION_END:
+			// restore the saved page image
+			layer.set_page_content(m_cur_page, m_save_page);
+			break;
+		default:
+			break;
+		}
+	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -1175,14 +1256,17 @@ class CSequenceEditor {
 			case KEY_CV:
 				cv_action(layer, what);
 				break;
+			case KEY_GATE:
+				gate_action(layer, what);
+				break;
 			case KEY_CLONE:
 				clone_action(layer, what);
 				break;
 			case KEY_CLEAR:
 				clear_action(layer, what);
 				break;
-			case KEY_GATE:
-				gate_action(layer, what);
+			case KEY_RAND:
+				rand_action(layer, what);
 				break;
 			case KEY_LOOP:
 				loop_action(layer, what);
