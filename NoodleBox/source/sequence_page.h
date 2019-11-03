@@ -162,16 +162,20 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step, V_SQL_FILL_MODE fill_mode, byte zero_value, CSequenceStep::DATA what, byte auto_data_point) {
+	void set_step(byte index, CSequenceStep& source, V_SQL_FILL_MODE fill_mode, byte zero_value, CSequenceStep::DATA what, byte auto_data_point) {
 		ASSERT(index>=0 && index < MAX_STEPS);
-
-		// paste the new step value and recalc fill points
-		m_cfg.m_step[index].copy(step, what);
-		recalc(fill_mode, zero_value);
+		CSequenceStep& dest = m_cfg.m_step[index];
 
 		// see if we might need to promote a fill point to a data point so that it can retain its value
-		if(auto_data_point && (what&CSequenceStep::CV_DATA) && (m_cfg.m_step[index].get_value() != step.get_value())) {
-			m_cfg.m_step[index].set_data_point(1);
+		if(auto_data_point && (what&CSequenceStep::CV_DATA) && (source.get_value() != dest.get_value())) {
+			// create a new data point
+			dest.copy(source, what);
+			dest.set_data_point(1);
+			recalc(fill_mode, zero_value);
+		}
+		else {
+			// paste the new step value and recalc fill points
+			dest.copy(source, what);
 			recalc(fill_mode, zero_value);
 		}
 	}
