@@ -907,7 +907,7 @@ class CSequenceEditor {
 				g_popup.num3digits(m_edit_value);
 				break;
 			// adding noise to an existing page
-			case KEY_RAND:
+			default:
 				if(encoder_action(what, m_edit_value, -100, 100, 0)) {
 					layer.set_page_content(m_cur_page, m_save_page);
 					layer.add_noise_to_page(m_cur_page, m_rand_seed, m_edit_value);

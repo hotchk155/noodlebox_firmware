@@ -141,6 +141,20 @@ void fire_event(int event, uint32_t param) {
 
 	switch(event) {
 	///////////////////////////////////
+	case EV_KEY_PRESS:
+		switch(param) {
+			case KEY_RUN:
+				fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
+				break;
+			case KEY_CV|KEY_RUN:
+				fire_event(EV_SEQ_RESTART, 0);
+				break;
+			default:
+				dispatch_event(event, param);
+				break;
+		}
+		break;
+	///////////////////////////////////
 	case EV_KEY_CLICK:
 		switch(param) {
 		case KEY_LAYER:
@@ -152,9 +166,6 @@ void fire_event(int event, uint32_t param) {
 				g_view = VIEW_SEQUENCER;
 				g_menu.activate();
 			}
-			break;
-		case KEY_RUN:
-			fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
 			break;
 		default:
 			dispatch_event(event, param);
