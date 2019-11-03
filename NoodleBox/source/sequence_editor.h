@@ -642,6 +642,9 @@ class CSequenceEditor {
 			default:
 				// the first turn sets as a data point
 				if(!step.is_data_point()) {
+					if(!layer.any_data_points(m_cur_page)) {
+						step.set_value(layer.get_default_value());
+					}
 					step.set_data_point(1);
 					if(m_cfg.m_auto_gate) {
 						step.set_gate(1);

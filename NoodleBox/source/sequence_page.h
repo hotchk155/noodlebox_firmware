@@ -124,11 +124,11 @@ private:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void zero_fill()
+	void zero_fill(byte zero_value)
 	{
 		for(int i=0; i<MAX_STEPS; ++i) {
 			if(!m_cfg.m_step[i].is_data_point()) {
-				m_cfg.m_step[i].set_value(0);
+				m_cfg.m_step[i].set_value(zero_value);
 			}
 		}
 	}
@@ -140,16 +140,16 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void recalc(V_SQL_FILL_MODE fill_mode, byte default_value) {
+	void recalc(V_SQL_FILL_MODE fill_mode, byte zero_value) {
 		switch(fill_mode) {
 		case V_SQL_FILL_MODE_PAD:
-			pad(default_value);
+			pad(zero_value);
 			break;
 		case V_SQL_FILL_MODE_INTERPOLATE:
-			interpolate(default_value);
+			interpolate(zero_value);
 			break;
 		case V_SQL_FILL_MODE_OFF:
-			zero_fill();
+			zero_fill(zero_value);
 			break;
 		}
 	}
@@ -162,25 +162,25 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_step(byte index, CSequenceStep& step, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what, byte auto_data_point) {
+	void set_step(byte index, CSequenceStep& step, V_SQL_FILL_MODE fill_mode, byte zero_value, CSequenceStep::DATA what, byte auto_data_point) {
 		ASSERT(index>=0 && index < MAX_STEPS);
 
 		// paste the new step value and recalc fill points
 		m_cfg.m_step[index].copy(step, what);
-		recalc(fill_mode, default_value);
+		recalc(fill_mode, zero_value);
 
 		// see if we might need to promote a fill point to a data point so that it can retain its value
 		if(auto_data_point && (what&CSequenceStep::CV_DATA) && (m_cfg.m_step[index].get_value() != step.get_value())) {
 			m_cfg.m_step[index].set_data_point(1);
-			recalc(fill_mode, default_value);
+			recalc(fill_mode, zero_value);
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void clear_step(byte index, V_SQL_FILL_MODE fill_mode, byte default_value, CSequenceStep::DATA what) {
+	void clear_step(byte index, V_SQL_FILL_MODE fill_mode, byte zero_value, CSequenceStep::DATA what) {
 		ASSERT(index>=0 && index < MAX_STEPS);
 		m_cfg.m_step[index].clear(what);
-		recalc(fill_mode, default_value);
+		recalc(fill_mode, zero_value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -205,18 +205,18 @@ public:
 		return m_cfg.m_loop_to;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void clear(byte default_value) {
+	void clear(byte zero_value) {
 		for(int i=0; i<MAX_STEPS; ++i) {
 			m_cfg.m_step[i].clear(CSequenceStep::ALL_DATA);
 		}
-		recalc(V_SQL_FILL_MODE_OFF, default_value);
+		recalc(V_SQL_FILL_MODE_OFF, zero_value);
 		m_cfg.m_loop_from = DEFAULT_LOOP_FROM;
 		m_cfg.m_loop_to = DEFAULT_LOOP_TO;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// shift pattern vertically up or down by one space
-	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte default_value, byte allow_clip) {
+	byte shift_vertical(int dir, CScale *scale, V_SQL_FILL_MODE fill_mode, byte zero_value, byte allow_clip) {
 		int value[MAX_STEPS];
 		byte changed = 0;
 		for(int i=0; i<MAX_STEPS; ++i) {
@@ -256,7 +256,7 @@ public:
 			m_cfg.m_step[i].set_value(value[i]);
 		}
 
-		recalc(fill_mode, default_value);
+		recalc(fill_mode, zero_value);
 		return 1;
 	}
 
@@ -294,6 +294,15 @@ public:
 		return count? (int)(0.5+sum/count) : default_value;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	byte any_data_points() {
+		for(int i = 0; i<MAX_STEPS-1; ++i) {
+			if(m_cfg.m_step[i].is_data_point()) {
+				return 1;
+			}
+		}
+		return 0;
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void init_state() {

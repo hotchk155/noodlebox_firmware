@@ -210,7 +210,7 @@ private:
 	void recalc_data_points_all_pages() {
 		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
-			page.recalc(m_cfg.m_fill_mode, get_default_value());
+			page.recalc(m_cfg.m_fill_mode, get_zero_value());
 		}
 	}
 
@@ -370,6 +370,8 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	// Return a value that can be used to set a default view offset for a layer
+	// in the absence of any data points
 	byte get_default_value() {
 		switch(m_cfg.m_mode) {
 			case V_SQL_SEQ_MODE_OFFSET:
@@ -382,6 +384,22 @@ public:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	// Return a value that all fill points in a layer reverts to in the absence of
+	// any data points being defined
+	byte get_zero_value() {
+		switch(m_cfg.m_mode) {
+			case V_SQL_SEQ_MODE_OFFSET:
+				return OFFSET_ZERO;
+			default:
+				return 0;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte any_data_points(byte page_no) {
+		return get_page(page_no).any_data_points();
+	}
 
 	//
 	// EDIT FUNCTIONS
@@ -426,19 +444,19 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA, byte auto_data_point = 0) {
 		CSequencePage& page = get_page(page_no);
-		page.set_step(index, step, m_cfg.m_fill_mode, get_default_value(), what, auto_data_point);
+		page.set_step(index, step, m_cfg.m_fill_mode, get_zero_value(), what, auto_data_point);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_step(byte page_no, byte index, CSequenceStep::DATA what = CSequenceStep::ALL_DATA) {
 		CSequencePage& page = get_page(page_no);
-		page.clear_step(index, m_cfg.m_fill_mode, get_default_value(), what);
+		page.clear_step(index, m_cfg.m_fill_mode, get_zero_value(), what);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_page(byte page_no) {
 		CSequencePage& page = get_page(page_no);
-		page.clear(get_default_value());
+		page.clear(get_zero_value());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -458,7 +476,7 @@ public:
 	void clear() {
 		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
-			page.clear(get_default_value());
+			page.clear(get_zero_value());
 		}
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_cue_list_count = 0;
@@ -505,7 +523,7 @@ public:
 			dir,
 			(m_cfg.m_mode == V_SQL_SEQ_MODE_PITCH && m_cfg.m_scaled_view)? &CScale::instance() : NULL,
 			m_cfg.m_fill_mode,
-			get_default_value(),
+			get_zero_value(),
 			(m_cfg.m_mode == V_SQL_SEQ_MODE_MOD)
 		);
 	}
@@ -529,7 +547,7 @@ public:
 				break;
 			case INIT_BLANK:
 			default:
-				get_page(m_cfg.m_max_page_no+1).clear(get_default_value());
+				get_page(m_cfg.m_max_page_no+1).clear(get_zero_value());
 				break;
 			}
 			++m_cfg.m_max_page_no;
