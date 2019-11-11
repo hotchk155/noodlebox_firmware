@@ -398,7 +398,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte any_data_points(byte page_no) {
-		return get_page(page_no).any_data_points();
+		return get_page(page_no).any_of(CSequenceStep::DATA_POINT);
 	}
 
 	//
@@ -470,6 +470,24 @@ public:
 	void randomise_page(byte page_no, int seed) {
 		CSequencePage& page = get_page(page_no);
 		page.randomise(seed, get_default_value(), m_cfg.m_fill_mode, get_zero_value());
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void replace_gates(byte page_no, int onsets, int positions) {
+		CSequencePage& page = get_page(page_no);
+		page.replace_gates(onsets, positions);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int count_of(byte page_no, CSequenceStep::POINT_TYPE type, int from=0, int to=CSequencePage::MAX_STEPS-1) {
+		CSequencePage& page = get_page(page_no);
+		return page.count_of(type, from, to);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int any_of(byte page_no, CSequenceStep::POINT_TYPE type, int from=0, int to=CSequencePage::MAX_STEPS-1) {
+		CSequencePage& page = get_page(page_no);
+		return page.any_of(type, from, to);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -647,6 +665,19 @@ public:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	int get_loop_span(byte page_no, int*min = nullptr, int*max = nullptr) {
+		int from = get_loop_from(page_no);
+		int to = get_loop_to(page_no);
+		if(from > to) {
+			int t=to;
+			to = from;
+			from = t;
+		}
+		if(min) *min = from;
+		if(max) *max = to;
+		return 1 + to - from;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	//
@@ -888,7 +919,7 @@ public:
 		if(!m_state.m_suppress_step) {
 			if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
 				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
-				!m_state.m_step_value.is_data_point()) {
+				!m_state.m_step_value.is(CSequenceStep::DATA_POINT)) {
 				m_state.m_output = this_input;
 			}
 			else {
@@ -945,7 +976,7 @@ public:
 				glide_time = m_state.m_step_timeout;
 				break;
 			case V_SQL_CVGLIDE_TIE:
-				glide_time = (m_state.m_step_value.get_tie())? m_state.m_step_timeout : 0;
+				glide_time = (m_state.m_step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
 				break;
 			case V_SQL_CVGLIDE_OFF:
 			default:
@@ -968,8 +999,8 @@ public:
 				g_outs.gate(which, COuts::GATE_CLOSED);
 			}
 		}
-		else if(m_state.m_step_value.get_gate() || m_state.m_step_value.get_retrig()>0) {
-			if(m_state.m_step_value.get_tie()) {
+		else if(m_state.m_step_value.is(CSequenceStep::TRIG_POINT) || m_state.m_step_value.get_retrig()>0) {
+			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT)) {
 				m_state.m_trig_dur = 0; // until next step
 			}
 			else {
@@ -997,7 +1028,7 @@ public:
 			m_state.m_retrig_timeout = m_state.m_retrig_ms;
 			g_outs.gate(which, COuts::GATE_TRIG);
 		}
-		else if(m_state.m_step_value.get_tie()) {
+		else if(m_state.m_step_value.is(CSequenceStep::TIE_POINT)) {
 			m_state.m_gate_timeout = 0;
 			g_outs.gate(which, COuts::GATE_OPEN);
 		}
@@ -1014,7 +1045,7 @@ public:
 	void process_midi_note() {
 
 		// is this a nonplaying step?
-		if(!(m_state.m_step_value.get_gate()||m_state.m_step_value.get_tie()) || m_state.m_suppress_step) {
+		if(!(m_state.m_step_value.is(CSequenceStep::TRIG_POINT)||m_state.m_step_value.is(CSequenceStep::TIE_POINT)) || m_state.m_suppress_step) {
 
 			if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
 				g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
@@ -1057,7 +1088,7 @@ public:
 			}
 
 			// check if we need to ties notes together
-			if(m_state.m_step_value.get_tie() && m_state.m_midi_note != NO_MIDI_NOTE) {
+			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && m_state.m_midi_note != NO_MIDI_NOTE) {
 				// check that we're not simply extending the same note
 				if(m_state.m_midi_note != note) {
 					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);

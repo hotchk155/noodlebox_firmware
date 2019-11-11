@@ -69,7 +69,7 @@ private:
 		int first_waypoint = -1;
 		int prev_waypoint = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is(CSequenceStep::DATA_POINT)) {
 				if(prev_waypoint < 0) {
 					first_waypoint = i;
 				}
@@ -106,7 +106,7 @@ private:
 		int i;
 		int first_data_point = -1;
 		for(i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is(CSequenceStep::DATA_POINT)) {
 				if(first_data_point < 0) {
 					first_data_point = i;
 				}
@@ -127,7 +127,7 @@ private:
 	void zero_fill(byte zero_value)
 	{
 		for(int i=0; i<MAX_STEPS; ++i) {
-			if(!m_cfg.m_step[i].is_data_point()) {
+			if(!m_cfg.m_step[i].is(CSequenceStep::DATA_POINT)) {
 				m_cfg.m_step[i].set_value(zero_value);
 			}
 		}
@@ -170,7 +170,7 @@ public:
 		if(auto_data_point && (what&CSequenceStep::CV_DATA) && (source.get_value() != dest.get_value())) {
 			// create a new data point
 			dest.copy(source, what);
-			dest.set_data_point(1);
+			dest.set(CSequenceStep::DATA_POINT, 1);
 			recalc(fill_mode, zero_value);
 		}
 		else {
@@ -224,7 +224,7 @@ public:
 		int value[MAX_STEPS];
 		byte changed = 0;
 		for(int i=0; i<MAX_STEPS; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is(CSequenceStep::DATA_POINT)) {
 				value[i] = m_cfg.m_step[i].get_value();
 				if(scale) {
 					if(scale->inc_note_in_scale(value[i],dir)) {
@@ -290,7 +290,7 @@ public:
 		int sum = 0;
 		int count = 0;
 		for(int i = 0; i<MAX_STEPS-1; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+			if(m_cfg.m_step[i].is(CSequenceStep::DATA_POINT)) {
 				sum += m_cfg.m_step[i].get_value();
 				++count;
 			}
@@ -299,13 +299,26 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	byte any_data_points() {
-		for(int i = 0; i<MAX_STEPS-1; ++i) {
-			if(m_cfg.m_step[i].is_data_point()) {
+	byte any_of(CSequenceStep::POINT_TYPE type, int from=0, int to=MAX_STEPS-1) {
+		while(from<to && from < MAX_STEPS) {
+			if(m_cfg.m_step[from].is(type)) {
 				return 1;
 			}
+			++from;
 		}
 		return 0;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	int count_of(CSequenceStep::POINT_TYPE type, int from=0, int to=MAX_STEPS-1) {
+		int count = 0;
+		while(from<to && from < MAX_STEPS) {
+			if(m_cfg.m_step[from].is(type)) {
+				++count;
+			}
+			++from;
+		}
+		return count;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -323,9 +336,7 @@ public:
 				value = 127;
 			}
 			if(step.get_value() != value) {
-				if(!step.is_data_point()) {
-					step.set_data_point(1);
-				}
+				step.set(CSequenceStep::DATA_POINT, 1);
 				step.set_value(value);
 			}
 		}
@@ -341,16 +352,32 @@ public:
 			step.clear(CSequenceStep::ALL_DATA);
 			if((rand()%10)<5) {
 				step.set_value(default_value+(rand()%12)-(rand()%12));
-				step.set_data_point(1);
+				step.set(CSequenceStep::DATA_POINT, 1);
 			}
 			if((rand()%10)<2) {
-				step.set_gate(1);
+				step.set(CSequenceStep::TRIG_POINT, 1);
 			}
 			if((rand()%10)<2) {
-				step.set_tie(1);
+				step.set(CSequenceStep::TIE_POINT, 1);
 			}
 		}
 		recalc(fill_mode, zero_value);
+	}
+
+	void replace_gates(int onsets, int positions) {
+		for(int i=0; i<MAX_STEPS; ++i) {
+			CSequenceStep& step = m_cfg.m_step[i];
+			step.clear(CSequenceStep::GATE_DATA);
+		}
+		if(positions>0 && onsets>0) {
+			double rate = (double)positions/onsets;
+			double pos = 0.0;
+			while((int)pos < MAX_STEPS-1) {
+				CSequenceStep& step = m_cfg.m_step[(int)pos];
+				step.set(CSequenceStep::TRIG_POINT, 1);
+				pos += rate;
+			}
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////

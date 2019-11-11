@@ -55,6 +55,12 @@ public:
 		ALL_DATA = CV_DATA|GATE_DATA
 	} DATA;
 
+	typedef enum: byte {
+		DATA_POINT,
+		TRIG_POINT,
+		TIE_POINT
+	} POINT_TYPE;
+
 	///////////////////////////////////////////////////////////////////////////////////
 	CSequenceStep() {
 		clear(ALL_DATA);
@@ -72,33 +78,31 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline byte is_data_point() {
-		return m_cv.m_is_data_point;
+	inline byte is(POINT_TYPE type) {
+		switch(type) {
+		case DATA_POINT:
+			return !!m_cv.m_is_data_point;
+		case TRIG_POINT:
+			return !!m_gate.m_trig;
+		case TIE_POINT:
+			return !!m_gate.m_tie;
+		}
+		return 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline void set_data_point(byte value) {
-		m_cv.m_is_data_point = !!value;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	inline void set_gate(byte gate) {
-		m_gate.m_trig = !!gate;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	inline int get_gate() {
-		return m_gate.m_trig;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	inline void set_tie(byte tie) {
-		m_gate.m_tie = !!tie;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	inline byte get_tie() {
-		return m_gate.m_tie;
+	inline byte set(POINT_TYPE type, byte value) {
+		switch(type) {
+		case DATA_POINT:
+			m_cv.m_is_data_point = !!value;
+			break;
+		case TRIG_POINT:
+			m_gate.m_trig = !!value;
+			break;
+		case TIE_POINT:
+			return m_gate.m_tie = !!value;
+		}
+		return 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////

@@ -227,6 +227,13 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_trig_density(int count, int steps) {
+		g_popup.num2digits(count);
+		g_popup.text(":",1);
+		g_popup.num2digits(steps,1);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void show_grid(CSequenceLayer& layer) {
 		int n;
 		int notes_per_octave;
@@ -638,13 +645,13 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_FINE:
 			default:
 				// the first turn sets as a data point
-				if(!step.is_data_point()) {
+				if(!step.is(CSequenceStep::DATA_POINT)) {
 					if(!layer.any_data_points(m_cur_page)) {
 						step.set_value(layer.get_default_value());
 					}
-					step.set_data_point(1);
+					step.set(CSequenceStep::DATA_POINT,1);
 					if(m_cfg.m_auto_gate) {
-						step.set_gate(1);
+						step.set(CSequenceStep::TRIG_POINT,1);
 					}
 				}
 				else {
@@ -682,6 +689,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// GATE BUTTON
 	void gate_action(CSequenceLayer& layer, ACTION what) {
+		int loop_min, loop_max, loop_span;
 		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
 		switch(what) {
 		////////////////////////////////////////////////
@@ -704,6 +712,11 @@ class CSequenceEditor {
 			case KEY_GATE|KEY2_GATE_VEL:
 				m_gate_view = GATE_VIEW_VELOCITY;
 				show_gate_accent(step);
+				break;
+			case KEY_GATE|KEY2_GATE_REPLACE:
+				loop_span = layer.get_loop_span(m_cur_page, &loop_min, &loop_max);
+				m_edit_value = layer.count_of(m_cur_page, CSequenceStep::TRIG_POINT, loop_min, loop_max);
+				show_trig_density(m_edit_value, loop_span);
 				break;
 			}
 			break;
@@ -728,13 +741,20 @@ class CSequenceEditor {
 				show_gate_accent(step);
 				m_gate_view = GATE_VIEW_VELOCITY;
 				break;
+			case KEY_GATE|KEY2_GATE_REPLACE:
+				loop_span = layer.get_loop_span(m_cur_page, &loop_min, &loop_max);
+				if(encoder_action(what, m_edit_value, 0, loop_span, 0)) {
+					layer.replace_gates(m_cur_page, m_edit_value, loop_span);
+					show_trig_density(m_edit_value, loop_span);
+				}
+				break;
 			default:
 				if(what == ACTION_ENC_RIGHT) {
 					// extend gate tie from current position
 					byte pos = m_cursor+m_edit_value;
 					if(pos < CSequencePage::MAX_STEPS-1) {
 						step = layer.get_step(m_cur_page, pos);
-						step.set_tie(1);
+						step.set(CSequenceStep::TIE_POINT, 1);
 						layer.set_step(m_cur_page, pos, step);
 					}
 					++m_edit_value;
@@ -744,7 +764,7 @@ class CSequenceEditor {
 					if(m_edit_value>=0) {
 						byte pos = m_cursor+m_edit_value;
 						step = layer.get_step(m_cur_page, pos);
-						step.set_tie(0);
+						step.set(CSequenceStep::TIE_POINT, 0);
 						layer.set_step(m_cur_page, pos, step);
 						if(m_edit_value>0) {
 							--m_edit_value;
@@ -760,7 +780,7 @@ class CSequenceEditor {
 			//CSequencePage& page = layer.get_page(m_cur_page);
 			if(m_gate_view == GATE_VIEW_GATE_TIE) {
 				CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
-				step.set_gate(!step.get_gate());
+				step.set(CSequenceStep::TRIG_POINT, !step.is(CSequenceStep::TRIG_POINT));
 				layer.set_step(m_cur_page, m_cursor, step);
 			}
 			break;
@@ -1498,7 +1518,7 @@ public:
 					g_ui.hilite(n) |= mask;
 					g_ui.raster(n) |= mask;
 				}
-				else if(step.is_data_point()) {
+				else if(step.is(CSequenceStep::DATA_POINT)) {
 					g_ui.raster(n) |= mask;
 					g_ui.hilite(n) &= ~mask;
 				}
@@ -1510,37 +1530,37 @@ public:
 
 			// determine how the gate point should be displayed
 			byte bri = BRIGHT_OFF;
-			byte gate_or_tie = step.get_gate()||step.get_tie();
+			byte trig_or_tie = step.is(CSequenceStep::TRIG_POINT)||step.is(CSequenceStep::TIE_POINT);
 			switch(m_gate_view) {
 				case GATE_VIEW_GATE_TIE:
-					if(step.get_gate()) {
-						bri = step.get_tie()? BRIGHT_HIGH : BRIGHT_MED;
+					if(step.is(CSequenceStep::TRIG_POINT)) {
+						bri = step.is(CSequenceStep::TIE_POINT)? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(step.get_tie()){
+					else if(step.is(CSequenceStep::TIE_POINT)){
 						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_PROB:
 					if(!!step.get_prob()) {
-						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
+						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(gate_or_tie){
+					else if(trig_or_tie){
 						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_RETRIG:
 					if(!!step.get_retrig()) {
-						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
+						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(gate_or_tie){
+					else if(trig_or_tie){
 						bri = BRIGHT_LOW;
 					}
 					break;
 				case GATE_VIEW_VELOCITY:
 					if(!!step.get_accent()) {
-						bri = gate_or_tie? BRIGHT_HIGH : BRIGHT_MED;
+						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
-					else if(gate_or_tie){
+					else if(trig_or_tie){
 						bri = BRIGHT_LOW;
 					}
 					break;
