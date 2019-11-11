@@ -33,45 +33,59 @@ public:
 	// number of 24ppqn ticks
 	enum
 	{
-	  RATE_1    	= 96,
-	  RATE_2D   	= 72,
-	  RATE_2    	= 48,
-	  RATE_4D   	= 36,
-	  RATE_2T   	= 32,
-	  RATE_4    	= 24,
-	  RATE_8D   	= 18,
-	  RATE_4T   	= 16,
-	  RATE_8    	= 12,
-	  RATE_16D  	= 9,
-	  RATE_8T   	= 8,
-	  RATE_16   	= 6,
-	  RATE_16T  	= 4,
-	  RATE_32   	= 3,
-	  RATE_24PPQN	= 1
+	  PP24_1    	= 96,
+	  PP24_2D   	= 72,
+	  PP24_2    	= 48,
+	  PP24_4D   	= 36,
+	  PP24_2T   	= 32,
+	  PP24_4    	= 24,
+	  PP24_8D   	= 18,
+	  PP24_4T   	= 16,
+	  PP24_8    	= 12,
+	  PP24_16D  	= 9,
+	  PP24_8T   	= 8,
+	  PP24_16   	= 6,
+	  PP24_16T  	= 4,
+	  PP24_32   	= 3,
+	  PP24_24PPQN	= 1
 	};
 
+	// Noodlebox uses the following type for handling "musical time"...
+	// TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
+	// increments per quarter note.
+	// ~699050 beats before rolling over (about 38h @ 300bpm, 97h @ 120bpm)
+	typedef uint32_t TICKS_TYPE;
+
+	enum {
+		NEVER = (TICKS_TYPE)(-1)
+	};
+	inline int ticks_to_pp24(TICKS_TYPE ticks) {
+		return ticks>>8;
+	}
+	inline TICKS_TYPE pp24_to_ticks(int pp24) {
+		return ((TICKS_TYPE)pp24)<<8;
+	}
 
 private:
 	enum {
 		CLOCK_OUT_WIDTH = 15, //ms
 		CLOCK_OUT_WIDTH_24PPQN = 5 //ms
+
 	};
+
 
 	static const byte c_clock_in_rate[V_CLOCK_IN_RATE_MAX];
 	static const byte c_clock_out_rate[V_CLOCK_OUT_RATE_MAX];
 
-//TODO alignment of beat clock, pulse clock and seqn
 
 	/////////////////////////////////////////////////////////////////
 	// called on a 24ppqn tick
-	inline void private_on_tick() {
-		if(!m_beat_count) {
+	inline void private_on_24pp(int pp24) {
+		if(!(pp24%PP24_4)) {
 			g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
 		}
-		if(++m_beat_count >= RATE_4) {
-			m_beat_count = 0;
-		}
 
+		/*
 		byte out_clock_div = c_clock_out_rate[m_cfg.m_clock_out_rate];
 		if(!m_pulse_clock_count) {
 			if(m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PPQN) {
@@ -83,7 +97,9 @@ private:
 		}
 		if(++m_pulse_clock_count >= out_clock_div) {
 			m_pulse_clock_count = 0;
-		}
+		}*/
+
+
 	}
 
 
@@ -91,6 +107,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// called when external clock tick received
 	void on_clock_in(int rate) {
+/*
 		// use the time since the last tick to adjust the internal
 		// clock speed
 		if(m_clock_in_ms_last && m_ms > m_clock_in_ms_last) {
@@ -100,20 +117,27 @@ public:
 
 		// update the tick counter
 		m_clock_in_ticks_now = m_clock_in_ticks_next;
-		m_clock_in_ticks_next += rate;
+		m_clock_in_ticks_next += rate;*/
 	}
 
 
 
-	volatile uint32_t m_ticks; 					// whole 24ppqn ticks
-	volatile double m_part_tick;				// fractional 24ppqn ticks
-	volatile double m_ticks_per_ms;				// how many ticks happen each ms
-	volatile byte m_beat_count;					// used to blink the tempo LED
-	volatile byte m_pulse_clock_count;			// used to time pulses on pulse clock counter
-	volatile uint32_t m_clock_in_ms_last;		// m_ms value of the last input pulse
-	volatile uint32_t m_clock_in_ticks_now;		// counter of clock in ticks, which cause incrememnt of m_ticks
-	volatile uint32_t m_clock_in_ticks_next;	//
+	volatile double m_ticks_per_ms;
+	volatile double m_part_ticks;
+	volatile TICKS_TYPE m_ticks;
+	volatile int m_pp24;
+
+	//volatile double m_part_tick;				// fractional 24ppqn ticks
+
+
+//	volatile double m_ticks_per_ms;				// how many ticks happen each ms
+	//volatile byte m_beat_count;					// used to blink the tempo LED
+	//volatile byte m_pulse_clock_count;			// used to time pulses on pulse clock counter
+	//volatile uint32_t m_clock_in_ms_last;		// m_ms value of the last input pulse
+	//volatile uint32_t m_clock_in_ticks_now;		// counter of clock in ticks, which cause incrememnt of m_ticks
+	//volatile uint32_t m_clock_in_ticks_next;	//
 	volatile byte m_ms_tick;					// flag set each time 1ms is up
+	volatile byte m_pp24_tick;
 	volatile unsigned int m_ms;					// ms counter
 	float m_bpm;								// tempo
 
@@ -135,7 +159,22 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_bpm(float bpm) {
 		m_bpm = bpm;
-		m_ticks_per_ms = ((double)bpm * RATE_4) / (60.0 * 1000.0);
+		m_ticks_per_ms = ((double)bpm * PP24_4 * 256.0) / (60.0 * 1000.0);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void on_restart() {
+		m_ticks = 0;
+		m_part_ticks = 0.0;
+		m_pp24 = 0;
+		m_pp24_tick = 0;
+		private_on_24pp(0);
+
+		//m_beat_count = 0;
+		//m_pulse_clock_count = 0;
+		//m_clock_in_ticks_now = 0;
+		//m_clock_in_ticks_next = 0;
+		//m_clock_in_ms_last = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -227,10 +266,22 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline uint32_t get_ticks() {
+	inline TICKS_TYPE get_ticks() {
 		return m_ticks;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	inline int get_pp24() {
+		return m_pp24;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	inline byte is_pp24_tick() {
+		byte res = m_pp24_tick;
+		m_pp24_tick = 0;
+		return res;
+	}
+	/*
 	///////////////////////////////////////////////////////////////////////////////
 	inline byte get_part_ticks() {
 		if(m_cfg.m_source == V_CLOCK_SRC_INTERNAL) {
@@ -241,56 +292,72 @@ public:
 			return 0;
 		}
 	}
-
+*/
 	///////////////////////////////////////////////////////////////////////////////
 	void on_midi_tick() {
 		if(m_cfg.m_source == V_CLOCK_SRC_MIDI) {
-			on_clock_in(RATE_24PPQN);
+			on_clock_in(PP24_24PPQN);
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	void on_restart() {
-		m_ticks = 0;
-		m_part_tick = 0.0;
-		m_beat_count = 0;
-		m_pulse_clock_count = 0;
-		m_clock_in_ticks_now = 0;
-		m_clock_in_ticks_next = 0;
-		m_clock_in_ms_last = 0;
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline int ticks_per_measure(V_SQL_STEP_RATE step_rate) {
-		const byte ticks[V_SQL_STEP_RATE_MAX] = {
-		  RATE_1,
-		  RATE_2D,
-		  RATE_2,
-		  RATE_4D,
-		  RATE_2T,
-		  RATE_4,
-		  RATE_8D,
-		  RATE_4T,
-		  RATE_8,
-		  RATE_16D,
-		  RATE_8T,
-		  RATE_16,
-		  RATE_16T,
-		  RATE_32
+	inline int pp24_per_measure(V_SQL_STEP_RATE step_rate) {
+		const byte pp24[V_SQL_STEP_RATE_MAX] = {
+			PP24_1,
+			PP24_2D,
+			PP24_2,
+			PP24_4D,
+			PP24_2T,
+			PP24_4,
+			PP24_8D,
+			PP24_4T,
+			PP24_8,
+			PP24_16D,
+			PP24_8T,
+			PP24_16,
+			PP24_16T,
+			PP24_32
 		};
-		return ticks[step_rate];
+		return pp24[step_rate];
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	int get_ms_for_ticks(int ticks) {
+	inline int get_ms_for_pp24(int pp24) {
+		TICKS_TYPE ticks = pp24_to_ticks(pp24);
 		return ticks/m_ticks_per_ms;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	int get_ms_per_measure(V_SQL_STEP_RATE step_rate) {
-		return ticks_per_measure(step_rate)/m_ticks_per_ms;
+	inline int get_ms_per_measure(V_SQL_STEP_RATE step_rate) {
+		return get_ms_for_pp24(pp24_per_measure(step_rate));
 	}
 
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Interrupt service routine called once per millisecond
+	void per_ms_isr() {
+
+		// general timing stuff
+		++m_ms;
+		m_ms_tick = 1;
+
+		// update the subtick counter
+		m_part_ticks += m_ticks_per_ms;
+		int whole_ticks = (int)m_part_ticks;
+		m_part_ticks -= whole_ticks;
+		m_ticks += whole_ticks;
+
+		// see if there has been a 24ppqn tick
+		int pp24 = ticks_to_pp24(m_ticks);
+		if(pp24 != m_pp24) {
+			m_pp24_tick = 1;
+			m_pp24 = pp24;
+			private_on_24pp(pp24);
+		}
+	}
+
+	/*
 	///////////////////////////////////////////////////////////////////////////////
 	// Interrupt service routine called once per millisecond
 	void tick_isr() {
@@ -326,11 +393,13 @@ public:
 //TODO - when counter is zero at start need a tick before incrementing it!
 		}
 	}
+*/
+
 
 	inline void ext_clock_isr() {
-		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
-			on_clock_in(c_clock_in_rate[m_cfg.m_clock_in_rate]);
-		}
+		//if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
+			//on_clock_in(c_clock_in_rate[m_cfg.m_clock_in_rate]);
+		//}
 	}
 };
 
@@ -345,17 +414,17 @@ public:
 CClock g_clock;
 
 const byte CClock::c_clock_in_rate[V_CLOCK_IN_RATE_MAX] = {
-		  RATE_32,	RATE_16,	RATE_8,		RATE_4,	RATE_24PPQN
+	PP24_32, PP24_16, PP24_8, PP24_4, PP24_24PPQN
 };
 const byte CClock::c_clock_out_rate[V_CLOCK_OUT_RATE_MAX] = {
-		  RATE_32,	RATE_16,	RATE_8,		RATE_4,	RATE_24PPQN
+	PP24_32, PP24_16, PP24_8, PP24_4, PP24_24PPQN
 };
 
 
 // ISR for the millisecond timer
 extern "C" void PIT_CH0_IRQHandler(void) {
 	PIT_ClearStatusFlags(PIT, kPIT_Chnl_0, kPIT_TimerFlag);
-	g_clock.tick_isr();
+	g_clock.per_ms_isr();
 }
 
 // ISR for the KBI interrupt (SYNC IN)

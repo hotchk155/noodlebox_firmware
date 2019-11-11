@@ -274,7 +274,7 @@ int main(void) {
     	if(g_clock.m_ms_tick) {
     		g_clock.m_ms_tick = 0;
 
-       		g_sequence.run(g_clock.get_ticks(), g_clock.get_part_ticks());
+       		g_sequence.run();
         	g_outs.run();
         	g_midi.run();
 
@@ -298,7 +298,7 @@ int main(void) {
     			break;
     		}
 
-    		g_cv_led.run();
+    		g_midi_led.run();
     		g_gate_led.run();
     		g_tempo_led.run();
     		g_clock_out.run();

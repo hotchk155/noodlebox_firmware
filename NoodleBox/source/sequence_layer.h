@@ -89,7 +89,7 @@ private:
 		int m_play_pos;
 		int m_cue_list_next;				// position of the next cued page within cued pages list
 		CSequenceStep m_step_value;			// the last value output by sequencer
-		byte m_stepped;						// stepped flag
+		byte m_played_step;						// stepped flag
 		byte m_suppress_step;
 		byte m_page_advanced;
 		byte m_midi_note; 					// last midi note played on channel
@@ -106,6 +106,8 @@ private:
 		uint32_t m_retrig_ms;			// this is the number of ms between retriggers
 		uint32_t m_retrig_timeout;		// this is the time remaining until the next retrigger
 		uint32_t m_trig_dur;					// the duration of the current trigger
+
+		CClock::TICKS_TYPE m_next_step_time;
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -281,7 +283,7 @@ public:
 	// Reset the playback state of the layer
 	void reset() {
 		m_state.m_step_value.clear(CSequenceStep::ALL_DATA);
-		m_state.m_stepped = 0;
+		m_state.m_played_step = 0;
 		m_state.m_suppress_step = 0;
 		m_state.m_play_pos = 0;
 		m_state.m_next_tick = 0;
@@ -740,8 +742,8 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte is_stepped() {
-		return m_state.m_stepped;
+	byte is_played_step() {
+		return m_state.m_played_step;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_page_advanced() {
@@ -795,9 +797,7 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void start(uint32_t ticks, byte parts_tick) {
-		m_state.m_next_tick = ticks;
-
+	void start() {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -812,9 +812,10 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	/*
 	void tick(uint32_t ticks, byte parts_tick, int dice_roll) {
 		if(ticks >= m_state.m_next_tick) {
-			m_state.m_next_tick += g_clock.ticks_per_measure(m_cfg.m_step_rate);
+			m_state.m_next_tick += g_clock.pp24_per_measure(m_cfg.m_step_rate);
 			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			m_state.m_page_advanced = 0;
 			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
@@ -840,6 +841,7 @@ public:
 			m_state.m_stepped = 0;
 		}
 	}
+	*/
 
 	void silence(byte which) {
 		g_outs.gate(which, COuts::GATE_CLOSED);
@@ -849,11 +851,76 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	// this method is called each time there is a master clock 24PPQN tick
+	void schedule(CClock::TICKS_TYPE ticks, int pp24) {
+		// get the step rate
+		int rate_pp24 = g_clock.pp24_per_measure(m_cfg.m_step_rate);
+		ASSERT(rate_pp24);
+
+
+
+		// is it time for our next step
+		if(!(pp24%6)) {
+
+			// slide is the 'off gridness' measured in 1/256s of a 24PPQN clock
+			// it can be from -255 to +255
+			int slide = 0;
+
+			// schedule the next step advance
+			m_state.m_next_step_time = g_clock.pp24_to_ticks(pp24); // whole pp24s!
+			if(slide < 0) {
+				CClock::TICKS_TYPE rate = g_clock.pp24_to_ticks(rate_pp24);
+				m_state.m_next_step_time += (rate + slide);
+			}
+			else {
+				m_state.m_next_step_time += (slide);
+			}
+
+			if(m_state.m_next_step_time < ticks) {
+				m_state.m_next_step_time = CClock::NEVER;
+			}
+		}
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	byte play(CClock::TICKS_TYPE ticks, int dice_roll) {
+		if(ticks >= m_state.m_next_step_time) {
+			m_state.m_next_step_time = CClock::NEVER;
+
+			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+			m_state.m_page_advanced = 0;
+			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
+				if(m_cfg.m_cue_mode != CUE_NONE) {
+					m_state.m_play_page_no = m_cfg.m_cue_list[m_state.m_cue_list_next];
+				}
+				cue_update();
+				m_state.m_page_advanced = 1;
+			}
+			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
+			m_state.m_played_step = 1;
+			m_state.m_suppress_step = 0;
+			if(m_state.m_step_value.get_prob()) { // nonzero probability?
+				if(dice_roll>m_state.m_step_value.get_prob()) {
+					// dice roll is between 1 and 16, if this number is greater
+					// than the step probability (1-15) then the step will
+					// be suppressed
+					m_state.m_suppress_step = 1;
+				}
+			}
+		}
+		else {
+			m_state.m_played_step = 0;
+		}
+		return m_state.m_played_step;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms
-	void ms_tick(int which) {
+	void run() {
 		if(m_state.m_gate_timeout) {
 			if(!--m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED);
+				g_outs.gate(m_id, COuts::GATE_CLOSED);
 				stop_midi_note();
 
 			}
@@ -888,7 +955,7 @@ public:
 			}
 			else {
 				// retrigger the gate
-				g_outs.gate(which, COuts::GATE_TRIG);
+				g_outs.gate(m_id, COuts::GATE_TRIG);
 				m_state.m_gate_timeout = m_state.m_trig_dur;
 
 				// retrigger the MIDI note
@@ -914,7 +981,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
-	long process_cv(byte which, long this_input) {
+	long process_cv(long this_input) {
 
 		if(!m_state.m_suppress_step) {
 			if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
@@ -984,7 +1051,7 @@ public:
 			}
 
 			// finally update the CV output
-			g_outs.cv(which, m_state.m_output, m_cfg.m_cv_scale, glide_time);
+			g_outs.cv(m_id, m_state.m_output, m_cfg.m_cv_scale, glide_time);
 		}
 		return m_state.m_output;
 	}
@@ -992,11 +1059,11 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step
-	void process_gate(byte which) {
+	void process_gate() {
 		m_state.m_retrig_ms = 0;
 		if(m_state.m_suppress_step) {
 			if(!m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED);
+				g_outs.gate(m_id, COuts::GATE_CLOSED);
 			}
 		}
 		else if(m_state.m_step_value.is(CSequenceStep::TRIG_POINT) || m_state.m_step_value.get_retrig()>0) {
@@ -1026,15 +1093,15 @@ public:
 				m_state.m_retrig_ms = 0;
 			}
 			m_state.m_retrig_timeout = m_state.m_retrig_ms;
-			g_outs.gate(which, COuts::GATE_TRIG);
+			g_outs.gate(m_id, COuts::GATE_TRIG);
 		}
 		else if(m_state.m_step_value.is(CSequenceStep::TIE_POINT)) {
 			m_state.m_gate_timeout = 0;
-			g_outs.gate(which, COuts::GATE_OPEN);
+			g_outs.gate(m_id, COuts::GATE_OPEN);
 		}
 		else {
 			if(!m_state.m_gate_timeout) {
-				g_outs.gate(which, COuts::GATE_CLOSED);
+				g_outs.gate(m_id, COuts::GATE_CLOSED);
 			}
 		}
 	}

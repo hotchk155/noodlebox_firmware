@@ -104,7 +104,7 @@ public:
 	void start() {
 		m_is_running = 1;
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->start(g_clock.get_ticks(), g_clock.get_part_ticks());
+			m_layers[i]->start();
 		}
 	}
 
@@ -130,6 +130,83 @@ public:
 	}
 
 
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// called once per ms
+	void run() {
+
+		// get the current clock ticks
+		CClock::TICKS_TYPE ticks = g_clock.get_ticks();
+
+		// Each time there is a new pp24 tick, we inform each layer so that it
+		// can schedule its next step accordingly
+		if(g_clock.is_pp24_tick())
+		{
+			int pp24 = g_clock.get_pp24();
+			for(int i=0; i<NUM_LAYERS; ++i) {
+				m_layers[i]->schedule(ticks, pp24);
+			}
+		}
+
+		// ensure the sequencer is running
+		if(m_is_running) {
+
+			// get a random dice roll for any random triggers
+			// this is a number between 1 and 16
+			srand(g_clock.m_ms);
+			int dice_roll = 1+rand()%16;
+
+			// ask each layer to "advance" to see if any are due at the current point in time
+			byte played_step = 0;
+			for(int i=0; i<NUM_LAYERS; ++i) {
+				CSequenceLayer *layer = m_layers[i];
+				if(layer->get_enabled()) {
+					if(layer->play(ticks, dice_roll)) {
+						played_step = 1;
+					}
+				}
+			}
+
+			// did any layer start playing a step?
+			if(played_step) {
+
+				// update each layer
+				long prev_output = 0;
+				for(int i=0; i<NUM_LAYERS; ++i) {
+					CSequenceLayer *layer = m_layers[i];
+					if(layer->get_enabled()) {
+						prev_output = layer->process_cv(prev_output);
+						if(layer->is_played_step()) {
+							layer->process_gate();
+							switch(layer->get_midi_out_mode()) {
+							case V_SQL_MIDI_OUT_NOTE:
+								layer->process_midi_note();
+								break;
+							case V_SQL_MIDI_OUT_CC:
+								layer->process_midi_cc();
+								break;
+							}
+						}
+					}
+					else {
+						// ensure the gate for a disabled layer is closed
+						layer->silence(i);
+					}
+				}
+			}
+		}
+
+		// finally do once per ms housekeeping for layers
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->run();
+		}
+
+	}
+
+
+
+
+
+/*
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void run(uint32_t ticks, byte parts_tick) {
 
@@ -185,7 +262,7 @@ public:
 			}
 		}
 	}
-
+*/
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	static int get_cfg_size() {
 		return CScale::get_cfg_size() + NUM_LAYERS * CSequenceLayer::get_cfg_size();
