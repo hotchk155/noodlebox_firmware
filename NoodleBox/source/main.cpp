@@ -182,8 +182,7 @@ void fire_event(int event, uint32_t param) {
 	case EV_SEQ_RESTART:
 		g_popup.text("RST");
 		g_clock.on_restart();
-		g_sequence.reset();
-		g_sequence.start();
+		g_sequence.restart();
 		break;
 	///////////////////////////////////
 	case EV_SEQ_START:

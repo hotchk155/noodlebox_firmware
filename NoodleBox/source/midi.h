@@ -14,6 +14,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
+//TODO: transmit buffering
 #ifndef MIDI_H_
 #define MIDI_H_
 
@@ -62,6 +63,9 @@ public:
 	void send_byte(byte ch) {
 		while(!(kUART_TxDataRegEmptyFlag & UART_GetStatusFlags(UART0)));
 		UART_WriteByte(UART0, ch);
+	}
+	void send_realtime(byte value) {
+		send_byte(value);
 	}
 	void send_cc(byte chan, byte cc, byte value) {
 		send_byte(0xB0 | chan);

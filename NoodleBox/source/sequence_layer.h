@@ -24,7 +24,10 @@ public:
 
 	enum {
 		OFFSET_ZERO = 64,		// step value for zero transpose offset
-		NUM_PAGES = 4					// number of pages
+		NUM_PAGES = 4,					// number of pages
+		MOD_AMOUNT_DEFAULT = 50,
+		MOD_AMOUNT_MIN = 25,
+		MOD_AMOUNT_MAX = 75,
 	};
 
 	enum {
@@ -61,6 +64,8 @@ private:
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_QUANTIZE 	m_quantize;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
+		V_SQL_STEP_MOD 	m_step_mod;
+		byte			m_step_mod_amount;
 		char			m_transpose;		// manual transpose amount for the layer
 		V_SQL_TRIG_DUR	m_trig_dur;
 		V_SQL_MIDI_OUT  m_midi_out;
@@ -89,9 +94,13 @@ private:
 		int m_play_pos;
 		int m_cue_list_next;				// position of the next cued page within cued pages list
 		CSequenceStep m_step_value;			// the last value output by sequencer
-		byte m_played_step;						// stepped flag
-		byte m_suppress_step;
-		byte m_page_advanced;
+		int m_played_step:1;				// stepped flag
+		int m_suppress_step:1;
+		int m_page_advanced:1;
+		int m_first_step:1;				// flag says if we have not played any steps since reset
+
+
+
 		byte m_midi_note; 					// last midi note played on channel
 		int m_midi_bend;
 		byte m_midi_vel;
@@ -99,8 +108,8 @@ private:
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
 		long m_output;						// current output value
-		uint32_t m_next_tick;
-		byte m_last_tick_lsb;
+		//uint32_t m_next_tick;
+		//byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
 		uint32_t m_step_timeout;		// this is the number of ms remaining of the current full step time
 		uint32_t m_retrig_ms;			// this is the number of ms between retriggers
@@ -237,6 +246,8 @@ public:
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_PITCH;
 		m_cfg.m_quantize 	= V_SQL_SEQ_QUANTIZE_CHROMATIC;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
+		m_cfg.m_step_mod 	= V_SQL_STEP_MOD_SWING;
+		m_cfg.m_step_mod_amount = MOD_AMOUNT_DEFAULT;
 		m_cfg.m_trig_dur	= V_SQL_NOTE_DUR_8;
 		m_cfg.m_combine_prev= V_SQL_COMBINE_OFF;
 		m_cfg.m_transpose	= 0;
@@ -265,7 +276,7 @@ public:
 	// Initialise the state of a configured sequence layer (e.g. when the layer
 	// has been loaded from EEPROM)
 	void init_state() {
-		m_state.m_last_tick_lsb = 0;
+		//m_state.m_last_tick_lsb = 0;
 		m_state.m_midi_note = NO_MIDI_NOTE;
 		m_state.m_midi_bend = 0;
 		m_state.m_midi_vel = 0;
@@ -286,7 +297,8 @@ public:
 		m_state.m_played_step = 0;
 		m_state.m_suppress_step = 0;
 		m_state.m_play_pos = 0;
-		m_state.m_next_tick = 0;
+		m_state.m_next_step_time = CClock::NEVER;
+		//m_state.m_next_tick = 0;
 		m_state.m_gate_timeout = 0;
 		m_state.m_step_timeout = 0;
 		m_state.m_play_page_no = 0;
@@ -295,7 +307,18 @@ public:
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
+		m_state.m_first_step = 1;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void start() {
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void restart() {
+		reset();
+		start();
+	}
+
 
 	//
 	// CONFIG ACCESSORS
@@ -307,6 +330,8 @@ public:
 		case P_SQL_SEQ_MODE: set_mode((V_SQL_SEQ_MODE)value); break;
 		case P_SQL_QUANTIZE: m_cfg.m_quantize = (V_SQL_QUANTIZE)value; break;
 		case P_SQL_STEP_RATE: m_cfg.m_step_rate = (V_SQL_STEP_RATE)value; break;
+		case P_SQL_STEP_MOD: m_cfg.m_step_mod = (V_SQL_STEP_MOD)value; m_cfg.m_step_mod_amount = MOD_AMOUNT_DEFAULT; break;
+		case P_SQL_STEP_MOD_AMOUNT: m_cfg.m_step_mod_amount = value; break;
 		case P_SQL_TRIG_DUR: m_cfg.m_trig_dur = (V_SQL_TRIG_DUR)value; break;
 		case P_SQL_MIDI_CHAN: m_cfg.m_midi_channel = value; break;
 		case P_SQL_MIDI_CC: m_cfg.m_midi_cc = value; break;
@@ -334,6 +359,8 @@ public:
 		case P_SQL_SEQ_MODE: return m_cfg.m_mode;
 		case P_SQL_QUANTIZE: return m_cfg.m_quantize;
 		case P_SQL_STEP_RATE: return m_cfg.m_step_rate;
+		case P_SQL_STEP_MOD: return m_cfg.m_step_mod;
+		case P_SQL_STEP_MOD_AMOUNT: return m_cfg.m_step_mod_amount;
 		case P_SQL_TRIG_DUR: return m_cfg.m_trig_dur;
 		case P_SQL_MIDI_CHAN: return m_cfg.m_midi_channel;
 		case P_SQL_MIDI_CC: return m_cfg.m_midi_cc;
@@ -797,10 +824,6 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void start() {
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
 	void stop_all_notes() {
 /*		for(int i=0; i<MAX_PLAYING_NOTES;++i) {
 			if(m_state.m_playing[i].count) {
@@ -850,45 +873,106 @@ public:
 		stop_midi_note();
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
-	// this method is called each time there is a master clock 24PPQN tick
-	void schedule(CClock::TICKS_TYPE ticks, int pp24) {
-		// get the step rate
+	// Get a number of ticks, x, where
+	// -ticks_per_step < x < ticks_per_step
+	// Which is a time offset for swing, slide etc at position step_no steps
+	// from the start of the loop
+	int get_ticks_offset(int step_no, int max_offset) {
+
+
+		// Calculate any required offset from "grid" time. The units of scheduling
+		// slide is the 'off gridness' measured in 1/256s of a 24PPQN clock so the
+		// offset can have a range +/- (rate_pp24 * 256)
+		int offset = 0;
+		float amp = (m_cfg.m_step_mod_amount-50.0)/25.0; // -1.0 >> 1.0
+		switch(m_cfg.m_step_mod) {
+			case V_SQL_STEP_MOD_SWING: {
+					// work out the 'equivalent step' (i.e. step number withing
+					// the selected loop points)
+					int equiv_step = (int)step_no - get_loop_from(m_state.m_play_page_no);
+					while(equiv_step<0) {
+						equiv_step += 4;
+					}
+					if(equiv_step&1) {
+						offset = max_offset*amp;
+					}
+				}
+				break;
+			case V_SQL_STEP_MOD_SLIDE:
+				offset = max_offset*amp;
+				break;
+			case V_SQL_STEP_MOD_RANDOM:
+				offset = amp*(random()%max_offset);
+				break;
+		}
+		return offset;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// During playback, we check for scheduled events at the current step and the
+	// following step (since offsetting means that the next step might be pulled
+	// back into the current step window)
+
+
+
+
+
+	///////////////////////////////////////////////////////////////////////////////
+
+	// This method handles the scheduling of grid steps on the current layer
+	//
+	// All layer step rates are multiples of 24PP and when there is a new
+	// 24PP tick we use the master pp24 counter to decide whether it is time
+	// for this layer to "step".
+	//
+	// On all steps except for the first one following a reset, we are scheduling
+	// when to move to and play the NEXT step
+	//
+	// The actual stepping is scheduled in TICKS_TYPE (256 ticks per 24PP) so that
+	// micro-offsetting from true grid time is possible to support swing etc
+	// The maximum offset from grid is +/- half of a grid step, so it is never
+	// possible for steps to be scheduled out of order
+	//
+	// On the first step following a reset, the first step is scheduled to play
+	// (without a step advance)
+
+
+	//
+	byte play(CClock::TICKS_TYPE ticks, int pp24, byte is_pp24_tick, int dice_roll) {
+
 		int rate_pp24 = g_clock.pp24_per_measure(m_cfg.m_step_rate);
 		ASSERT(rate_pp24);
 
+		m_state.m_played_step = 0;
 
-
-		// is it time for our next step
-		if(!(pp24%6)) {
-
-			// slide is the 'off gridness' measured in 1/256s of a 24PPQN clock
-			// it can be from -255 to +255
-			int slide = 0;
-
-			// schedule the next step advance
-			m_state.m_next_step_time = g_clock.pp24_to_ticks(pp24); // whole pp24s!
-			if(slide < 0) {
-				CClock::TICKS_TYPE rate = g_clock.pp24_to_ticks(rate_pp24);
-				m_state.m_next_step_time += (rate + slide);
-			}
-			else {
-				m_state.m_next_step_time += (slide);
-			}
-
-			if(m_state.m_next_step_time < ticks) {
+		// Decide what we're gonna do at this step
+		byte do_advance = 0;
+		byte do_play = 0;
+		byte do_schedule = 0;
+		if(m_state.m_first_step) {
+			// the very first step.. we'll play it now and schedule the next
+			do_play = 1;
+			do_schedule = 1;
+			m_state.m_first_step = 0;
+		}
+		else  {
+			// other steps.. we advance to and play them when their scheduled
+			// time becomes due
+			if(m_state.m_next_step_time <= ticks) {
+				do_advance = 1;
+				do_play = 1;
 				m_state.m_next_step_time = CClock::NEVER;
 			}
+			// we carry out scheduling of the next step at grid steps
+			do_schedule = (is_pp24_tick && !(pp24%rate_pp24));
 		}
-	}
 
 
-	///////////////////////////////////////////////////////////////////////////////
-	byte play(CClock::TICKS_TYPE ticks, int dice_roll) {
-		if(ticks >= m_state.m_next_step_time) {
-			m_state.m_next_step_time = CClock::NEVER;
-
-			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+		// move to the next step, unless this is the very first step following
+		// a restart, in which case we are already pointing at step zero
+		if(do_advance) {
 			m_state.m_page_advanced = 0;
 			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
 				if(m_cfg.m_cue_mode != CUE_NONE) {
@@ -897,7 +981,12 @@ public:
 				cue_update();
 				m_state.m_page_advanced = 1;
 			}
+		}
+
+		if(do_play) {
+			//
 			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
+			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 			m_state.m_played_step = 1;
 			m_state.m_suppress_step = 0;
 			if(m_state.m_step_value.get_prob()) { // nonzero probability?
@@ -909,11 +998,26 @@ public:
 				}
 			}
 		}
-		else {
-			m_state.m_played_step = 0;
+
+
+		if(do_schedule) {
+			// get the 'on grid' timing for the step
+			long grid_time = g_clock.pp24_to_ticks(pp24);
+
+			// the maximum amount by which a step can be offset is +/- half the grid step time
+			int max_offset = g_clock.pp24_to_ticks(rate_pp24)/2;
+			long next_step_time = grid_time + max_offset + get_ticks_offset(1+m_state.m_play_pos, max_offset);
+			if(next_step_time < 0) {
+				m_state.m_next_step_time = 0;
+			}
+			else {
+				m_state.m_next_step_time = (CClock::TICKS_TYPE)next_step_time;
+			}
 		}
+
 		return m_state.m_played_step;
 	}
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms

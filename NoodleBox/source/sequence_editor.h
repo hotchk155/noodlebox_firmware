@@ -234,6 +234,12 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_swing(int value) {
+		g_popup.num2digits(value);
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void show_grid(CSequenceLayer& layer) {
 		int n;
 		int notes_per_octave;
@@ -718,6 +724,10 @@ class CSequenceEditor {
 				m_edit_value = layer.count_of(m_cur_page, CSequenceStep::TRIG_POINT, loop_min, loop_max);
 				show_trig_density(m_edit_value, loop_span);
 				break;
+			case KEY_GATE|KEY2_GATE_SWING:
+				m_edit_value = layer.get(P_SQL_STEP_MOD_AMOUNT);
+				show_swing(m_edit_value);
+				break;
 			}
 			break;
 		case ACTION_ENC_LEFT:
@@ -746,6 +756,12 @@ class CSequenceEditor {
 				if(encoder_action(what, m_edit_value, 0, loop_span, 0)) {
 					layer.replace_gates(m_cur_page, m_edit_value, loop_span);
 					show_trig_density(m_edit_value, loop_span);
+				}
+				break;
+			case KEY_GATE|KEY2_GATE_SWING:
+				if(encoder_action(what, m_edit_value, CSequenceLayer::MOD_AMOUNT_MIN, CSequenceLayer::MOD_AMOUNT_MAX, 0)) {
+					layer.set(P_SQL_STEP_MOD_AMOUNT, m_edit_value);
+					show_swing(m_edit_value);
 				}
 				break;
 			default:

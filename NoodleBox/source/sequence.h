@@ -109,6 +109,14 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void restart() {
+		m_is_running = 1;
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->restart();
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void stop() {
 		m_is_running = 0;
 		for(int i=0; i<NUM_LAYERS; ++i) {
@@ -134,33 +142,24 @@ public:
 	// called once per ms
 	void run() {
 
-		// get the current clock ticks
-		CClock::TICKS_TYPE ticks = g_clock.get_ticks();
-
-		// Each time there is a new pp24 tick, we inform each layer so that it
-		// can schedule its next step accordingly
-		if(g_clock.is_pp24_tick())
-		{
-			int pp24 = g_clock.get_pp24();
-			for(int i=0; i<NUM_LAYERS; ++i) {
-				m_layers[i]->schedule(ticks, pp24);
-			}
-		}
-
 		// ensure the sequencer is running
 		if(m_is_running) {
+
+			// get the current clock ticks
+			int pp24 = g_clock.get_pp24();
+			byte is_pp24_tick = g_clock.is_pp24_tick();
+			CClock::TICKS_TYPE ticks = g_clock.get_ticks();
 
 			// get a random dice roll for any random triggers
 			// this is a number between 1 and 16
 			srand(g_clock.m_ms);
 			int dice_roll = 1+rand()%16;
 
-			// ask each layer to "advance" to see if any are due at the current point in time
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
 				if(layer->get_enabled()) {
-					if(layer->play(ticks, dice_roll)) {
+					if(layer->play(ticks, pp24, is_pp24_tick, dice_roll)) {
 						played_step = 1;
 					}
 				}
