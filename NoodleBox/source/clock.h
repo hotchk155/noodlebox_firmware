@@ -71,7 +71,11 @@ public:
 private:
 	enum {
 		CLOCK_TX_HIGH_MS = 15,
-		CLOCK_TX_LOW_MS = 1
+		CLOCK_TX_LOW_MS = 1,
+
+		ST_CLOCK_TX_IDLE = 0,
+		ST_CLOCK_TX_HIGH = 1,
+		ST_CLOCK_TX_LOW = 2,
 	};
 
 
@@ -92,29 +96,29 @@ private:
 		}
 
 		//g_midi.send_realtime(CMidi::MIDI_TICK);
-		/*
+
+		// check if we need to send a clock pulse out
 		byte out_clock_div = c_clock_out_rate[m_cfg.m_clock_out_rate];
-		if(!m_pulse_clock_count) {
-			if(m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PPQN) {
-				g_clock_out.blink(CLOCK_OUT_WIDTH_24PPQN);
+		if(!(pp24%out_clock_div)) {
+			if(m_clock_tx_state == ST_CLOCK_TX_IDLE) { // clock out is idle so start pulse now
+				clock_out(1);
+				m_clock_tx_state = ST_CLOCK_TX_HIGH;
+				m_clock_tx_timer = CLOCK_TX_HIGH_MS;
 			}
 			else {
-				g_clock_out.blink(CLOCK_OUT_WIDTH);
+				// queue additional pulse when current one ends
+				++m_clock_tx_count;
 			}
 		}
-		if(++m_pulse_clock_count >= out_clock_div) {
-			m_pulse_clock_count = 0;
-		}*/
-
-
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	// called when external clock tick received
 	void on_clock_in(int period_pp24) {
 
-		// stop the millisecond interrupts while we deal with the
-		// external clock
-		PIT_StopTimer(PIT, kPIT_Chnl_0);
+		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL && !m_clock_in_timeout) {
+			fire_event(EV_SEQ_RESTART,0);
+		}
 
 		/////////////////////////////////////////////////////////////////////////
 		// Maintain a calculation of the external clock rate
@@ -131,8 +135,8 @@ private:
 		}
 		m_clock_in_ms_last = m_ms;
 
-		// calculate a timeout equal to two clock ticks in the future. If
-		// we don't see the next tick by then we assume clock has stopped
+		// calculate a timeout equal to two clock periods in the future. If
+		// we don't see the next clock event by then we assume clock has stopped
 		m_clock_in_timeout = m_ms + (2.0*period)/m_ticks_per_ms + 0.5;
 
 		/////////////////////////////////////////////////////////////////////////
@@ -140,7 +144,6 @@ private:
 		// process all the interpolated PP24 ticks before getting another
 		// external tick. We will simply rush through them all now!
 
-		// truncate to clo
 		m_part_ticks  = 0;
 		m_ticks &= ~0xFF;
 		while(m_ticks < m_next_clock_in_ticks) {
@@ -148,9 +151,6 @@ private:
 			on_pp24(ticks_to_pp24(m_ticks));
 		}
 		m_next_clock_in_ticks += period;
-
-
-		PIT_StartTimer(PIT, kPIT_Chnl_0);
 
 
 	}
@@ -168,14 +168,13 @@ public:
 	volatile unsigned int m_ms;					// ms counter
 	float m_bpm;								// tempo
 
-	//int m_clock_tx_high_ms;	// duration of the high part of out pulse
-	//int m_clock_tx_low_ms;	// duration of the low part of out pulse
-	//int m_clock_tx_count;   // number of output pulses
+	volatile byte m_clock_tx_state;
+	volatile int m_clock_tx_count;
+	volatile int m_clock_tx_timer;
 
 	volatile uint32_t m_clock_in_ms_last;		// m_ms value of the last external clock in event
 	volatile uint32_t m_clock_in_timeout;
 	volatile TICKS_TYPE m_next_clock_in_ticks;	// the value of m_ticks at the next external clock tick
-
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -212,7 +211,9 @@ public:
 
 
 //TODO: only for int clock?
-		on_pp24(0);
+//		if(m_cfg.m_source == V_CLOCK_SRC_INTERNAL) {
+	//		on_pp24(0);
+		//}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -220,6 +221,10 @@ public:
 		m_ms = 0;
 		m_ms_tick = 0;
 		m_ticks_per_ms = 0.0;
+		m_clock_tx_state = ST_CLOCK_TX_IDLE;
+		m_clock_tx_count = 0;
+		m_clock_tx_timer = 0;
+
 		set_bpm(120);
 		on_restart();
 	}
@@ -261,11 +266,11 @@ public:
 				break;
 			case P_CLOCK_SRC:
 				m_cfg.m_source = (V_CLOCK_SRC)value;
-				fire_event(EV_CLOCK_RESET, 0);
+				fire_event(EV_SEQ_RESET, 0);
 				break;
 			case P_CLOCK_IN_RATE:
 				m_cfg.m_clock_in_rate = (V_CLOCK_IN_RATE)value;
-				fire_event(EV_CLOCK_RESET, 0);
+				fire_event(EV_SEQ_RESET, 0);
 				break;
 			case P_CLOCK_OUT_RATE:
 				m_cfg.m_clock_out_rate = (V_CLOCK_OUT_RATE)value;
@@ -421,12 +426,40 @@ public:
 			}
 		}
 
-		// assume the external clock has stopped when we do not
-		// see an incoming tick within the allowed timeout
-		if(m_clock_in_timeout && m_ms > m_clock_in_timeout) {
-			m_clock_in_timeout = 0;
-			m_clock_in_ms_last = 0;
+		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
+			// assume the external clock has stopped when we do not
+			// see an incoming tick within the allowed timeout
+			if(m_clock_in_timeout && m_ms > m_clock_in_timeout) {
+				fire_event(EV_SEQ_STOP,0);
+				m_clock_in_timeout = 0;
+				m_clock_in_ms_last = 0;
+			}
 		}
+
+		// manage the clock output
+		switch(m_clock_tx_state) {
+		case ST_CLOCK_TX_LOW:	// forced low state after a pulse
+			if(!--m_clock_tx_timer) { // see if end of low phase
+				if(m_clock_tx_count) { // do we need another pulse?
+					clock_out(1);
+					--m_clock_tx_count;
+					m_clock_tx_state = ST_CLOCK_TX_HIGH;
+					m_clock_tx_timer = CLOCK_TX_HIGH_MS;
+				}
+				else { // nope
+					m_clock_tx_state = ST_CLOCK_TX_IDLE;
+				}
+			}
+			break;
+		case ST_CLOCK_TX_HIGH:
+			if(!--m_clock_tx_timer) {
+				clock_out(0);
+				m_clock_tx_state = ST_CLOCK_TX_LOW;
+				m_clock_tx_timer = CLOCK_TX_LOW_MS;
+			}
+			break;
+		}
+
 	}
 
 	/*

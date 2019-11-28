@@ -190,7 +190,7 @@ void fire_event(int event, uint32_t param) {
 		g_popup.text("RUN");
 		break;
 	///////////////////////////////////
-	case EV_CLOCK_RESET:
+	case EV_SEQ_RESET:
 		g_clock.on_restart();
 		g_sequence.reset();
 		break;
