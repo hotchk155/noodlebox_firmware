@@ -228,7 +228,7 @@ public:
 					}
 					else if(m_txn.status == kStatus_I2C_Addr_Nak && m_nak_retry) {
 						DBGLOG0("write nak");
-						m_last_ms = (byte)g_clock.m_ms;
+						m_last_ms = (byte)g_clock.get_ms();
 						--m_nak_retry;
 						m_state = ST_TX_WAIT_CYCLE;
 					}
@@ -241,7 +241,7 @@ public:
 				}
 				break;
 			case ST_TX_WAIT_CYCLE:
-				if((byte)g_clock.m_ms != m_last_ms) {
+				if((byte)g_clock.get_ms() != m_last_ms) {
 					DBGLOG0("ST_TX_WAIT_CYCLE tick");
 					m_state = ST_TX_IN_PROG;
 				}

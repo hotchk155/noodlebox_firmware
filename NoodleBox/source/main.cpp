@@ -216,8 +216,7 @@ void test() {
 	int gate = 0;
 	int gate_tmr = 0;
 	while(1) {
-    	if(g_clock.m_ms_tick) {
-    		g_clock.m_ms_tick = 0;
+    	if(g_clock.is_ms_tick()) {
     		g_outs.test_dac(2,  dac);
     		g_outs.test_dac(3,  dac);
     		if(++dac > 4095) {
@@ -270,9 +269,9 @@ int main(void) {
 
     while(1) {
 
-    	if(g_clock.m_ms_tick) {
-    		g_clock.m_ms_tick = 0;
+    	if(g_clock.is_ms_tick()) {
 
+        	g_clock.run();
        		g_sequence.run();
         	g_outs.run();
         	g_midi.run();

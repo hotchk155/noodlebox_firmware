@@ -116,7 +116,7 @@ public:
 			byte ch = m_rxbuf[m_rx_tail];
 			switch(ch) {
 			case MIDI_TICK:
-				g_clock.on_midi_tick();
+				//g_clock.on_midi_tick();
 				break;
 			case MIDI_START:
 				fire_event(EV_SEQ_RESTART, 0);

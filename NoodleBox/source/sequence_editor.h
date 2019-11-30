@@ -923,7 +923,7 @@ class CSequenceEditor {
 		case ACTION_BEGIN:
 			// capture the page state so we can revert back to it
 			layer.get_page_content(m_cur_page, m_save_page);
-			m_rand_seed = g_clock.m_ms;
+			m_rand_seed = g_clock.get_ms();
 			m_edit_value = 0;
 			break;
 		////////////////////////////////////////////////

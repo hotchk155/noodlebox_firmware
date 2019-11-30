@@ -23,121 +23,162 @@
 CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
 CPulseOut<kGPIO_PORTC, 5> g_clock_out;
 
-/////////////////////////////////////////////////////////////////
-// This class maintains a count of 24ppqn ticks based on the
-// current BPM or the external MIDI clock. Internal clock is
-// generated based on a once-per-millisecond interrupt
-class CClock {
+// Noodlebox uses the following type for handling "musical time"...
+// TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
+// increments per quarter note.
+// ~699050 beats before rolling over (about 38h @ 300bpm, 97h @ 120bpm)
+typedef uint32_t TICKS_TYPE;
+enum {
+	TICKS_INFINITY = (TICKS_TYPE)(-1)
+};
+
+// Define different musical beat intervals based on
+// number of 24ppqn ticks
+enum
+{
+  PP24_1    	= 96,
+  PP24_2D   	= 72,
+  PP24_2    	= 48,
+  PP24_4D   	= 36,
+  PP24_2T   	= 32,
+  PP24_4    	= 24,
+  PP24_8D   	= 18,
+  PP24_4T   	= 16,
+  PP24_8    	= 12,
+  PP24_16D  	= 9,
+  PP24_8T   	= 8,
+  PP24_16   	= 6,
+  PP24_16T  	= 4,
+  PP24_32   	= 3,
+  PP24_24PPQN	= 1
+};
+
+
+class IClockSource {
 public:
-	// Define different musical beat intervals based on
-	// number of 24ppqn ticks
-	enum
-	{
-	  PP24_1    	= 96,
-	  PP24_2D   	= 72,
-	  PP24_2    	= 48,
-	  PP24_4D   	= 36,
-	  PP24_2T   	= 32,
-	  PP24_4    	= 24,
-	  PP24_8D   	= 18,
-	  PP24_4T   	= 16,
-	  PP24_8    	= 12,
-	  PP24_16D  	= 9,
-	  PP24_8T   	= 8,
-	  PP24_16   	= 6,
-	  PP24_16T  	= 4,
-	  PP24_32   	= 3,
-	  PP24_24PPQN	= 1
-	};
+	virtual void reset() = 0;
+	virtual TICKS_TYPE min_ticks() = 0;
+	virtual TICKS_TYPE max_ticks() = 0;
+	virtual double ticks_per_ms() = 0;
+};
 
 
+/////////////////////////////////////////////////////////////////
+// This class is used for managing the pulse clock  output
+class CPulseClockOut {
+	const int HIGH_MS = 15;		// duration of high part of pulse
+	const int LOW_MS = 2;		// MIN low time between pulses
 
-	// Noodlebox uses the following type for handling "musical time"...
-	// TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
-	// increments per quarter note.
-	// ~699050 beats before rolling over (about 38h @ 300bpm, 97h @ 120bpm)
-	typedef uint32_t TICKS_TYPE;
-
-	enum {
-		NEVER = (TICKS_TYPE)(-1)
-	};
-	inline int ticks_to_pp24(TICKS_TYPE ticks) {
-		return ticks>>8;
+	enum { ST_IDLE, ST_HIGH, ST_LOW } m_state; // pulse state
+	int m_timeout;				// time to remain in state
+	int m_pulses;				// number of pulses remaining to send
+	int m_period;
+public:
+	void reset() {
+		m_state = ST_IDLE;
+		m_timeout = 0;
+		m_pulses = 0;
+		m_period = PP24_16;
 	}
-	inline TICKS_TYPE pp24_to_ticks(int pp24) {
-		return ((TICKS_TYPE)pp24)<<8;
-	}
-
-private:
-	enum {
-		CLOCK_TX_HIGH_MS = 15,
-		CLOCK_TX_LOW_MS = 1,
-
-		ST_CLOCK_TX_IDLE = 0,
-		ST_CLOCK_TX_HIGH = 1,
-		ST_CLOCK_TX_LOW = 2,
-	};
-
-
-	static const byte c_clock_in_rate[V_CLOCK_IN_RATE_MAX];
-	static const byte c_clock_out_rate[V_CLOCK_OUT_RATE_MAX];
-
-
-	/////////////////////////////////////////////////////////////////
-	inline void clock_out(byte state) {
-		g_clock_out.set(state);
-	}
-	/////////////////////////////////////////////////////////////////
-	// called on a 24ppqn tick
 	inline void on_pp24(int pp24) {
-		++m_pp24_ticks;
-		if(!(pp24%PP24_4)) {
-			g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
-		}
-
-		//g_midi.send_realtime(CMidi::MIDI_TICK);
-
-		// check if we need to send a clock pulse out
-		byte out_clock_div = c_clock_out_rate[m_cfg.m_clock_out_rate];
-		if(!(pp24%out_clock_div)) {
-			if(m_clock_tx_state == ST_CLOCK_TX_IDLE) { // clock out is idle so start pulse now
-				clock_out(1);
-				m_clock_tx_state = ST_CLOCK_TX_HIGH;
-				m_clock_tx_timer = CLOCK_TX_HIGH_MS;
+		// check if we need to send a clock out pulse
+		ASSERT(m_period);
+		if(!(pp24%m_period)) {
+			// can we do it immediately?
+			if(ST_IDLE == m_state) {
+				g_clock_out.set(1);
+				m_state = ST_HIGH;
+				m_timeout = HIGH_MS;
 			}
 			else {
-				// queue additional pulse when current one ends
-				++m_clock_tx_count;
+				// queue it up
+				++m_pulses;
 			}
 		}
+
+	}
+	inline void run() {
+		// manage the clock output
+		switch(m_state) {
+		case ST_LOW:	// forced low state after a pulse
+			if(!--m_timeout) { // see if end of low phase
+				if(m_pulses) { // do we need another pulse?
+					g_clock_out.set(1);
+					--m_pulses;
+					m_state = ST_HIGH;
+					m_timeout = HIGH_MS;
+				}
+				else { // nope
+					m_state = ST_IDLE;
+				}
+			}
+			break;
+		case ST_HIGH:
+			if(!--m_timeout) {
+				g_clock_out.set(0);
+				m_state = ST_LOW;
+				m_timeout = LOW_MS;
+			}
+			break;
+		}
+
+	}
+};
+/*
+class CPulseClockIn {
+	TICKS_TYPE m_period;	// this is the period of the clock in ticks
+	TICKS_TYPE m_ticks;
+
+	uint32_t m_last_ms;
+	uint32_t m_timeout;
+	SUBTICKS_TYPE m_subticks_per_ms; // measured subticks per ms of ext clock
+	enum { ST_NONE, ST_STOPPED, ST_RUNNING } m_state;
+
+public:
+	void reset() {
+		m_state = ST_NONE;
+	}
+	TICKS_TYPE min_ticks() {
+		return m_ticks;
+	}
+	TICKS_TYPE max_ticks() {
+		return m_ticks + m_period;
+	}
+	SUBTICKS_TYPE subticks_per_ms() {
+		return m_subticks_per_ms;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	// called when external clock tick received
-	void on_clock_in(int period_pp24) {
 
-		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL && !m_clock_in_timeout) {
+	void on_pulse(uint32_t ms) {
+		if(ST_RUNNING == m_state) {
+
+			// check we have not rolled over
+			if(ms > m_last_ms) {
+				uint32_t elapsed_ms = (ms - m_last_ms);
+				m_subticks_per_ms = (m_period<<24) / elapsed_ms;
+				m_timeout = ms + 2 * elapsed_ms;
+			}
+		}
+		else {
+			m_timeout = 0;
+			m_state = ST_RUNNING;
 			fire_event(EV_SEQ_RESTART,0);
 		}
+		m_last_ms = ms;
+		m_ticks += m_period;
 
-		/////////////////////////////////////////////////////////////////////////
-		// Maintain a calculation of the external clock rate
-		// as number of fractional ticks per millisecond
-		TICKS_TYPE period = pp24_to_ticks(period_pp24);
-		if(m_clock_in_ms_last && m_ms > m_clock_in_ms_last) {
 
-			// calculate how many ticks occur per ms at this input rate
-			double ticks_per_ms = (double)period / (m_ms - m_clock_in_ms_last);
-			m_ticks_per_ms = ticks_per_ms;
-//			m_bpm = ((60.0 * 1000.0) * ticks_per_ms)/(PP24_4 * 256.0)
-
-//TODO: lopass
+	}
+	void run(uint32_t ms) {
+		if(ST_RUNNING == m_state && !!m_timeout && ms > m_timeout) {
+			m_timeout = 0;
+			m_state = ST_STOPPED;
+			fire_event(EV_SEQ_STOP,0);
 		}
-		m_clock_in_ms_last = m_ms;
-
-		// calculate a timeout equal to two clock periods in the future. If
-		// we don't see the next clock event by then we assume clock has stopped
-		m_clock_in_timeout = m_ms + (2.0*period)/m_ticks_per_ms + 0.5;
+	}
+	inline uint32_t get_subticks_per_ms() {
+		return m_subticks_per_ms;
+	}
 
 		/////////////////////////////////////////////////////////////////////////
 		// If the external clock has accelerated, we may not have had time to
@@ -153,28 +194,73 @@ private:
 		m_next_clock_in_ticks += period;
 
 
+};
+
+class CMidiClockIn {
+
+};
+*/
+class CFixedClock : public IClockSource {
+	double m_ticks_per_ms;
+	float m_bpm;
+public:
+	CFixedClock() {
+		reset();
 	}
+	void reset() {
+		set_bpm(120);
+	}
+	TICKS_TYPE min_ticks() {
+		return 0;
+	}
+	TICKS_TYPE max_ticks() {
+		return TICKS_INFINITY;
+	}
+	double ticks_per_ms() {
+		return m_ticks_per_ms;
+	}
+	void set_bpm(float bpm) {
+		m_ticks_per_ms = (bpm * PP24_4 * 256) / (60.0 * 1000.0);
+		m_bpm = bpm;
+	}
+	float get_bpm() {
+		return m_bpm;
+	}
+};
 
-
+/////////////////////////////////////////////////////////////////
+// This class maintains a count of 24ppqn ticks based on the
+// current BPM or the external MIDI clock. Internal clock is
+// generated based on a once-per-millisecond interrupt
+class CClock {
 public:
 
 
+	inline int ticks_to_pp24(TICKS_TYPE ticks) {
+		return ticks>>8;
+	}
+	inline TICKS_TYPE pp24_to_ticks(int pp24) {
+		return ((TICKS_TYPE)pp24)<<8;
+	}
 
-	volatile double m_ticks_per_ms;
-	volatile double m_part_ticks;
-	volatile TICKS_TYPE m_ticks;
+private:
+
+
+	static const byte c_clock_in_rate[V_CLOCK_IN_RATE_MAX];
+	static const byte c_clock_out_rate[V_CLOCK_OUT_RATE_MAX];
+
 	volatile byte m_ms_tick;					// flag set each time 1ms is up
-	volatile int m_pp24_ticks;					// counter of how many PP24 ticks need to be notified
-	volatile unsigned int m_ms;					// ms counter
-	float m_bpm;								// tempo
+	volatile uint32_t m_ms;					// ms counter
 
-	volatile byte m_clock_tx_state;
-	volatile int m_clock_tx_count;
-	volatile int m_clock_tx_timer;
+	volatile TICKS_TYPE m_ticks;
+	volatile double m_ticks_remainder;
 
-	volatile uint32_t m_clock_in_ms_last;		// m_ms value of the last external clock in event
-	volatile uint32_t m_clock_in_timeout;
-	volatile TICKS_TYPE m_next_clock_in_ticks;	// the value of m_ticks at the next external clock tick
+
+	CFixedClock m_fixed_clock;
+	IClockSource &m_source;
+
+	CPulseClockOut m_pulse_clock_out;
+public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -187,45 +273,23 @@ public:
 	CONFIG m_cfg;
 
 	///////////////////////////////////////////////////////////////////////////////
-	CClock() {
+	CClock() : m_source(m_fixed_clock) {
 		init_config();
 		init_state();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void set_bpm(float bpm) {
-		m_bpm = bpm;
-		m_ticks_per_ms = ((double)bpm * PP24_4 * 256.0) / (60.0 * 1000.0);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
 	void on_restart() {
 		m_ticks = 0;
-		m_part_ticks = 0.0;
-		m_pp24_ticks = 0;
-		m_clock_in_ms_last = 0;
-		m_next_clock_in_ticks = 0;
-		m_clock_in_ms_last = 0;
-		m_clock_in_timeout = 0;
-		m_next_clock_in_ticks = 0;
+		m_ticks_remainder = 0;
 
-
-//TODO: only for int clock?
-//		if(m_cfg.m_source == V_CLOCK_SRC_INTERNAL) {
-	//		on_pp24(0);
-		//}
+		m_pulse_clock_out.reset();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
 		m_ms = 0;
 		m_ms_tick = 0;
-		m_ticks_per_ms = 0.0;
-		m_clock_tx_state = ST_CLOCK_TX_IDLE;
-		m_clock_tx_count = 0;
-		m_clock_tx_timer = 0;
-
-		set_bpm(120);
 		on_restart();
 	}
 
@@ -262,7 +326,7 @@ public:
 	void set(PARAM_ID param, int value) {
 		switch(param) {
 			case P_CLOCK_BPM:
-				set_bpm(value);
+				m_fixed_clock.set_bpm(value);
 				break;
 			case P_CLOCK_SRC:
 				m_cfg.m_source = (V_CLOCK_SRC)value;
@@ -283,7 +347,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
 		switch(param) {
-		case P_CLOCK_BPM: return m_bpm;
+		case P_CLOCK_BPM: return m_fixed_clock.get_bpm();
 		case P_CLOCK_SRC: return m_cfg.m_source;
 		case P_CLOCK_IN_RATE: return m_cfg.m_clock_in_rate;
 		case P_CLOCK_OUT_RATE: return m_cfg.m_clock_out_rate;
@@ -314,26 +378,24 @@ public:
 		return m_ticks;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	// This method returns the most recent whole 24PPQN tick count
-	inline int get_pp24() {
-		return ticks_to_pp24(m_ticks);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// This method returns 1 if a 24PPQN tick has happened since the previous call
-	inline byte is_pp24_tick() {
-		if(m_pp24_ticks) {
-			--m_pp24_ticks;
-			return 1;
-		}
-		return 0;
-	}
+/*
 	///////////////////////////////////////////////////////////////////////////////
 	void on_midi_tick() {
 		if(m_cfg.m_source == V_CLOCK_SRC_MIDI) {
 			on_clock_in(PP24_24PPQN);
 		}
+	}
+*/
+	inline uint32_t get_ms() {
+		return m_ms;
+	}
+
+	inline byte is_ms_tick() {
+		if(m_ms_tick) {
+			m_ms_tick = 0;
+			return 1;
+		}
+		return 0;
 	}
 
 
@@ -360,8 +422,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline int get_ms_for_pp24(int pp24) {
-		TICKS_TYPE ticks = pp24_to_ticks(pp24);
-		return ticks/m_ticks_per_ms;
+		return (int)(pp24_to_ticks(pp24)/m_source.ticks_per_ms());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -372,57 +433,19 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	/*
-	void run() {
-		if(m_clock_tx_high_ms) {
-			if(!--m_clock_tx_high_ms) {
-				clock_out(0);
-			}
-		}
-		else if(m_clock_tx_low_ms) {
-			--m_clock_tx_low_ms;
-		}
-		else if(m_clock_tx_count) {
-			clock_out(1);
-			--m_clock_tx_count;
-			m_clock_tx_high_ms = CLOCK_TX_HIGH_MS;
-			m_clock_tx_low_ms = CLOCK_TX_LOW_MS;
-
-		}
-	}
-	*/
-
-
-
 	///////////////////////////////////////////////////////////////////////////////
-	// Interrupt service routine called once per millisecond
-	void per_ms_isr() {
+	// once per ms
+	void run() {
+		m_pulse_clock_out.run();
 
-		// general timing stuff
-		++m_ms;
-		m_ms_tick = 1;
+/*
+		m_clock_out.run();
 
-		// calculate the next tick count for this ms
-		double part_ticks = m_part_ticks + m_ticks_per_ms;
-		int whole_ticks = (int)part_ticks;
-		part_ticks -= whole_ticks;
-		TICKS_TYPE ticks = m_ticks + whole_ticks;
-
-		// if we are running from the external clock, we want to make sure
-		// that the interpolated clock does not run ahead of the time
-		// at which the next external clock input is expected
-		if(m_cfg.m_source == V_CLOCK_SRC_INTERNAL || ticks < m_next_clock_in_ticks) {
-
-			int prev_pp24 = ticks_to_pp24(m_ticks);
-			int pp24 = ticks_to_pp24(ticks);
-
-			// commit the new clock
-			m_ticks = ticks;
-			m_part_ticks  = part_ticks;
-
-			// see if there has been a 24ppqn tick
-			if(pp24 != prev_pp24) {
-				on_pp24(ticks_to_pp24(m_ticks));
+		int pp24 = ticks_to_pp24(m_ticks);
+		if(pp24 != m_last_pp24) {
+			m_last_pp24 = pp24;
+			if(!(pp24%PP24_4)) {
+				g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
 			}
 		}
 
@@ -436,75 +459,59 @@ public:
 			}
 		}
 
-		// manage the clock output
-		switch(m_clock_tx_state) {
-		case ST_CLOCK_TX_LOW:	// forced low state after a pulse
-			if(!--m_clock_tx_timer) { // see if end of low phase
-				if(m_clock_tx_count) { // do we need another pulse?
-					clock_out(1);
-					--m_clock_tx_count;
-					m_clock_tx_state = ST_CLOCK_TX_HIGH;
-					m_clock_tx_timer = CLOCK_TX_HIGH_MS;
-				}
-				else { // nope
-					m_clock_tx_state = ST_CLOCK_TX_IDLE;
-				}
-			}
-			break;
-		case ST_CLOCK_TX_HIGH:
-			if(!--m_clock_tx_timer) {
-				clock_out(0);
-				m_clock_tx_state = ST_CLOCK_TX_LOW;
-				m_clock_tx_timer = CLOCK_TX_LOW_MS;
-			}
-			break;
-		}
-
+*/
 	}
 
-	/*
 	///////////////////////////////////////////////////////////////////////////////
 	// Interrupt service routine called once per millisecond
-	void tick_isr() {
+	void per_ms_isr() {
 
+		// maintain a millisecond counter for general
+		// timing purposes
 		++m_ms;
-		// set flag to indicate that a milliecond has elapsed
-		// this is used for general timing purposes
+
+		// set a tick flag which is used for general
+		// ting purposes
 		m_ms_tick = 1;
 
-		if(m_clock_in_ticks_next && m_ticks >= m_clock_in_ticks_next) {
-			// hold the clock back until there is another
-			// external tick event
-		}
-		else if(m_ticks < m_clock_in_ticks_now) {
-			// catch the clock up
-			while(m_ticks < m_clock_in_ticks_now) {
-				private_on_tick();
-				++m_ticks;
-				m_part_tick = 0;
-			}
+		TICKS_TYPE prev_ticks = m_ticks;
+
+		// update the tick counter used for scheduling the sequencer
+		if(m_ticks < m_source.min_ticks()) {
+			m_ticks = m_source.min_ticks();
+			m_ticks_remainder = 0;
 		}
 		else {
-			// add the fractional number of ticks per millisecond to
-			// the tick counter and see whether we now have at least
-			// one complete tick
-			m_part_tick += m_ticks_per_ms;
-			int whole_tick = (int)m_part_tick;
-			if(whole_tick) {
-				m_ticks ++;
-				m_part_tick -= whole_tick;
-				private_on_tick();
+			// count the appropriate number of ticks for this millisecond
+			// but don't yet save the values
+			double ticks_remainder = m_ticks_remainder + m_source.ticks_per_ms();
+			int whole_ticks = (int)ticks_remainder;
+			ticks_remainder -= whole_ticks;
+			TICKS_TYPE ticks = m_ticks + whole_ticks;
+
+			if(ticks < m_source.max_ticks()) {
+				m_ticks = ticks;
+				m_ticks_remainder = ticks_remainder;
 			}
-//TODO - when counter is zero at start need a tick before incrementing it!
 		}
+
+		if((m_ticks ^ prev_ticks)&~0xFF) {
+			int pp24 = m_ticks>>8;
+			m_pulse_clock_out.on_pp24(pp24);
+		}
+
 	}
-*/
+
+
+
 
 
 	inline void ext_clock_isr() {
+		/*
 		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
 			on_clock_in(c_clock_in_rate[m_cfg.m_clock_in_rate]);
 		}
+		*/
 	}
 };
 

@@ -145,21 +145,19 @@ public:
 		// ensure the sequencer is running
 		if(m_is_running) {
 
-			// get the current clock ticks
-			int pp24 = g_clock.get_pp24();
-			byte is_pp24_tick = g_clock.is_pp24_tick();
-			CClock::TICKS_TYPE ticks = g_clock.get_ticks();
-
 			// get a random dice roll for any random triggers
 			// this is a number between 1 and 16
-			srand(g_clock.m_ms);
+			srand(g_clock.get_ms());
 			int dice_roll = 1+rand()%16;
+
+			// get the current clock ticks
+			TICKS_TYPE ticks = g_clock.get_ticks();
 
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
 				if(layer->get_enabled()) {
-					if(layer->play(ticks, pp24, is_pp24_tick, dice_roll)) {
+					if(layer->play(ticks, dice_roll)) {
 						played_step = 1;
 					}
 				}
