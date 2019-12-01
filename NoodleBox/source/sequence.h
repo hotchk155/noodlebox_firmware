@@ -100,37 +100,22 @@ public:
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	void start() {
-		m_is_running = 1;
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->start();
-		}
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void restart() {
-		m_is_running = 1;
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_SEQ_RESTART:
+		case EV_SEQ_CONTINUE:
+			m_is_running = 1;
+			break;
+		case EV_SEQ_STOP:
+			m_is_running = 0;
+			break;
+		}
 		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->restart();
+				m_layers[i]->event(event,param);
 		}
 	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void stop() {
-		m_is_running = 0;
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->stop_all_notes();
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void reset() {
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->reset();
-		}
-	}
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_running() {
@@ -151,7 +136,7 @@ public:
 			int dice_roll = 1+rand()%16;
 
 			// get the current clock ticks
-			TICKS_TYPE ticks = g_clock.get_ticks();
+			clock::TICKS_TYPE ticks = g_clock.get_ticks();
 
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {

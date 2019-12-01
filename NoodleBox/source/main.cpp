@@ -57,11 +57,11 @@
 #include "chars.h"
 #include "ui_driver.h"
 #include "leds.h"
+#include "midi.h"
 #include "clock.h"
 #include "popup.h"
 #include "i2c_bus.h"
 #include "storage.h"
-#include "midi.h"
 #include "scale.h"
 #include "outs.h"
 #include "sequence_step.h"
@@ -144,7 +144,7 @@ void fire_event(int event, uint32_t param) {
 	case EV_KEY_PRESS:
 		switch(param) {
 			case KEY_RUN:
-				fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_START, 0);
+				fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_CONTINUE, 0);
 				break;
 			case KEY_CV|KEY_RUN:
 				fire_event(EV_SEQ_RESTART, 0);
@@ -174,25 +174,27 @@ void fire_event(int event, uint32_t param) {
 		break;
 	///////////////////////////////////
 	case EV_SEQ_STOP:
-		g_sequence.stop();
-		g_outs.close_all_gates();
 		g_popup.text("STOP");
+		g_clock.event(event, param);
+		g_sequence.event(event, param);
+		g_outs.close_all_gates();
 		break;
 	///////////////////////////////////
 	case EV_SEQ_RESTART:
 		g_popup.text("RST");
-		g_clock.on_restart();
-		g_sequence.restart();
+		g_clock.event(event, param);
+		g_sequence.event(event, param);
 		break;
 	///////////////////////////////////
-	case EV_SEQ_START:
-		g_sequence.start();
+	case EV_SEQ_CONTINUE:
 		g_popup.text("RUN");
+		g_clock.event(event, param);
+		g_sequence.event(event, param);
 		break;
 	///////////////////////////////////
 	case EV_SEQ_RESET:
-		g_clock.on_restart();
-		g_sequence.reset();
+		g_clock.event(event, param);
+		g_sequence.event(event, param);
 		break;
 	///////////////////////////////////
 	case EV_CHANGE_LAYER:

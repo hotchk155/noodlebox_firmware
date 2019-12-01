@@ -23,6 +23,9 @@
 CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
 CPulseOut<kGPIO_PORTC, 5> g_clock_out;
 
+// This namespace wraps up various clock based utilities
+namespace clock {
+
 // Noodlebox uses the following type for handling "musical time"...
 // TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
 // increments per quarter note.
@@ -32,8 +35,7 @@ enum {
 	TICKS_INFINITY = (TICKS_TYPE)(-1)
 };
 
-// Define different musical beat intervals based on
-// number of 24ppqn ticks
+// Define different musical beat intervals based on number of 24ppqn ticks
 enum
 {
   PP24_1    	= 96,
@@ -53,19 +55,272 @@ enum
   PP24_24PPQN	= 1
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// Conversion from TICKS_TYPE to PP24
+inline int ticks_to_pp24(TICKS_TYPE ticks) {
+	return ticks>>8;
+}
 
+///////////////////////////////////////////////////////////////////////////////
+// Conversion from PP24 to TICKS_TYPE
+inline TICKS_TYPE pp24_to_ticks(int pp24) {
+	return ((TICKS_TYPE)pp24)<<8;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Conversion from V_SQL_STEP_RATE to PP24
+inline int pp24_per_measure(V_SQL_STEP_RATE step_rate) {
+	const byte pp24[V_SQL_STEP_RATE_MAX] = {
+		PP24_1,
+		PP24_2D,
+		PP24_2,
+		PP24_4D,
+		PP24_2T,
+		PP24_4,
+		PP24_8D,
+		PP24_4T,
+		PP24_8,
+		PP24_16D,
+		PP24_8T,
+		PP24_16,
+		PP24_16T,
+		PP24_32
+	};
+	return pp24[step_rate];
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interface to be implemented by clock sources
 class IClockSource {
 public:
+	enum {
+		EVENT_NONE,
+		EVENT_RESTART,
+		EVENT_CONTINUE,
+		EVENT_STOP
+	};
+	virtual int get_event() = 0;
 	virtual void reset() = 0;
 	virtual TICKS_TYPE min_ticks() = 0;
 	virtual TICKS_TYPE max_ticks() = 0;
 	virtual double ticks_per_ms() = 0;
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Clock source to handle an incoming pulse clock
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class CPulseClockSource : public IClockSource {
 
-/////////////////////////////////////////////////////////////////
-// This class is used for managing the pulse clock  output
+	V_CLOCK_IN_RATE m_clock_in_rate;
+
+	TICKS_TYPE m_ticks; 	// tick counter incremented by m_period when external clock pulse is received
+	TICKS_TYPE m_period;	// the period of the clock in whole ticks
+	double m_ticks_per_ms;  // calculated tick rate from ext clock
+
+	uint32_t m_last_ms;		// used to time between incoming pulses
+	uint32_t m_timeout;		// used to decide when the external clock has stopped
+	byte m_state;
+	byte m_event;
+	enum {
+		CLOCK_UNKNOWN,
+		CLOCK_STOPPED,
+		CLOCK_RUNNING
+	};
+
+public:
+	////////////////////////////////////////
+	CPulseClockSource() {
+		set_rate(V_CLOCK_IN_RATE_16);
+	}
+	////////////////////////////////////////
+	int get_event() {
+		if(m_event) {
+			byte event = m_event;
+			m_event = EVENT_NONE;
+			return event;
+		}
+		return 0;
+	}
+	////////////////////////////////////////
+	void reset() {
+		m_state = CLOCK_UNKNOWN;
+		m_ticks = 0;
+		m_ticks_per_ms = 0;
+		m_last_ms = 0;
+		m_event = EVENT_NONE;
+	}
+	////////////////////////////////////////
+	TICKS_TYPE min_ticks() {
+		return m_ticks;
+	}
+	////////////////////////////////////////
+	TICKS_TYPE max_ticks() {
+		return m_ticks + m_period;
+	}
+	////////////////////////////////////////
+	double ticks_per_ms() {
+		return m_ticks_per_ms;
+	}
+	////////////////////////////////////////
+	void set_rate(V_CLOCK_IN_RATE clock_in_rate) {
+		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_16, PP24_8};
+		m_clock_in_rate = clock_in_rate;
+		m_period = pp24_to_ticks(rate[clock_in_rate]);
+		reset();
+	}
+	////////////////////////////////////////
+	V_CLOCK_IN_RATE get_rate() {
+		return m_clock_in_rate;
+	}
+	////////////////////////////////////////
+	void on_pulse(uint32_t ms) {
+		if(CLOCK_RUNNING == m_state) {
+			// check we have not rolled over
+			if(ms > m_last_ms) {
+				uint32_t elapsed_ms = (ms - m_last_ms);
+				m_ticks_per_ms = (double)m_period / elapsed_ms;
+				m_timeout = ms + 4 * elapsed_ms;
+			}
+		}
+		else {
+			m_timeout = 0;
+			m_state = CLOCK_RUNNING;
+			m_event = EVENT_CONTINUE;
+		}
+		m_last_ms = ms;
+		m_ticks += m_period;
+
+
+	}
+	////////////////////////////////////////
+	void run(uint32_t ms) {
+		if(CLOCK_RUNNING == m_state && !!m_timeout && ms > m_timeout) {
+			m_timeout = 0;
+			m_state = CLOCK_STOPPED;
+			m_event = EVENT_STOP;
+		}
+	}
+};
+CPulseClockSource g_pulse_clock_in;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Clock source to handle an incoming midi clock
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class CMidiClockSource 	: public IClockSource {
+	TICKS_TYPE m_ticks; 	// tick counter incremented by m_period when external clock pulse is received
+	double m_ticks_per_ms;  // calculated tick rate from ext clock
+	uint32_t m_last_ms;		// used to time between incoming pulses
+	byte m_event;
+	const TICKS_TYPE MIDI_CLOCK_RATE_TICKS = (1<<8);
+public:
+	CMidiClockSource() {
+		reset();
+	}
+	int get_event() {
+		if(m_event) {
+			byte event = m_event;
+			m_event = EVENT_NONE;
+			return event;
+		}
+		return 0;
+	}
+	void reset() {
+		m_event = EVENT_NONE;
+		m_ticks = 0;
+		m_ticks_per_ms = 0;
+		m_last_ms = 0;
+	};
+	TICKS_TYPE min_ticks() {
+		return m_ticks;
+	};
+	TICKS_TYPE max_ticks() {
+		return m_ticks + MIDI_CLOCK_RATE_TICKS;
+	};
+	double ticks_per_ms() {
+		return m_ticks_per_ms;
+	};
+	void on_midi_realtime(byte ch, uint32_t ms) {
+		switch(ch) {
+		case midi::MIDI_TICK:
+			if(ms > m_last_ms) {
+				uint32_t elapsed_ms = (ms - m_last_ms);
+				m_ticks_per_ms = (double)MIDI_CLOCK_RATE_TICKS / elapsed_ms;
+			}
+			m_last_ms = ms;
+			m_ticks += MIDI_CLOCK_RATE_TICKS;
+			break;
+		case midi::MIDI_START:
+			m_event = EVENT_RESTART;
+			break;
+		case midi::MIDI_CONTINUE:
+			m_event = EVENT_CONTINUE;
+			break;
+		case midi::MIDI_STOP:
+			m_event = EVENT_STOP;
+			break;
+		}
+	}
+};
+CMidiClockSource g_midi_clock_in;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Clock source to provide fixed clock info based on a specified BPM
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class CFixedClockSource	: public IClockSource {
+	double m_ticks_per_ms;
+	float m_bpm;
+public:
+	////////////////////////////////////////
+	CFixedClockSource() {
+		reset();
+	}
+	////////////////////////////////////////
+	int get_event() {
+		return EVENT_NONE;
+	}
+	////////////////////////////////////////
+	void reset() {
+		set_bpm(120);
+	}
+	////////////////////////////////////////
+	TICKS_TYPE min_ticks() {
+		return 0;
+	}
+	////////////////////////////////////////
+	TICKS_TYPE max_ticks() {
+		return TICKS_INFINITY;
+	}
+	////////////////////////////////////////
+	double ticks_per_ms() {
+		return m_ticks_per_ms;
+	}
+	////////////////////////////////////////
+	void set_bpm(float bpm) {
+		m_ticks_per_ms = (bpm * PP24_4 * 256) / (60.0 * 1000.0);
+		m_bpm = bpm;
+	}
+	////////////////////////////////////////
+	float get_bpm() {
+		return m_bpm;
+	}
+};
+CFixedClockSource g_fixed_clock;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This class is used for managing the pulse clock output
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPulseClockOut {
+
+	V_CLOCK_OUT_RATE m_clock_out_rate;
+
 	const int HIGH_MS = 15;		// duration of high part of pulse
 	const int LOW_MS = 2;		// MIN low time between pulses
 
@@ -74,11 +329,23 @@ class CPulseClockOut {
 	int m_pulses;				// number of pulses remaining to send
 	int m_period;
 public:
+	CPulseClockOut() {
+		set_rate(V_CLOCK_OUT_RATE_16);
+	}
+	void set_rate(V_CLOCK_OUT_RATE clock_out_rate) {
+		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8 };
+		m_clock_out_rate = clock_out_rate;
+		m_period = rate[clock_out_rate];
+		reset();
+	}
+	V_CLOCK_OUT_RATE get_rate() {
+		return m_clock_out_rate;
+	}
+
 	void reset() {
 		m_state = ST_IDLE;
 		m_timeout = 0;
 		m_pulses = 0;
-		m_period = PP24_16;
 	}
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
@@ -124,180 +391,95 @@ public:
 
 	}
 };
-/*
-class CPulseClockIn {
-	TICKS_TYPE m_period;	// this is the period of the clock in ticks
-	TICKS_TYPE m_ticks;
+CPulseClockOut g_pulse_clock_out;
 
-	uint32_t m_last_ms;
-	uint32_t m_timeout;
-	SUBTICKS_TYPE m_subticks_per_ms; // measured subticks per ms of ext clock
-	enum { ST_NONE, ST_STOPPED, ST_RUNNING } m_state;
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This class is used for managing the MIDI clock output
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class CMidiClockOut {
+	V_MIDI_CLOCK_OUT m_mode;
+	byte m_is_running;
 public:
-	void reset() {
-		m_state = ST_NONE;
+	CMidiClockOut() {
+		set_mode(V_MIDI_CLOCK_OUT_NONE);
+		m_is_running = 0;
 	}
-	TICKS_TYPE min_ticks() {
-		return m_ticks;
+	void set_mode(V_MIDI_CLOCK_OUT mode) {
+		m_mode = mode;
 	}
-	TICKS_TYPE max_ticks() {
-		return m_ticks + m_period;
+	V_MIDI_CLOCK_OUT get_mode() {
+		return m_mode;
 	}
-	SUBTICKS_TYPE subticks_per_ms() {
-		return m_subticks_per_ms;
+	void start() {
+		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+			g_midi.send_byte(midi::MIDI_START);
+		}
+		m_is_running = 1;
 	}
-
-
-	void on_pulse(uint32_t ms) {
-		if(ST_RUNNING == m_state) {
-
-			// check we have not rolled over
-			if(ms > m_last_ms) {
-				uint32_t elapsed_ms = (ms - m_last_ms);
-				m_subticks_per_ms = (m_period<<24) / elapsed_ms;
-				m_timeout = ms + 2 * elapsed_ms;
+	void stop() {
+		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+			g_midi.send_byte(midi::MIDI_STOP);
+		}
+		m_is_running = 0;
+	}
+	void cont() {
+		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+			g_midi.send_byte(midi::MIDI_CONTINUE);
+		}
+		m_is_running = 1;
+	}
+	inline void on_pp24() {
+		switch(m_mode) {
+		case V_MIDI_CLOCK_OUT_RUNNING:
+			if(!m_is_running) {
+				break;
 			}
-		}
-		else {
-			m_timeout = 0;
-			m_state = ST_RUNNING;
-			fire_event(EV_SEQ_RESTART,0);
-		}
-		m_last_ms = ms;
-		m_ticks += m_period;
-
-
-	}
-	void run(uint32_t ms) {
-		if(ST_RUNNING == m_state && !!m_timeout && ms > m_timeout) {
-			m_timeout = 0;
-			m_state = ST_STOPPED;
-			fire_event(EV_SEQ_STOP,0);
+			// else fall thru
+		case V_MIDI_CLOCK_OUT_ALWAYS:
+		case V_MIDI_CLOCK_OUT_TRANSPORT:
+			g_midi.send_byte(midi::MIDI_TICK);
+			break;
 		}
 	}
-	inline uint32_t get_subticks_per_ms() {
-		return m_subticks_per_ms;
-	}
-
-		/////////////////////////////////////////////////////////////////////////
-		// If the external clock has accelerated, we may not have had time to
-		// process all the interpolated PP24 ticks before getting another
-		// external tick. We will simply rush through them all now!
-
-		m_part_ticks  = 0;
-		m_ticks &= ~0xFF;
-		while(m_ticks < m_next_clock_in_ticks) {
-			m_ticks+=0x100;
-			on_pp24(ticks_to_pp24(m_ticks));
-		}
-		m_next_clock_in_ticks += period;
-
-
 };
+CMidiClockOut g_midi_clock_out;
 
-class CMidiClockIn {
-
-};
-*/
-class CFixedClock : public IClockSource {
-	double m_ticks_per_ms;
-	float m_bpm;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This class is used for blinking the beat LED
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class CBeatLedOut {
 public:
-	CFixedClock() {
-		reset();
+	inline void on_pp24(int pp24) {
+		if(!(pp24%PP24_4)) {
+			g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
+		}
 	}
-	void reset() {
-		set_bpm(120);
-	}
-	TICKS_TYPE min_ticks() {
-		return 0;
-	}
-	TICKS_TYPE max_ticks() {
-		return TICKS_INFINITY;
-	}
-	double ticks_per_ms() {
-		return m_ticks_per_ms;
-	}
-	void set_bpm(float bpm) {
-		m_ticks_per_ms = (bpm * PP24_4 * 256) / (60.0 * 1000.0);
-		m_bpm = bpm;
-	}
-	float get_bpm() {
-		return m_bpm;
-	}
-};
 
-/////////////////////////////////////////////////////////////////
-// This class maintains a count of 24ppqn ticks based on the
-// current BPM or the external MIDI clock. Internal clock is
-// generated based on a once-per-millisecond interrupt
+};
+CBeatLedOut g_beat_led_out;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This class implements the clock for the sequencer functions
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CClock {
-public:
-
-
-	inline int ticks_to_pp24(TICKS_TYPE ticks) {
-		return ticks>>8;
-	}
-	inline TICKS_TYPE pp24_to_ticks(int pp24) {
-		return ((TICKS_TYPE)pp24)<<8;
-	}
-
-private:
-
-
-	static const byte c_clock_in_rate[V_CLOCK_IN_RATE_MAX];
-	static const byte c_clock_out_rate[V_CLOCK_OUT_RATE_MAX];
-
+	V_CLOCK_SRC m_source_mode;
+	IClockSource *m_source;
 	volatile byte m_ms_tick;					// flag set each time 1ms is up
 	volatile uint32_t m_ms;					// ms counter
-
 	volatile TICKS_TYPE m_ticks;
 	volatile double m_ticks_remainder;
-
-
-	CFixedClock m_fixed_clock;
-	IClockSource &m_source;
-
-	CPulseClockOut m_pulse_clock_out;
 public:
-
-
 	///////////////////////////////////////////////////////////////////////////////
-	// Config structure that defines info to store at power off
-	typedef struct {
-		V_CLOCK_SRC m_source;
-		V_CLOCK_IN_RATE m_clock_in_rate;
-		V_CLOCK_OUT_RATE m_clock_out_rate;
-	} CONFIG;
-	CONFIG m_cfg;
-
-	///////////////////////////////////////////////////////////////////////////////
-	CClock() : m_source(m_fixed_clock) {
+	CClock() : m_source(&g_fixed_clock) {
 		init_config();
 		init_state();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void on_restart() {
-		m_ticks = 0;
-		m_ticks_remainder = 0;
-
-		m_pulse_clock_out.reset();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void init_state() {
-		m_ms = 0;
-		m_ms_tick = 0;
-		on_restart();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void init_config() {
-		m_cfg.m_source = V_CLOCK_SRC_INTERNAL;
-		m_cfg.m_clock_in_rate = V_CLOCK_IN_RATE_16;
-		m_cfg.m_clock_out_rate = V_CLOCK_OUT_RATE_16;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -321,23 +503,47 @@ public:
 		KBI_Init(KBI0, &kbiConfig);
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void init_state() {
+		m_ms = 0;
+		m_ms_tick = 0;
+		reset();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void init_config() {
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set(PARAM_ID param, int value) {
 		switch(param) {
 			case P_CLOCK_BPM:
-				m_fixed_clock.set_bpm(value);
+				g_fixed_clock.set_bpm(value);
 				break;
 			case P_CLOCK_SRC:
-				m_cfg.m_source = (V_CLOCK_SRC)value;
+				switch(value) {
+				case V_CLOCK_SRC_EXTERNAL:
+					m_source = &g_pulse_clock_in;
+					break;
+				case V_CLOCK_SRC_MIDI:
+					m_source = &g_midi_clock_in;
+					break;
+				case V_CLOCK_SRC_INTERNAL:
+				default:
+					m_source = &g_fixed_clock;
+					break;
+				}
+				m_source_mode = (V_CLOCK_SRC)value;
 				fire_event(EV_SEQ_RESET, 0);
 				break;
 			case P_CLOCK_IN_RATE:
-				m_cfg.m_clock_in_rate = (V_CLOCK_IN_RATE)value;
-				fire_event(EV_SEQ_RESET, 0);
+				g_pulse_clock_in.set_rate((V_CLOCK_IN_RATE)value);
 				break;
 			case P_CLOCK_OUT_RATE:
-				m_cfg.m_clock_out_rate = (V_CLOCK_OUT_RATE)value;
+				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);
+				break;
+			case P_MIDI_CLOCK_OUT:
+				g_midi_clock_out.set_mode((V_MIDI_CLOCK_OUT)value);
 				break;
 		default:
 			break;
@@ -347,10 +553,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
 		switch(param) {
-		case P_CLOCK_BPM: return m_fixed_clock.get_bpm();
-		case P_CLOCK_SRC: return m_cfg.m_source;
-		case P_CLOCK_IN_RATE: return m_cfg.m_clock_in_rate;
-		case P_CLOCK_OUT_RATE: return m_cfg.m_clock_out_rate;
+		case P_CLOCK_BPM: return g_fixed_clock.get_bpm();
+		case P_CLOCK_SRC: return m_source_mode;
+		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
+		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
+		case P_MIDI_CLOCK_OUT: return g_midi_clock_out.get_mode();
 		default: return 0;
 		}
 	}
@@ -358,13 +565,65 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		case P_CLOCK_BPM: return !!(m_cfg.m_source == V_CLOCK_SRC_INTERNAL);
-		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL);
+		case P_CLOCK_BPM: return !!(m_source_mode == V_CLOCK_SRC_INTERNAL);
+		case P_CLOCK_IN_RATE: return !!(m_source_mode == V_CLOCK_SRC_EXTERNAL);
 		default: return 1;
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void reset() {
+		m_ticks = 0;
+		m_ticks_remainder = 0;
+		g_pulse_clock_out.reset();
+		g_fixed_clock.reset();
+		g_pulse_clock_in.reset();
+		g_midi_clock_in.reset();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// handle sequencer events
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_SEQ_RESTART:
+			g_midi_clock_out.start();
+			break;
+		case EV_SEQ_STOP:
+			g_midi_clock_out.stop();
+			break;
+		case EV_SEQ_CONTINUE:
+			g_midi_clock_out.cont();
+			break;
+		case EV_SEQ_RESET:
+			reset();
+			break;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Return incrementing number of ticks (256 per 24PPQN period)
+	inline TICKS_TYPE get_ticks() {
+		return m_ticks;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Return incrementing number of ms
+	inline uint32_t get_ms() {
+		return m_ms;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Checks if its been 1ms since previous call
+	inline byte is_ms_tick() {
+		if(m_ms_tick) {
+			m_ms_tick = 0;
+			return 1;
+		}
+		return 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// utility function to wait a number of ms (blocking)
 	void wait_ms(int ms) {
 		while(ms) {
 			m_ms_tick = 0;
@@ -374,96 +633,39 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline TICKS_TYPE get_ticks() {
-		return m_ticks;
-	}
-
-/*
-	///////////////////////////////////////////////////////////////////////////////
-	void on_midi_tick() {
-		if(m_cfg.m_source == V_CLOCK_SRC_MIDI) {
-			on_clock_in(PP24_24PPQN);
-		}
-	}
-*/
-	inline uint32_t get_ms() {
-		return m_ms;
-	}
-
-	inline byte is_ms_tick() {
-		if(m_ms_tick) {
-			m_ms_tick = 0;
-			return 1;
-		}
-		return 0;
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	inline int pp24_per_measure(V_SQL_STEP_RATE step_rate) {
-		const byte pp24[V_SQL_STEP_RATE_MAX] = {
-			PP24_1,
-			PP24_2D,
-			PP24_2,
-			PP24_4D,
-			PP24_2T,
-			PP24_4,
-			PP24_8D,
-			PP24_4T,
-			PP24_8,
-			PP24_16D,
-			PP24_8T,
-			PP24_16,
-			PP24_16T,
-			PP24_32
-		};
-		return pp24[step_rate];
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
+	// Based on current clock rate, convert PP24 to ms
 	inline int get_ms_for_pp24(int pp24) {
-		return (int)(pp24_to_ticks(pp24)/m_source.ticks_per_ms());
+		return (int)(pp24_to_ticks(pp24)/m_source->ticks_per_ms());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	// Based on current clock rate, convert V_SQL_STEP_RATE to ms
 	inline int get_ms_per_measure(V_SQL_STEP_RATE step_rate) {
 		return get_ms_for_pp24(pp24_per_measure(step_rate));
 	}
 
-
-
 	///////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////
-	// once per ms
+	// Method called approx once per ms
 	void run() {
-		m_pulse_clock_out.run();
+		g_pulse_clock_in.run(m_ms);
+		g_pulse_clock_out.run();
 
-/*
-		m_clock_out.run();
-
-		int pp24 = ticks_to_pp24(m_ticks);
-		if(pp24 != m_last_pp24) {
-			m_last_pp24 = pp24;
-			if(!(pp24%PP24_4)) {
-				g_tempo_led.blink(g_tempo_led.MEDIUM_BLINK);
-			}
+		int event = m_source->get_event();
+		switch(event) {
+		case IClockSource::EVENT_RESTART:
+			fire_event(EV_SEQ_RESTART,0);
+			break;
+		case IClockSource::EVENT_CONTINUE:
+			fire_event(EV_SEQ_CONTINUE,0);
+			break;
+		case IClockSource::EVENT_STOP:
+			fire_event(EV_SEQ_STOP,0);
+			break;
 		}
-
-		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
-			// assume the external clock has stopped when we do not
-			// see an incoming tick within the allowed timeout
-			if(m_clock_in_timeout && m_ms > m_clock_in_timeout) {
-				fire_event(EV_SEQ_STOP,0);
-				m_clock_in_timeout = 0;
-				m_clock_in_ms_last = 0;
-			}
-		}
-
-*/
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// Interrupt service routine called once per millisecond
+	// Interrupt service routine called exactly once per millisecond
 	void per_ms_isr() {
 
 		// maintain a millisecond counter for general
@@ -477,45 +679,41 @@ public:
 		TICKS_TYPE prev_ticks = m_ticks;
 
 		// update the tick counter used for scheduling the sequencer
-		if(m_ticks < m_source.min_ticks()) {
-			m_ticks = m_source.min_ticks();
+		if(m_ticks < m_source->min_ticks()) {
+			m_ticks = m_source->min_ticks();
 			m_ticks_remainder = 0;
 		}
 		else {
 			// count the appropriate number of ticks for this millisecond
 			// but don't yet save the values
-			double ticks_remainder = m_ticks_remainder + m_source.ticks_per_ms();
+			double ticks_remainder = m_ticks_remainder + m_source->ticks_per_ms();
 			int whole_ticks = (int)ticks_remainder;
 			ticks_remainder -= whole_ticks;
 			TICKS_TYPE ticks = m_ticks + whole_ticks;
 
-			if(ticks < m_source.max_ticks()) {
+			if(ticks < m_source->max_ticks()) {
 				m_ticks = ticks;
 				m_ticks_remainder = ticks_remainder;
 			}
 		}
 
+		// check for a rollover into the next 24PPQN tick
 		if((m_ticks ^ prev_ticks)&~0xFF) {
 			int pp24 = m_ticks>>8;
-			m_pulse_clock_out.on_pp24(pp24);
+			g_pulse_clock_out.on_pp24(pp24);
+			g_midi_clock_out.on_pp24();
+			g_beat_led_out.on_pp24(pp24);
 		}
 
 	}
-
-
-
-
-
 	inline void ext_clock_isr() {
-		/*
-		if(m_cfg.m_source == V_CLOCK_SRC_EXTERNAL) {
-			on_clock_in(c_clock_in_rate[m_cfg.m_clock_in_rate]);
-		}
-		*/
+		g_pulse_clock_in.on_pulse(m_ms);
 	}
+
 };
 
 
+}; // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -523,14 +721,8 @@ public:
 
 
 // define the clock instance
-CClock g_clock;
+clock::CClock g_clock;
 
-const byte CClock::c_clock_in_rate[V_CLOCK_IN_RATE_MAX] = {
-	PP24_32, PP24_16, PP24_8, PP24_4, PP24_24PPQN
-};
-const byte CClock::c_clock_out_rate[V_CLOCK_OUT_RATE_MAX] = {
-	PP24_32, PP24_16, PP24_8, PP24_4, PP24_24PPQN
-};
 
 
 // ISR for the millisecond timer
@@ -546,6 +738,12 @@ extern "C" void KBI0_IRQHandler(void)
         KBI_ClearInterruptFlag(KBI0);
         g_clock.ext_clock_isr();
     }
+}
+
+// Global event notification so MIDI code can pass realtime messages over to the
+// the clock code
+void midi::handle_realtime(byte ch) {
+	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
 }
 
 #endif // CLOCK_H_

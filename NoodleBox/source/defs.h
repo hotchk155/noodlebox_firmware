@@ -41,9 +41,9 @@ enum {
 	EV_KEY_RELEASE,
 	EV_KEY_CLICK,
 	EV_KEY_HOLD,
-	EV_SEQ_START,
-	EV_SEQ_STOP,
 	EV_SEQ_RESTART,
+	EV_SEQ_STOP,
+	EV_SEQ_CONTINUE,
 	EV_SEQ_RESET,
 	EV_CHANGE_LAYER
 };
@@ -102,6 +102,7 @@ typedef enum:byte {
 	P_CLOCK_SRC,
 	P_CLOCK_IN_RATE,
 	P_CLOCK_OUT_RATE,
+	P_MIDI_CLOCK_OUT,
 	P_CLOCK_MAX
 } PARAM_ID;
 
@@ -277,22 +278,25 @@ typedef enum:byte {
 } V_CLOCK_SRC;
 
 typedef enum:byte {
-	V_CLOCK_IN_RATE_32 = 0,
 	V_CLOCK_IN_RATE_16,
 	V_CLOCK_IN_RATE_8,
-	V_CLOCK_IN_RATE_4,
-	V_CLOCK_IN_RATE_24PPQN,
 	V_CLOCK_IN_RATE_MAX
 } V_CLOCK_IN_RATE;
 
 typedef enum:byte {
-	V_CLOCK_OUT_RATE_32 = 0,
 	V_CLOCK_OUT_RATE_16,
 	V_CLOCK_OUT_RATE_8,
-	V_CLOCK_OUT_RATE_4,
-	V_CLOCK_OUT_RATE_24PPQN,
 	V_CLOCK_OUT_RATE_MAX
 } V_CLOCK_OUT_RATE;
+
+typedef enum:byte {
+	V_MIDI_CLOCK_OUT_NONE,
+	V_MIDI_CLOCK_OUT_ALWAYS,
+	V_MIDI_CLOCK_OUT_RUNNING,
+	V_MIDI_CLOCK_OUT_TRANSPORT,
+	V_MIDI_CLOCK_OUT_MAX
+} V_MIDI_CLOCK_OUT;
+
 
 extern void fire_event(int event, uint32_t param);
 extern void fire_note(byte midi_note, byte midi_vel);

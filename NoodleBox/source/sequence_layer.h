@@ -116,8 +116,8 @@ private:
 		uint32_t m_retrig_timeout;		// this is the time remaining until the next retrigger
 		uint32_t m_trig_dur;					// the duration of the current trigger
 
-		TICKS_TYPE m_next_step_time;
-		TICKS_TYPE m_next_step_grid_time;
+		clock::TICKS_TYPE m_next_step_time;
+		//TICKS_TYPE m_next_step_grid_time;
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -298,8 +298,8 @@ public:
 		m_state.m_played_step = 0;
 		m_state.m_suppress_step = 0;
 		m_state.m_play_pos = 0;
-		m_state.m_next_step_time = TICKS_INFINITY;
-		m_state.m_next_step_grid_time = TICKS_INFINITY;
+		m_state.m_next_step_time = clock::TICKS_INFINITY;
+		//m_state.m_next_step_grid_time = TICKS_INFINITY;
 		//m_state.m_next_tick = 0;
 		m_state.m_gate_timeout = 0;
 		m_state.m_step_timeout = 0;
@@ -312,15 +312,20 @@ public:
 		m_state.m_first_step = 1;
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
-	void start() {
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_SEQ_RESTART:
+			reset();
+			break;
+		case EV_SEQ_STOP:
+			break;
+		case EV_SEQ_CONTINUE:
+			break;
+		case EV_SEQ_RESET:
+			reset();
+			break;
+		}
 	}
-	///////////////////////////////////////////////////////////////////////////////
-	void restart() {
-		reset();
-		start();
-	}
-
 
 	//
 	// CONFIG ACCESSORS
@@ -949,7 +954,7 @@ public:
 
 
 	//
-	byte play(TICKS_TYPE ticks, int dice_roll) {
+	byte play(clock::TICKS_TYPE ticks, int dice_roll) {
 
 		m_state.m_played_step = 0;
 
@@ -1000,31 +1005,23 @@ public:
 
 //TODO : when resetting the layer, back to first step!
 
-			// after we play a step, we need to schedule the next one
-
+			// after we play a step, we need to schedule the next one...
 
 			// get the step rate for the layer in PP24 units and convert to ticks
-			int rate_pp24 = g_clock.pp24_per_measure(m_cfg.m_step_rate);
+			int rate_pp24 = clock::pp24_per_measure(m_cfg.m_step_rate);
 			ASSERT(rate_pp24);
-			TICKS_TYPE ticks_per_step = g_clock.pp24_to_ticks(rate_pp24);
+			clock::TICKS_TYPE ticks_per_step = clock::pp24_to_ticks(rate_pp24);
 
-			// work out the current grid step position from the current tick count, remembering
-			// that steps might be scheduled +/- half a step from grid time
-			//int grid_time = ticks_per_step * ((ticks + ticks_per_step/2) / ticks_per_step);
+			// work out the next "grid" step position
+			clock::TICKS_TYPE next_step_grid_time = ticks_per_step * (int)(1.5+(double)ticks/ticks_per_step);
 
-			TICKS_TYPE next_step_grid_time = ticks_per_step * (1 + (m_state.m_next_step_grid_time/ticks_per_step));
-			///int grid_time = ticks_per_step * ((ticks + ticks_per_step/2) / ticks_per_step);
-
-			// the maximum amount by which a step can be offset is +/- half the grid step time
-			//long next_step_time = grid_time + ticks_per_step + get_ticks_offset(1+m_state.m_play_pos, ticks_per_step/2);
-			TICKS_TYPE next_step_time = next_step_grid_time + get_ticks_offset(1+m_state.m_play_pos, ticks_per_step/2);
+			// apply timing adjustments for swing etc
+			clock::TICKS_TYPE next_step_time = next_step_grid_time + get_ticks_offset(1+m_state.m_play_pos, ticks_per_step/2);
 			if(next_step_time < 0) {
 				m_state.m_next_step_time = 0;
-				m_state.m_next_step_grid_time = 0;
 			}
 			else {
 				m_state.m_next_step_time = next_step_time;
-				m_state.m_next_step_grid_time = next_step_grid_time;
 			}
 		}
 
