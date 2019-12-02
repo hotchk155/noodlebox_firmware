@@ -30,6 +30,11 @@
 #define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, PORTD_BIT_GATE3)
 #define BIT_GATE1		MK_GPIOA_BIT(PORTA_BASE, PORTA_BIT_GATE1)
 
+// This type is used for passing CV information around. It represents
+// a value in the 0-127 range of the sequencer data points. The top
+// 16 bits are the whole part and lower 16 bits are fractional part
+typedef int32_t CV_TYPE;
+
 //
 // GLOBAL DATA
 //
@@ -117,17 +122,6 @@ public:
 		}
 	}
 
-	// pitch is defined a 256 * midi note number + fractional part
-	typedef uint16_t PITCH_TYPE;
-
-	// gate type is defined as milliseconds. zero is infinite
-	typedef uint16_t GATE_TYPE;
-
-	// cv type is a 16 bit value to be mapped to the full voltage range
-	typedef uint16_t CV_TYPE;
-
-	typedef uint16_t DAC_TYPE;
-
 public:
 
 
@@ -183,87 +177,62 @@ public:
 			m_chan[i].gate_status = GATE_CLOSED;
 		}
 	}
-/*
-	/////////////////////////////////////////////////////////////////////////////////
-	void pitch_cv(int which, int note, V_SQL_CVSCALE scaling, int glide_time) {
-		// convert the note to DAC value
-		// TODO support other note/cv mappings
-		// Ensure enough headroom from psu!
+	void cv(int which, CV_TYPE value, V_SQL_CVSCALE scaling, int glide_time) {
 
-		while(note > 96) {
-			note -= 12;
-		}
-		while(note < 0) {
-			note += 12;
-		}
 
-		uint16_t dac = (500 * (int)note)/12;
+
+		int dac = 0;
+
+		// negative CV value will always map to zero on the DAC
+		if(value>0) {
+
+			// CV value parameter is 32 bit signed, fixed precision, where lowest
+			// 16 bits are a fractional part. When scaled to 12-bit DAC range the
+			// lowest 8 bits have almost no effect and can be ignored. Downscaling
+			// the CV value to have 8 bits of fractional part gives headroom to
+			// complete calculations in 32 unsigned bits.
+			uint32_t v2 = ((uint32_t)value)>>8;
+
+			switch(scaling) {
+			case V_SQL_CVSCALE_1_2VOCT:
+				if(v2>20964) {
+					// this is the highest value we can map. Catch anything higher
+					// here to avoid overrun in the calculation below!
+					dac = 4095;
+				}
+				else {
+					dac = ((6<<8)+600*v2)/(12<<8);
+				}
+				break;
+			case V_SQL_CVSCALE_HZVOLT:
+				//TODO
+				break;
+			case V_SQL_CVSCALE_1VOCT:
+			default:
+				if(v2>25160) {
+					// this is the highest value we can map. Catch anything higher
+					// here to avoid overrun in the calculation below!
+					dac = 4095;
+				}
+				else {
+					dac = ((6<<8)+500*v2)/(12<<8);
+				}
+				break;
+			}
+		}
 
 		if(glide_time) {
-			m_chan[which].target = dac<<16;
+			m_chan[which].target = ((uint32_t)dac)<<16;
 			m_chan[which].glide_rate = (m_chan[which].target - m_chan[which].pitch)/glide_time;
 		}
 		else {
-			m_chan[which].pitch = dac<<16;
+			m_chan[which].pitch = ((uint32_t)dac)<<16;
 			m_chan[which].glide_rate = 0;
 			impl_set_cv(which, dac);
 		}
-	}
-*/
-
-	void cv(int which, long value, V_SQL_CVSCALE scaling, int glide_time) {
-		switch(scaling) {
-		case V_SQL_CVSCALE_1VOCT:
-		case V_SQL_CVSCALE_1_2VOCT:
-			value = (((scaling==V_SQL_CVSCALE_1_2VOCT)? 600:500) * value)/(12*SCALING);
-			while(value<0) {
-				value += 500;
-			}
-			while(value>4095) {
-				value -= 500;
-			}
-			break;
-		case V_SQL_CVSCALE_HZVOLT:
-			//TODO
-			break;
-		default:
-			value = (500 * value)/(12*SCALING);
-			if(value < 0) {
-				value = 0;
-			}
-			if(value > 4095) {
-				value = 4095;
-			}
-		}
-
-		if(glide_time) {
-			m_chan[which].target = value<<16;
-			m_chan[which].glide_rate = (m_chan[which].target - m_chan[which].pitch)/glide_time;
-		}
-		else {
-			m_chan[which].pitch = value<<16;
-			m_chan[which].glide_rate = 0;
-			impl_set_cv(which, value);
-		}
 
 	}
 
-/*
-	/////////////////////////////////////////////////////////////////////////////////
-	void mod_cv(int which, int value, int volt_range, int value2, int sweep_time) {
-		m_chan[which].pitch = (500*volt_range*value)<<9; // divide by 128 then left shift by 16
-		if(sweep_time) {
-			m_chan[which].target = (500*volt_range*value2)<<9;
-			m_chan[which].glide_rate = (m_chan[which].target - m_chan[which].pitch)/sweep_time;
-		}
-		else {
-			m_chan[which].glide_rate = 0;
-		}
-
-		uint16_t dac = m_chan[which].pitch>>16;
-		impl_set_cv(which, dac);
-	}
-*/
 	void test_dac(int which, int dac) {
 		impl_set_cv(which, dac);
 	}
