@@ -107,7 +107,8 @@ private:
 		long m_midi_cc_value;
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
-		long m_output;						// current output value
+		long m_step_output;					// output from the current sequencer step
+		long m_output;						// current output value when layer mix taken into account
 		//uint32_t m_next_tick;
 		//byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
@@ -284,6 +285,7 @@ public:
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_cue_list_next = 0;
 
+
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
 		}
@@ -306,6 +308,7 @@ public:
 		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
 		m_state.m_output = 0;
+		m_state.m_step_output = 0;
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
@@ -829,50 +832,8 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	void stop_all_notes() {
-/*		for(int i=0; i<MAX_PLAYING_NOTES;++i) {
-			if(m_state.m_playing[i].count) {
-				send_midi_note(m_state.m_playing[i].note, 0);
-				m_state.m_playing[i].note = 0;
-				m_state.m_playing[i].count = 0;
-			}
-		}*/
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	/*
-	void tick(uint32_t ticks, byte parts_tick, int dice_roll) {
-		if(ticks >= m_state.m_next_tick) {
-			m_state.m_next_tick += g_clock.pp24_per_measure(m_cfg.m_step_rate);
-			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
-			m_state.m_page_advanced = 0;
-			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
-				if(m_cfg.m_cue_mode != CUE_NONE) {
-					m_state.m_play_page_no = m_cfg.m_cue_list[m_state.m_cue_list_next];
-				}
-				cue_update();
-				m_state.m_page_advanced = 1;
-			}
-			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
-			m_state.m_stepped = 1;
-			m_state.m_suppress_step = 0;
-			if(m_state.m_step_value.get_prob()) { // nonzero probability?
-				if(dice_roll>m_state.m_step_value.get_prob()) {
-					// dice roll is between 1 and 16, if this number is greater
-					// than the step probability (1-15) then the step will
-					// be suppressed
-					m_state.m_suppress_step = 1;
-				}
-			}
-		}
-		else {
-			m_state.m_stepped = 0;
-		}
-	}
-	*/
-
-	void silence(byte which) {
-		g_outs.gate(which, COuts::GATE_CLOSED);
+	void silence() {
+		g_outs.gate(m_id, COuts::GATE_CLOSED);
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		stop_midi_note();
@@ -985,20 +946,23 @@ public:
 		}
 
 		if(do_play) {
-
-
-			//
-			m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
-			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
-			m_state.m_played_step = 1;
-			m_state.m_suppress_step = 0;
-			if(m_state.m_step_value.get_prob()) { // nonzero probability?
-				if(dice_roll>m_state.m_step_value.get_prob()) {
-					// dice roll is between 1 and 16, if this number is greater
-					// than the step probability (1-15) then the step will
-					// be suppressed
-					m_state.m_suppress_step = 1;
+			if(m_cfg.m_enabled) { // is the layer enabled?
+				m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
+				m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+				m_state.m_played_step = 1;
+				m_state.m_suppress_step = 0;
+				if(m_state.m_step_value.get_prob()) { // nonzero probability?
+					if(dice_roll>m_state.m_step_value.get_prob()) {
+						// dice roll is between 1 and 16, if this number is greater
+						// than the step probability (1-15) then the step will
+						// be suppressed
+						m_state.m_suppress_step = 1;
+					}
 				}
+			}
+			else {
+				// layer is disabled so no steps play
+				m_state.m_suppress_step = 1;
 			}
 
 //TODO : when resetting the layer, back to first step!
@@ -1095,37 +1059,37 @@ public:
 	// the long value is MIDI notes * 65536
 	long process_cv(long this_input) {
 
-		if(!m_state.m_suppress_step) {
-			if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
-				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
-				!m_state.m_step_value.is(CSequenceStep::DATA_POINT)) {
-				m_state.m_output = this_input;
-			}
-			else {
-				long step_output;
-
+		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
+			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
+			!m_state.m_step_value.is(CSequenceStep::DATA_POINT)) {
+			// in mask/add and mask modes we simply duplciate the previous layer output
+			m_state.m_output = this_input;
+		}
+		else
+		{
+			if(!m_state.m_suppress_step) {
 				// get the scaled data point
 				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
-					step_output = COuts::SCALING*(m_state.m_step_value.get_value() - OFFSET_ZERO);
+					m_state.m_step_output = COuts::SCALING*(m_state.m_step_value.get_value() - OFFSET_ZERO);
 				}
 				else {
-					step_output = COuts::SCALING*m_state.m_step_value.get_value();
+					m_state.m_step_output = COuts::SCALING*m_state.m_step_value.get_value();
 				}
 
 				// check if we have an absolute volts range (1V - 8V). If so scale the output
 				// accordingly (each volt will be 12 scale points)
 				if(m_cfg.m_cv_scale < V_SQL_CVSCALE_1VOCT) {
-					step_output = (step_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
+					m_state.m_step_output = (m_state.m_step_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
 				}
+			}
 
-				// perform any addition of previous layer output
-				if(m_cfg.m_combine_prev == V_SQL_COMBINE_ADD ||
-					m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) {
-					m_state.m_output = this_input + step_output;
-				}
-				else {
-					m_state.m_output = step_output;
-				}
+			// perform any addition of previous layer output
+			if(m_cfg.m_combine_prev == V_SQL_COMBINE_ADD ||
+				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) {
+				m_state.m_output = this_input + m_state.m_step_output;
+			}
+			else {
+				m_state.m_output = m_state.m_step_output;
 			}
 
 			// apply octave shift
@@ -1149,22 +1113,21 @@ public:
 				break;
 			}
 
-			int glide_time;
-			switch(m_cfg.m_cv_glide) {
-			case V_SQL_CVGLIDE_ON:
-				glide_time = m_state.m_step_timeout;
-				break;
-			case V_SQL_CVGLIDE_TIE:
-				glide_time = (m_state.m_step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
-				break;
-			case V_SQL_CVGLIDE_OFF:
-			default:
-				glide_time = 0;
-			}
-
-			// finally update the CV output
-			g_outs.cv(m_id, m_state.m_output, m_cfg.m_cv_scale, glide_time);
 		}
+		int glide_time;
+		switch(m_cfg.m_cv_glide) {
+		case V_SQL_CVGLIDE_ON:
+			glide_time = m_state.m_step_timeout;
+			break;
+		case V_SQL_CVGLIDE_TIE:
+			glide_time = (m_state.m_step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
+			break;
+		case V_SQL_CVGLIDE_OFF:
+		default:
+			glide_time = 0;
+		}
+
+		g_outs.cv(m_id, m_state.m_output, m_cfg.m_cv_scale, glide_time);
 		return m_state.m_output;
 	}
 

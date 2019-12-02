@@ -143,37 +143,36 @@ public:
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
-				if(layer->play(ticks, dice_roll)) { // step layers even if they are disabled
-					if(layer->is_enabled()) {
-						played_step = 1;
-					}
+				if(layer->play(ticks, dice_roll)) {
+					played_step = 1;
 				}
 			}
 
-			// did any enabled layer start playing a step?
+			// did any new step start playing?
 			if(played_step) {
 
 				// update each layer
 				long prev_output = 0;
 				for(int i=0; i<NUM_LAYERS; ++i) {
 					CSequenceLayer *layer = m_layers[i];
-					if(layer->is_enabled()) {
-						prev_output = layer->process_cv(prev_output);
-						if(layer->is_played_step()) {
-							layer->process_gate();
-							switch(layer->get_midi_out_mode()) {
-							case V_SQL_MIDI_OUT_NOTE:
-								layer->process_midi_note();
-								break;
-							case V_SQL_MIDI_OUT_CC:
-								layer->process_midi_cc();
-								break;
-							}
+
+					// update the voltage output of layer
+					prev_output = layer->process_cv(prev_output);
+
+					// if the layer has stepped, may need to trigger the gate
+					if(layer->is_played_step()) {
+						layer->process_gate();
+						switch(layer->get_midi_out_mode()) {
+						case V_SQL_MIDI_OUT_NOTE:
+							layer->process_midi_note();
+							break;
+						case V_SQL_MIDI_OUT_CC:
+							layer->process_midi_cc();
+							break;
 						}
 					}
 					else {
-						// ensure the gate for a disabled layer is closed
-						layer->silence(i);
+						layer->silence();
 					}
 				}
 			}
@@ -186,67 +185,6 @@ public:
 
 	}
 
-
-
-
-
-/*
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	void run(uint32_t ticks, byte parts_tick) {
-
-		// once per ms housekeeping for layers
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->ms_tick(i);
-		}
-
-		// ensure the sequencer is running
-		if(m_is_running) {
-
-			// get a random dice roll for any random triggers
-			// this is a number between 1 and 16
-			srand(g_clock.m_ms);
-			int dice_roll = 1+rand()%16;
-
-			// tick each layer
-			byte any_step = 0;
-			for(int i=0; i<NUM_LAYERS; ++i) {
-				CSequenceLayer *layer = m_layers[i];
-				layer->tick(ticks, parts_tick, dice_roll);
-				if(layer->is_stepped() && layer->get_enabled()) {
-					any_step = 1;
-				}
-			}
-
-			// did the tick cause any enabled layer to step?
-			if(any_step) {
-
-				// process each layer
-				long prev_output = 0;
-				for(int i=0; i<NUM_LAYERS; ++i) {
-					CSequenceLayer *layer = m_layers[i];
-					if(layer->get_enabled()) {
-						prev_output = layer->process_cv(i,prev_output);
-						if(layer->is_stepped()) {
-							layer->process_gate(i);
-							switch(layer->get_midi_out_mode()) {
-							case V_SQL_MIDI_OUT_NOTE:
-								layer->process_midi_note();
-								break;
-							case V_SQL_MIDI_OUT_CC:
-								layer->process_midi_cc();
-								break;
-							}
-						}
-					}
-					else {
-						// ensure the gate for a disabled layer is closed
-						layer->silence(i);
-					}
-				}
-			}
-		}
-	}
-*/
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	static int get_cfg_size() {
 		return CScale::get_cfg_size() + NUM_LAYERS * CSequenceLayer::get_cfg_size();
