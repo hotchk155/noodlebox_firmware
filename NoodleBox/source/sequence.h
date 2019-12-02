@@ -135,27 +135,29 @@ public:
 			srand(g_clock.get_ms());
 			int dice_roll = 1+rand()%16;
 
-			// get the current clock ticks
+			// get the current clock tick count
 			clock::TICKS_TYPE ticks = g_clock.get_ticks();
 
+			// call the play method for each layer to run
+			// the scheduling of that layer's playback
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
-				if(layer->get_enabled()) {
-					if(layer->play(ticks, dice_roll)) {
+				if(layer->play(ticks, dice_roll)) { // step layers even if they are disabled
+					if(layer->is_enabled()) {
 						played_step = 1;
 					}
 				}
 			}
 
-			// did any layer start playing a step?
+			// did any enabled layer start playing a step?
 			if(played_step) {
 
 				// update each layer
 				long prev_output = 0;
 				for(int i=0; i<NUM_LAYERS; ++i) {
 					CSequenceLayer *layer = m_layers[i];
-					if(layer->get_enabled()) {
+					if(layer->is_enabled()) {
 						prev_output = layer->process_cv(prev_output);
 						if(layer->is_played_step()) {
 							layer->process_gate();

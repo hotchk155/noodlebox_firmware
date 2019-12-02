@@ -172,10 +172,10 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_mutes() {
 		g_popup.text("L");
-		g_popup.text(g_sequence.get_layer(0).get_enabled()? "1":"$",1);
-		g_popup.text(g_sequence.get_layer(1).get_enabled()? "2":"$",1);
-		g_popup.text(g_sequence.get_layer(2).get_enabled()? "3":"$",1);
-		g_popup.text(g_sequence.get_layer(3).get_enabled()? "4":"$",1);
+		g_popup.text(g_sequence.get_layer(0).is_enabled()? "1":"$",1);
+		g_popup.text(g_sequence.get_layer(1).is_enabled()? "2":"$",1);
+		g_popup.text(g_sequence.get_layer(2).is_enabled()? "3":"$",1);
+		g_popup.text(g_sequence.get_layer(3).is_enabled()? "4":"$",1);
 		g_popup.avoid(m_cursor);
 	}
 
@@ -214,7 +214,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
 		g_popup.text(get_layer_page());
-		if(!g_sequence.get_layer(m_cur_layer).get_enabled()) {
+		if(!g_sequence.get_layer(m_cur_layer).is_enabled()) {
 			g_popup.text("$",1);
 		}
 		g_popup.avoid(m_cursor);
@@ -1177,7 +1177,7 @@ class CSequenceEditor {
 				}
 				if(layer_no >= 0) {
 					CSequenceLayer& other = g_sequence.get_layer(layer_no);
-					other.set_enabled(!other.get_enabled());
+					other.set_enabled(!other.is_enabled());
 				}
 				show_layer_mutes();
 				break;
