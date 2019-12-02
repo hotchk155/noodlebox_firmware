@@ -36,16 +36,18 @@
 
 enum {
 	EV_NONE,
-	EV_ENCODER,
-	EV_KEY_PRESS,
-	EV_KEY_RELEASE,
-	EV_KEY_CLICK,
-	EV_KEY_HOLD,
-	EV_SEQ_RESTART,
-	EV_SEQ_STOP,
-	EV_SEQ_CONTINUE,
-	EV_SEQ_RESET,
-	EV_CHANGE_LAYER
+
+	EV_ENCODER,				// encoder turn
+	EV_KEY_PRESS,			// button press down
+	EV_KEY_RELEASE,			// button release
+	EV_KEY_CLICK,			// button press and release
+	EV_KEY_HOLD,			// button held for a long time
+
+	EV_SEQ_RESTART,			// sequencer playback restarting from beginning
+	EV_SEQ_STOP,			// sequencer playback stopped
+	EV_SEQ_CONTINUE,		// sequencer playback resumes from current position
+	EV_CLOCK_RESET,			// reset clock timing info
+	EV_CHANGE_LAYER			// change the current editor layer
 };
 
 #define I2C_ADDR_DAC 	0b1100000
@@ -286,14 +288,17 @@ typedef enum:byte {
 typedef enum:byte {
 	V_CLOCK_OUT_RATE_16,
 	V_CLOCK_OUT_RATE_8,
+	V_CLOCK_OUT_RATE_16_GATE,
+	V_CLOCK_OUT_RATE_8_GATE,
 	V_CLOCK_OUT_RATE_MAX
 } V_CLOCK_OUT_RATE;
 
 typedef enum:byte {
 	V_MIDI_CLOCK_OUT_NONE,
-	V_MIDI_CLOCK_OUT_ALWAYS,
-	V_MIDI_CLOCK_OUT_RUNNING,
-	V_MIDI_CLOCK_OUT_TRANSPORT,
+	V_MIDI_CLOCK_OUT_ON,
+	V_MIDI_CLOCK_OUT_GATE,
+	V_MIDI_CLOCK_OUT_ON_TRAN,
+	V_MIDI_CLOCK_OUT_GATE_TRAN,
 	V_MIDI_CLOCK_OUT_MAX
 } V_MIDI_CLOCK_OUT;
 

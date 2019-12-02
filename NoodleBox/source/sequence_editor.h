@@ -1183,34 +1183,23 @@ class CSequenceEditor {
 				break;
 			}
 			else {
-				int layer_no = -1;
 				switch(m_key_combo) {
 					case KEY_LAYER|KEY2_LAYER_1:
-						layer_no = 0;
+						fire_event(EV_CHANGE_LAYER, 0);
 						break;
 					case KEY_LAYER|KEY2_LAYER_2:
-						layer_no = 1;
+						fire_event(EV_CHANGE_LAYER, 1);
 						break;
 					case KEY_LAYER|KEY2_LAYER_3:
-						layer_no = 2;
+						fire_event(EV_CHANGE_LAYER, 2);
 						break;
 					case KEY_LAYER|KEY2_LAYER_4:
-						layer_no = 3;
+						fire_event(EV_CHANGE_LAYER, 3);
 						break;
 					case KEY_LAYER|KEY2_LAYER_MUTE:
 						edit_mutes = 1;
 						show_layer_mutes();
 						break;
-				}
-				if(layer_no>=0) {
-					m_cur_layer = layer_no;
-					if(layer.is_cue_mode()) {
-						m_cur_page = 0;
-					}
-					else {
-						m_cur_page = g_sequence.get_layer(layer_no).get_play_page();
-					}
-					show_layer_page();
 				}
 			}
 			break;
@@ -1420,9 +1409,10 @@ public:
 			}
 		case EV_CHANGE_LAYER:
 			if(param < CSequence::NUM_LAYERS) {
+				CSequenceLayer& layer = g_sequence.get_layer(param);
 				m_cur_layer = param;
-				m_cur_page = 0;
-				show_layer();
+				m_cur_page = layer.is_cue_mode()? 0 : layer.get_play_page();
+				show_layer_page();
 			}
 		}
 	}

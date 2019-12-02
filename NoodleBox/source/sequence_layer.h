@@ -315,14 +315,12 @@ public:
 	void event(int event, uint32_t param) {
 		switch(event) {
 		case EV_SEQ_RESTART:
+		case EV_CLOCK_RESET:
 			reset();
 			break;
 		case EV_SEQ_STOP:
 			break;
 		case EV_SEQ_CONTINUE:
-			break;
-		case EV_SEQ_RESET:
-			reset();
 			break;
 		}
 	}

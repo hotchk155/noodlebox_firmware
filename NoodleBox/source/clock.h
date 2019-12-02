@@ -217,9 +217,11 @@ class CMidiClockSource 	: public IClockSource {
 	byte m_event;
 	const TICKS_TYPE MIDI_CLOCK_RATE_TICKS = (1<<8);
 public:
+	///////////////////////////////////////////////////////////////////////////////
 	CMidiClockSource() {
 		reset();
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	int get_event() {
 		if(m_event) {
 			byte event = m_event;
@@ -228,21 +230,26 @@ public:
 		}
 		return 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void reset() {
 		m_event = EVENT_NONE;
 		m_ticks = 0;
 		m_ticks_per_ms = 0;
 		m_last_ms = 0;
 	};
+	///////////////////////////////////////////////////////////////////////////////
 	TICKS_TYPE min_ticks() {
 		return m_ticks;
 	};
+	///////////////////////////////////////////////////////////////////////////////
 	TICKS_TYPE max_ticks() {
 		return m_ticks + MIDI_CLOCK_RATE_TICKS;
 	};
+	///////////////////////////////////////////////////////////////////////////////
 	double ticks_per_ms() {
 		return m_ticks_per_ms;
 	};
+	///////////////////////////////////////////////////////////////////////////////
 	void on_midi_realtime(byte ch, uint32_t ms) {
 		switch(ch) {
 		case midi::MIDI_TICK:
@@ -328,42 +335,63 @@ class CPulseClockOut {
 	int m_timeout;				// time to remain in state
 	int m_pulses;				// number of pulses remaining to send
 	int m_period;
+	byte m_running;
 public:
+	///////////////////////////////////////////////////////////////////////////////
 	CPulseClockOut() {
 		set_rate(V_CLOCK_OUT_RATE_16);
+		m_running = 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void set_rate(V_CLOCK_OUT_RATE clock_out_rate) {
-		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8 };
+		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8, PP24_16, PP24_8 };
 		m_clock_out_rate = clock_out_rate;
 		m_period = rate[clock_out_rate];
 		reset();
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	V_CLOCK_OUT_RATE get_rate() {
 		return m_clock_out_rate;
 	}
-
+	///////////////////////////////////////////////////////////////////////////////
+	void set_running(byte running) {
+		m_running = running;
+	}
+	///////////////////////////////////////////////////////////////////////////////
 	void reset() {
 		m_state = ST_IDLE;
 		m_timeout = 0;
 		m_pulses = 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
 		ASSERT(m_period);
-		if(!(pp24%m_period)) {
-			// can we do it immediately?
-			if(ST_IDLE == m_state) {
-				g_clock_out.set(1);
-				m_state = ST_HIGH;
-				m_timeout = HIGH_MS;
+		switch(m_clock_out_rate) {
+		case V_CLOCK_OUT_RATE_16_GATE:
+		case V_CLOCK_OUT_RATE_8_GATE:
+			if(!m_running) {
+				break;
 			}
-			else {
-				// queue it up
-				++m_pulses;
+			//fallthru
+		case V_CLOCK_OUT_RATE_16:
+		case V_CLOCK_OUT_RATE_8:
+			if(!(pp24%m_period)) {
+				// can we do it immediately?
+				if(ST_IDLE == m_state) {
+					g_clock_out.set(1);
+					m_state = ST_HIGH;
+					m_timeout = HIGH_MS;
+				}
+				else {
+					// queue it up
+					++m_pulses;
+				}
 			}
+			break;
 		}
-
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	inline void run() {
 		// manage the clock output
 		switch(m_state) {
@@ -403,43 +431,60 @@ class CMidiClockOut {
 	V_MIDI_CLOCK_OUT m_mode;
 	byte m_is_running;
 public:
+	///////////////////////////////////////////////////////////////////////////////
 	CMidiClockOut() {
 		set_mode(V_MIDI_CLOCK_OUT_NONE);
 		m_is_running = 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void set_mode(V_MIDI_CLOCK_OUT mode) {
 		m_mode = mode;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	V_MIDI_CLOCK_OUT get_mode() {
 		return m_mode;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void start() {
-		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+		switch(m_mode) {
+		case V_MIDI_CLOCK_OUT_ON_TRAN:
+		case V_MIDI_CLOCK_OUT_GATE_TRAN:
 			g_midi.send_byte(midi::MIDI_START);
+			break;
 		}
 		m_is_running = 1;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void stop() {
-		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+		switch(m_mode) {
+		case V_MIDI_CLOCK_OUT_ON_TRAN:
+		case V_MIDI_CLOCK_OUT_GATE_TRAN:
 			g_midi.send_byte(midi::MIDI_STOP);
+			break;
 		}
 		m_is_running = 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void cont() {
-		if(V_MIDI_CLOCK_OUT_TRANSPORT == m_mode) {
+		switch(m_mode) {
+		case V_MIDI_CLOCK_OUT_ON_TRAN:
+		case V_MIDI_CLOCK_OUT_GATE_TRAN:
 			g_midi.send_byte(midi::MIDI_CONTINUE);
+			break;
 		}
 		m_is_running = 1;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24() {
 		switch(m_mode) {
-		case V_MIDI_CLOCK_OUT_RUNNING:
+		case V_MIDI_CLOCK_OUT_GATE:
+		case V_MIDI_CLOCK_OUT_GATE_TRAN:
 			if(!m_is_running) {
 				break;
 			}
 			// else fall thru
-		case V_MIDI_CLOCK_OUT_ALWAYS:
-		case V_MIDI_CLOCK_OUT_TRANSPORT:
+		case V_MIDI_CLOCK_OUT_ON_TRAN:
+		case V_MIDI_CLOCK_OUT_ON:
 			g_midi.send_byte(midi::MIDI_TICK);
 			break;
 		}
@@ -534,7 +579,7 @@ public:
 					break;
 				}
 				m_source_mode = (V_CLOCK_SRC)value;
-				fire_event(EV_SEQ_RESET, 0);
+				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_IN_RATE:
 				g_pulse_clock_in.set_rate((V_CLOCK_IN_RATE)value);
@@ -586,15 +631,18 @@ public:
 	void event(int event, uint32_t param) {
 		switch(event) {
 		case EV_SEQ_RESTART:
+			g_pulse_clock_out.set_running(1);
 			g_midi_clock_out.start();
 			break;
 		case EV_SEQ_STOP:
+			g_pulse_clock_out.set_running(0);
 			g_midi_clock_out.stop();
 			break;
 		case EV_SEQ_CONTINUE:
+			g_pulse_clock_out.set_running(1);
 			g_midi_clock_out.cont();
 			break;
-		case EV_SEQ_RESET:
+		case EV_CLOCK_RESET:
 			reset();
 			break;
 		}
@@ -719,11 +767,8 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-
 // define the clock instance
 clock::CClock g_clock;
-
-
 
 // ISR for the millisecond timer
 extern "C" void PIT_CH0_IRQHandler(void) {

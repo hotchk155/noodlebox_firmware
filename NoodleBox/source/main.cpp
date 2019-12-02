@@ -192,7 +192,7 @@ void fire_event(int event, uint32_t param) {
 		g_sequence.event(event, param);
 		break;
 	///////////////////////////////////
-	case EV_SEQ_RESET:
+	case EV_CLOCK_RESET:
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
 		break;

@@ -113,7 +113,7 @@ public:
 			break;
 		}
 		for(int i=0; i<NUM_LAYERS; ++i) {
-				m_layers[i]->event(event,param);
+			m_layers[i]->event(event,param);
 		}
 	}
 
