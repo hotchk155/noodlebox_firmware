@@ -107,8 +107,8 @@ private:
 		long m_midi_cc_value;
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
-		long m_step_output;					// output from the current sequencer step
-		long m_output;						// current output value when layer mix taken into account
+		CV_TYPE m_step_output;					// output from the current sequencer step
+		CV_TYPE m_output;						// current output value when layer mix taken into account
 		//uint32_t m_next_tick;
 		//byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
@@ -1057,7 +1057,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
-	long process_cv(long this_input) {
+	CV_TYPE process_cv(CV_TYPE this_input) {
 
 		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
 			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&

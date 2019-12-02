@@ -168,7 +168,6 @@ public:
 		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_16, PP24_8};
 		m_clock_in_rate = clock_in_rate;
 		m_period = pp24_to_ticks(rate[clock_in_rate]);
-		reset();
 	}
 	////////////////////////////////////////
 	V_CLOCK_IN_RATE get_rate() {
@@ -583,6 +582,7 @@ public:
 				break;
 			case P_CLOCK_IN_RATE:
 				g_pulse_clock_in.set_rate((V_CLOCK_IN_RATE)value);
+				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_OUT_RATE:
 				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);

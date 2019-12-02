@@ -152,7 +152,7 @@ public:
 			if(played_step) {
 
 				// update each layer
-				long prev_output = 0;
+				CV_TYPE prev_output = 0;
 				for(int i=0; i<NUM_LAYERS; ++i) {
 					CSequenceLayer *layer = m_layers[i];
 
