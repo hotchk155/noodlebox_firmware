@@ -852,8 +852,8 @@ public:
 		// offset can have a range +/- (rate_pp24 * 256)
 		int offset = 0;
 
-		// mod amount has  a range 25 thru 75.. map this to between -1 and +1 with 25=0
-		float amp = (m_cfg.m_step_mod_amount-50.0)/25.0; // -1.0 >> 1.0
+		// mod amount has  a range 25 thru 75.. map this to between -1 and +1 with 50=0
+		float amp = (m_cfg.m_step_mod_amount-50.0)/26.0; // -1.0 >> 1.0
 		switch(m_cfg.m_step_mod) {
 			case V_SQL_STEP_TIMING_SWING:
 			case V_SQL_STEP_TIMING_SWING_RANDOM: {
@@ -884,16 +884,6 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	// During playback, we check for scheduled events at the current step and the
-	// following step (since offsetting means that the next step might be pulled
-	// back into the current step window)
-
-
-
-
-
-	///////////////////////////////////////////////////////////////////////////////
-
 	// This method handles the scheduling of grid steps on the current layer
 	//
 	// All layer step rates are multiples of 24PP and when there is a new
@@ -907,11 +897,6 @@ public:
 	// micro-offsetting from true grid time is possible to support swing etc
 	// The maximum offset from grid is +/- half of a grid step, so it is never
 	// possible for steps to be scheduled out of order
-	//
-	// On the first step following a reset, the first step is scheduled to play
-	// (without a step advance)
-
-
 	//
 	byte play(clock::TICKS_TYPE ticks, int dice_roll) {
 
@@ -929,8 +914,6 @@ public:
 			do_advance = 1;
 			do_play = 1;
 		}
-
-
 
 		// move to the next step, unless this is the very first step following
 		// a restart, in which case we are already pointing at step zero
@@ -964,8 +947,6 @@ public:
 				// layer is disabled so no steps play
 				m_state.m_suppress_step = 1;
 			}
-
-//TODO : when resetting the layer, back to first step!
 
 			// after we play a step, we need to schedule the next one...
 
