@@ -1114,7 +1114,8 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	// Play the gate for a step
+	// Play the gate for a step. This is usually done after CV so that we have
+	// already set the appropriate pitch before trigging a VCA etc
 	void process_gate() {
 		m_state.m_retrig_ms = 0;
 		if(m_state.m_suppress_step) {

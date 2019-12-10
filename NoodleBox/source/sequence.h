@@ -171,9 +171,6 @@ public:
 							break;
 						}
 					}
-					else {
-						layer->silence();
-					}
 				}
 			}
 		}
