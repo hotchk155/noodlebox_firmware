@@ -1174,6 +1174,9 @@ class CSequenceEditor {
 					case KEY_LAYER|KEY2_LAYER_4:
 						layer_no = 3;
 						break;
+					case KEY_LAYER|KEY2_LAYER_MUTE:
+						layer_no = m_cur_layer;
+						break;
 				}
 				if(layer_no >= 0) {
 					CSequenceLayer& other = g_sequence.get_layer(layer_no);
