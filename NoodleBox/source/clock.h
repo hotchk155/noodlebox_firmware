@@ -578,8 +578,6 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
-
-
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -646,42 +644,6 @@ public:
 		}
 	}
 
-	/*
-	void restart() {
-		m_ticks = 0;
-		m_ticks_remainder = 0;
-		g_pulse_clock_out.set_running(1);
-		g_midi_clock_out.start();
-		g_midi_clock_in.reset();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// When sequencer is stopped
-	void stop() {
-		g_pulse_clock_out.set_running(0);
-		g_midi_clock_out.stop();
-
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// When sequencer is started
-	void cont() {
-		g_pulse_clock_out.set_running(1);
-		g_midi_clock_out.cont();
-
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// This notfies us that
-	void reset() {
-		m_ticks = 0;
-		m_ticks_remainder = 0;
-		g_pulse_clock_out.reset();
-		g_fixed_clock.reset();
-		g_pulse_clock_in.reset();
-		g_midi_clock_in.reset();
-	}
-*/
 	///////////////////////////////////////////////////////////////////////////////
 	// handle sequencer events
 	void event(int event, uint32_t param) {
