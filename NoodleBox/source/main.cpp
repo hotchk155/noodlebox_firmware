@@ -174,20 +174,17 @@ void fire_event(int event, uint32_t param) {
 		break;
 	///////////////////////////////////
 	case EV_SEQ_STOP:
-		g_popup.text("STOP");
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
 		g_outs.close_all_gates();
 		break;
-	///////////////////////////////////
+		///////////////////////////////////
 	case EV_SEQ_RESTART:
-		g_popup.text("RST");
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
 		break;
 	///////////////////////////////////
 	case EV_SEQ_CONTINUE:
-		g_popup.text("RUN");
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
 		break;

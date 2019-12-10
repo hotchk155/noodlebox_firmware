@@ -93,14 +93,7 @@ inline int pp24_per_measure(V_SQL_STEP_RATE step_rate) {
 // Interface to be implemented by clock sources
 class IClockSource {
 public:
-	enum {
-		EVENT_NONE,
-		EVENT_RESTART,
-		EVENT_CONTINUE,
-		EVENT_STOP
-	};
-	virtual int get_event() = 0;
-	virtual void reset() = 0;
+	virtual void event(int event, uint32_t param) = 0;
 	virtual TICKS_TYPE min_ticks() = 0;
 	virtual TICKS_TYPE max_ticks() = 0;
 	virtual double ticks_per_ms() = 0;
@@ -122,7 +115,6 @@ class CPulseClockSource : public IClockSource {
 	uint32_t m_last_ms;		// used to time between incoming pulses
 	uint32_t m_timeout;		// used to decide when the external clock has stopped
 	byte m_state;
-	byte m_event;
 	enum {
 		CLOCK_UNKNOWN,
 		CLOCK_STOPPED,
@@ -135,21 +127,17 @@ public:
 		set_rate(V_CLOCK_IN_RATE_16);
 	}
 	////////////////////////////////////////
-	int get_event() {
-		if(m_event) {
-			byte event = m_event;
-			m_event = EVENT_NONE;
-			return event;
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_CLOCK_RESET:
+			m_state = CLOCK_UNKNOWN;
+			m_ticks_per_ms = 0;
+			m_last_ms = 0;
+			// fallthru
+		case EV_SEQ_RESTART:
+			m_ticks = 0;
+			break;
 		}
-		return 0;
-	}
-	////////////////////////////////////////
-	void reset() {
-		m_state = CLOCK_UNKNOWN;
-		m_ticks = 0;
-		m_ticks_per_ms = 0;
-		m_last_ms = 0;
-		m_event = EVENT_NONE;
 	}
 	////////////////////////////////////////
 	TICKS_TYPE min_ticks() {
@@ -186,7 +174,7 @@ public:
 		else {
 			m_timeout = 0;
 			m_state = CLOCK_RUNNING;
-			m_event = EVENT_CONTINUE;
+			fire_event(EV_SEQ_CONTINUE,0);
 		}
 		m_last_ms = ms;
 		m_ticks += m_period;
@@ -198,7 +186,7 @@ public:
 		if(CLOCK_RUNNING == m_state && !!m_timeout && ms > m_timeout) {
 			m_timeout = 0;
 			m_state = CLOCK_STOPPED;
-			m_event = EVENT_STOP;
+			fire_event(EV_SEQ_STOP,0);
 		}
 	}
 };
@@ -213,29 +201,34 @@ class CMidiClockSource 	: public IClockSource {
 	TICKS_TYPE m_ticks; 	// tick counter incremented by m_period when external clock pulse is received
 	double m_ticks_per_ms;  // calculated tick rate from ext clock
 	uint32_t m_last_ms;		// used to time between incoming pulses
-	byte m_event;
+	int m_transport:1;		// whether we should act on MIDI transport messages
+	enum : byte { PENDING_NONE, PENDING_START, PENDING_CONTINUE } m_pending_event;
 	const TICKS_TYPE MIDI_CLOCK_RATE_TICKS = (1<<8);
 public:
 	///////////////////////////////////////////////////////////////////////////////
 	CMidiClockSource() {
-		reset();
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	int get_event() {
-		if(m_event) {
-			byte event = m_event;
-			m_event = EVENT_NONE;
-			return event;
-		}
-		return 0;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	void reset() {
-		m_event = EVENT_NONE;
-		m_ticks = 0;
+		m_transport = 1;
+		m_pending_event = PENDING_NONE;
 		m_ticks_per_ms = 0;
 		m_last_ms = 0;
-	};
+		m_ticks = 0;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void set_transport(byte transport) {
+		m_transport = transport;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_CLOCK_RESET:
+			m_ticks_per_ms = 0;
+			m_last_ms = 0;
+			// fall thru
+		case EV_SEQ_RESTART:
+			m_ticks = 0;
+			break;
+		}
+	}
 	///////////////////////////////////////////////////////////////////////////////
 	TICKS_TYPE min_ticks() {
 		return m_ticks;
@@ -252,21 +245,41 @@ public:
 	void on_midi_realtime(byte ch, uint32_t ms) {
 		switch(ch) {
 		case midi::MIDI_TICK:
+			m_ticks += MIDI_CLOCK_RATE_TICKS;
+			// per MIDI spec, we only act on START or CONTINUE message
+			// at the time we receive the next tick
+			if(m_pending_event != PENDING_NONE) {
+				switch(m_pending_event) {
+					case PENDING_START:
+						fire_event(EV_SEQ_RESTART,0);
+						break;
+					case PENDING_CONTINUE:
+						fire_event(EV_SEQ_CONTINUE,0);
+						break;
+				}
+				m_pending_event = PENDING_NONE;
+			}
 			if(ms > m_last_ms) {
 				uint32_t elapsed_ms = (ms - m_last_ms);
 				m_ticks_per_ms = (double)MIDI_CLOCK_RATE_TICKS / elapsed_ms;
 			}
 			m_last_ms = ms;
-			m_ticks += MIDI_CLOCK_RATE_TICKS;
 			break;
 		case midi::MIDI_START:
-			m_event = EVENT_RESTART;
+			if(m_transport) {
+				m_pending_event = PENDING_START;
+			}
 			break;
 		case midi::MIDI_CONTINUE:
-			m_event = EVENT_CONTINUE;
+			if(m_transport) {
+				m_pending_event = PENDING_CONTINUE;
+			}
 			break;
 		case midi::MIDI_STOP:
-			m_event = EVENT_STOP;
+			if(m_transport) {
+				m_pending_event = PENDING_NONE;
+				fire_event(EV_SEQ_STOP,0);
+			}
 			break;
 		}
 	}
@@ -284,15 +297,10 @@ class CFixedClockSource	: public IClockSource {
 public:
 	////////////////////////////////////////
 	CFixedClockSource() {
-		reset();
-	}
-	////////////////////////////////////////
-	int get_event() {
-		return EVENT_NONE;
-	}
-	////////////////////////////////////////
-	void reset() {
 		set_bpm(120);
+	}
+	////////////////////////////////////////
+	void event(int event, uint32_t param) {
 	}
 	////////////////////////////////////////
 	TICKS_TYPE min_ticks() {
@@ -346,21 +354,29 @@ public:
 		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8, PP24_16, PP24_8 };
 		m_clock_out_rate = clock_out_rate;
 		m_period = rate[clock_out_rate];
-		reset();
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	V_CLOCK_OUT_RATE get_rate() {
 		return m_clock_out_rate;
 	}
-	///////////////////////////////////////////////////////////////////////////////
-	void set_running(byte running) {
-		m_running = running;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	void reset() {
-		m_state = ST_IDLE;
-		m_timeout = 0;
-		m_pulses = 0;
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_CLOCK_RESET:
+			m_state = ST_IDLE;
+			m_timeout = 0;
+			m_pulses = 0;
+			m_running = 0;
+			break;
+		case EV_SEQ_RESTART:
+			m_running = 1;
+			break;
+		case EV_SEQ_STOP:
+			m_running = 0;
+			break;
+		case EV_SEQ_CONTINUE:
+			m_running = 1;
+			break;
+		}
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24(int pp24) {
@@ -444,35 +460,40 @@ public:
 		return m_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void start() {
-		switch(m_mode) {
-		case V_MIDI_CLOCK_OUT_ON_TRAN:
-		case V_MIDI_CLOCK_OUT_GATE_TRAN:
-			g_midi.send_byte(midi::MIDI_START);
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_SEQ_RESTART:
+			switch(m_mode) {
+			case V_MIDI_CLOCK_OUT_ON_TRAN:
+			case V_MIDI_CLOCK_OUT_GATE_TRAN:
+				g_midi.send_byte(midi::MIDI_START);
+				break;
+			}
+			m_is_running = 1;
+			break;
+		case EV_SEQ_STOP:
+			switch(m_mode) {
+			case V_MIDI_CLOCK_OUT_ON_TRAN:
+			case V_MIDI_CLOCK_OUT_GATE_TRAN:
+				g_midi.send_byte(midi::MIDI_STOP);
+				break;
+			}
+			m_is_running = 0;
+			break;
+		case EV_SEQ_CONTINUE:
+			switch(m_mode) {
+			case V_MIDI_CLOCK_OUT_ON_TRAN:
+			case V_MIDI_CLOCK_OUT_GATE_TRAN:
+				g_midi.send_byte(midi::MIDI_CONTINUE);
+				break;
+			}
+			m_is_running = 1;
+			break;
+		case EV_CLOCK_RESET:
 			break;
 		}
-		m_is_running = 1;
 	}
-	///////////////////////////////////////////////////////////////////////////////
-	void stop() {
-		switch(m_mode) {
-		case V_MIDI_CLOCK_OUT_ON_TRAN:
-		case V_MIDI_CLOCK_OUT_GATE_TRAN:
-			g_midi.send_byte(midi::MIDI_STOP);
-			break;
-		}
-		m_is_running = 0;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	void cont() {
-		switch(m_mode) {
-		case V_MIDI_CLOCK_OUT_ON_TRAN:
-		case V_MIDI_CLOCK_OUT_GATE_TRAN:
-			g_midi.send_byte(midi::MIDI_CONTINUE);
-			break;
-		}
-		m_is_running = 1;
-	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24() {
 		switch(m_mode) {
@@ -551,11 +572,14 @@ public:
 	void init_state() {
 		m_ms = 0;
 		m_ms_tick = 0;
-		reset();
+		m_ticks = 0;
+		m_ticks_remainder = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
+
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -569,8 +593,13 @@ public:
 				case V_CLOCK_SRC_EXTERNAL:
 					m_source = &g_pulse_clock_in;
 					break;
-				case V_CLOCK_SRC_MIDI:
+				case V_CLOCK_SRC_MIDI_CLOCK_ONLY:
 					m_source = &g_midi_clock_in;
+					g_midi_clock_in.set_transport(0);
+					break;
+				case V_CLOCK_SRC_MIDI_TRANSPORT:
+					m_source = &g_midi_clock_in;
+					g_midi_clock_in.set_transport(1);
 					break;
 				case V_CLOCK_SRC_INTERNAL:
 				default:
@@ -586,6 +615,7 @@ public:
 				break;
 			case P_CLOCK_OUT_RATE:
 				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);
+				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_MIDI_CLOCK_OUT:
 				g_midi_clock_out.set_mode((V_MIDI_CLOCK_OUT)value);
@@ -616,7 +646,33 @@ public:
 		}
 	}
 
+	/*
+	void restart() {
+		m_ticks = 0;
+		m_ticks_remainder = 0;
+		g_pulse_clock_out.set_running(1);
+		g_midi_clock_out.start();
+		g_midi_clock_in.reset();
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
+	// When sequencer is stopped
+	void stop() {
+		g_pulse_clock_out.set_running(0);
+		g_midi_clock_out.stop();
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// When sequencer is started
+	void cont() {
+		g_pulse_clock_out.set_running(1);
+		g_midi_clock_out.cont();
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// This notfies us that
 	void reset() {
 		m_ticks = 0;
 		m_ticks_remainder = 0;
@@ -625,25 +681,24 @@ public:
 		g_pulse_clock_in.reset();
 		g_midi_clock_in.reset();
 	}
-
+*/
 	///////////////////////////////////////////////////////////////////////////////
 	// handle sequencer events
 	void event(int event, uint32_t param) {
+		g_fixed_clock.event(event, param);
+		g_pulse_clock_in.event(event, param);
+		g_pulse_clock_out.event(event, param);
+		g_midi_clock_in.event(event, param);
+		g_midi_clock_out.event(event, param);
+
 		switch(event) {
-		case EV_SEQ_RESTART:
-			g_pulse_clock_out.set_running(1);
-			g_midi_clock_out.start();
-			break;
 		case EV_SEQ_STOP:
-			g_pulse_clock_out.set_running(0);
-			g_midi_clock_out.stop();
-			break;
 		case EV_SEQ_CONTINUE:
-			g_pulse_clock_out.set_running(1);
-			g_midi_clock_out.cont();
 			break;
 		case EV_CLOCK_RESET:
-			reset();
+		case EV_SEQ_RESTART:
+			m_ticks = 0;
+			m_ticks_remainder = 0;
 			break;
 		}
 	}
@@ -697,19 +752,6 @@ public:
 	void run() {
 		g_pulse_clock_in.run(m_ms);
 		g_pulse_clock_out.run();
-
-		int event = m_source->get_event();
-		switch(event) {
-		case IClockSource::EVENT_RESTART:
-			fire_event(EV_SEQ_RESTART,0);
-			break;
-		case IClockSource::EVENT_CONTINUE:
-			fire_event(EV_SEQ_CONTINUE,0);
-			break;
-		case IClockSource::EVENT_STOP:
-			fire_event(EV_SEQ_STOP,0);
-			break;
-		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
