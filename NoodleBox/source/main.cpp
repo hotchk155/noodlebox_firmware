@@ -59,8 +59,8 @@
 #include "leds.h"
 #include "midi.h"
 #include "clock.h"
-#include "popup.h"
 #include "i2c_bus.h"
+#include "popup.h"
 #include "storage.h"
 #include "scale.h"
 #include "outs.h"
@@ -177,11 +177,25 @@ void fire_event(int event, uint32_t param) {
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
 		g_outs.close_all_gates();
+
+for(int i=0; i<3200;++i) {
+	g_i2c_eeprom[i] = 0xAA;
+}
+g_i2c_eeprom.read(0,3200);
+
 		break;
 		///////////////////////////////////
 	case EV_SEQ_RESTART:
 		g_clock.event(event, param);
 		g_sequence.event(event, param);
+
+{
+	for(int i=0; i<3200;++i) {
+		g_i2c_eeprom[i] = (byte)i;
+	}
+	g_i2c_eeprom.write(0,3200);
+}
+
 		break;
 	///////////////////////////////////
 	case EV_SEQ_CONTINUE:
@@ -230,7 +244,7 @@ void test() {
 
     	}
 
-		g_outs.run_i2c();
+		//g_outs.run_i2c();
 	}
 }
 
@@ -303,7 +317,7 @@ int main(void) {
     	}
 
     	// run the i2c bus.
-    	g_outs.run_i2c();
+    	g_i2c_bus.run();
     }
     g_sequence.save_patch(0);
 	PowerControl.set(0);

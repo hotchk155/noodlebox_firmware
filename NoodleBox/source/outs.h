@@ -75,22 +75,8 @@ public:
 		int pitch;					// 32-bit current pitch value (dac << 16)
 		int target;  				// 32-bit current target value (dac << 16)
 		int glide_rate;  			// glide rate applied per ms to the pitch
-
-		uint16_t dac;				// raw 12-bit DAC value
 	} CHAN_STATE;
-
-
-	enum {
-		DAC_INIT_PENDING_1,
-		DAC_INIT_PENDING_2,
-		DAC_DATA_PENDING,
-		DAC_IDLE
-	};
-
 	CHAN_STATE m_chan[MAX_CV];
-	byte m_dac_state;
-	byte m_i2c_buf[I2C_BUF_SIZE];
-	volatile CI2CBus::TRANSACTION m_txn;
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void impl_gate_on(byte which) {
@@ -112,16 +98,6 @@ public:
 		}
 	}
 
-	void impl_set_cv(int which, uint16_t dac)
-	{
-		if(m_dac_state >= DAC_DATA_PENDING) { // ensure DAC is initialised
-			if(m_chan[which].dac != dac) { // check output has changed
-				m_chan[which].dac = dac; // load new data
-				m_dac_state = DAC_DATA_PENDING; // flag to be sent
-			}
-		}
-	}
-
 public:
 
 
@@ -129,16 +105,6 @@ public:
 	COuts()
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
-		//m_gate_pending = 0;
-		m_dac_state = DAC_INIT_PENDING_1;
-
-		m_txn.addr = I2C_ADDR_DAC;
-		m_txn.location = 0;
-		m_txn.location_size = 0;
-		m_txn.data = m_i2c_buf;
-		m_txn.data_len = I2C_BUF_SIZE;
-		m_txn.status  = kStatus_Success;
-		m_txn.pending = 0;
 	}
 
 
@@ -177,9 +143,9 @@ public:
 			m_chan[i].gate_status = GATE_CLOSED;
 		}
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////
 	void cv(int which, CV_TYPE value, V_SQL_CVSCALE scaling, int glide_time) {
-
-
 
 		int dac = 0;
 
@@ -228,51 +194,13 @@ public:
 		else {
 			m_chan[which].pitch = ((uint32_t)dac)<<16;
 			m_chan[which].glide_rate = 0;
-			impl_set_cv(which, dac);
+			g_i2c_dac.set(which, dac);
 		}
-
-	}
-
-	void test_dac(int which, int dac) {
-		impl_set_cv(which, dac);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
-	// get block of data to send to i2c
-	void run_i2c() {
-		if(g_i2c_bus.busy()) {
-			return;
-		}
-		switch(m_dac_state) {
-		case DAC_INIT_PENDING_1:
-			m_i2c_buf[0] = 0b10001111; // set each channel to use internal vref
-			m_txn.data_len = 1;
-			g_i2c_bus.transmit(&m_txn);
-			m_dac_state = DAC_INIT_PENDING_2;
-			break;
-		case DAC_INIT_PENDING_2:
-			m_i2c_buf[0] = 0b11001111; // set x2 gain on each channel
-			m_txn.data_len = 1;
-			g_i2c_bus.transmit(&m_txn);
-			m_dac_state = DAC_IDLE;
-			break;
-		case DAC_DATA_PENDING:
-			m_i2c_buf[0] = ((m_chan[3].dac>>8) & 0xF);
-			m_i2c_buf[1] = (byte)m_chan[3].dac;
-			m_i2c_buf[2] = ((m_chan[2].dac>>8) & 0xF);
-			m_i2c_buf[3] = (byte)m_chan[2].dac;
-			m_i2c_buf[4] = ((m_chan[1].dac>>8) & 0xF);
-			m_i2c_buf[5] = (byte)m_chan[1].dac;
-			m_i2c_buf[6] = ((m_chan[0].dac>>8) & 0xF);
-			m_i2c_buf[7] = (byte)m_chan[0].dac;
-			m_txn.data_len = 8;
-			g_i2c_bus.transmit(&m_txn);
-			m_dac_state = DAC_IDLE;
-			break;
-		case DAC_IDLE:
-		default:
-			break;
-		}
+	void test_dac(int which, int dac) {
+		g_i2c_dac.set(which, dac);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +226,7 @@ public:
 					}
 				}
 				int dac = m_chan[i].pitch>>16;
-				impl_set_cv(i, dac);
+				g_i2c_dac.set(i, dac);
 			}
 
 
@@ -311,7 +239,6 @@ public:
 			}
 		}
 	}
-
 };
 
 // define global instance of the CV/Gate controller
