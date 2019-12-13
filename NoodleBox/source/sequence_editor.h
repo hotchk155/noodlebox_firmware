@@ -197,7 +197,7 @@ class CSequenceEditor {
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	const char *get_memo_slot() {
-		static char text[4];
+		static char text[3];
 		switch(m_memo_slot) {
 			case SLOT_TEMPLATE:
 				text[0] = 'T';
@@ -207,8 +207,7 @@ class CSequenceEditor {
 				text[0] = 'M' ;
 				text[1] = '1' + (m_memo_slot - SLOT_PATCH1);
 		}
-		text[2] = ':';
-		text[3] = '\0';
+		text[2] = '\0';
 		return text;
 	}
 
@@ -482,7 +481,7 @@ class CSequenceEditor {
 			m_edit_value = 1;
 			m_num_values = 3;
 			m_cmd_prompt = get_memo_slot();
-			m_cmd_values = "CXL|LOAD|SAVE";
+			m_cmd_values = ":CXL|:LOAD|:SAVE";
 			break;
 		}
 		command_prompt();
@@ -1257,6 +1256,11 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void memo_action(CSequenceLayer& layer, ACTION what) {
 		switch(what) {
+		case ACTION_HOLD:
+			if(m_memo_slot >= SLOT_PATCH1) {
+				g_popup.text(get_memo_slot());
+			}
+			break;
 		case ACTION_KEY_COMBO:
 			m_memo_slot = 0;
 			switch(m_key_combo) {
@@ -1629,6 +1633,13 @@ public:
 					g_ui.raster(15) |= 0b01;
 					break;
 			}
+		}
+
+		if(g_i2c_eeprom.is_busy()) {
+			g_ui.raster(0) |= 0b11;
+			g_ui.raster(1) |= 0b11;
+			g_ui.hilite(0) |= 0b11;
+			g_ui.hilite(1) |= 0b11;
 		}
 	}
 

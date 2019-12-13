@@ -120,7 +120,6 @@ class CI2CEeprom{
 		ST_READ_ERROR,
 		ST_WRITE,
 		ST_WRITE_DELAY,
-		ST_WRITE_COMPLETE,
 		ST_WRITE_ERROR
 	} m_state;
 
@@ -169,8 +168,6 @@ public:
 		m_address = slot * PATCH_SLOT_SIZE;
 		m_bytes = size;
 		m_state = ST_READ;
-memset((byte*)m_data, 0, sizeof(m_data));//TODO
-		g_midi_led.set(1);
 		return 1;
 	}
 	byte write(int slot, int size) {
@@ -184,7 +181,6 @@ memset((byte*)m_data, 0, sizeof(m_data));//TODO
 		m_bytes = size;
 		m_index = 0;
 		m_state = ST_WRITE;
-		g_midi_led.set(1);
 		return 1;
 	}
 	byte get_tx(i2c_master_transfer_t& xfer) {
@@ -206,7 +202,18 @@ memset((byte*)m_data, 0, sizeof(m_data));//TODO
 					}
 					return 0;
 				}
-				m_state = ST_WRITE;
+				else {
+					if(m_bytes <= 0) {
+						// done
+						fire_event(EV_SAVE_OK,m_slot);
+						m_state = ST_IDLE;
+						return 0;
+					}
+					else {
+						// write the next page
+						m_state = ST_WRITE;
+					}
+				}
 				// no break
 			case ST_WRITE:
 				xfer.direction = kI2C_Write;
@@ -219,10 +226,6 @@ memset((byte*)m_data, 0, sizeof(m_data));//TODO
 				break;
 			case ST_READ_ERROR:
 				fire_event(EV_LOAD_FAIL,m_slot);
-				m_state = ST_IDLE;
-				break;
-			case ST_WRITE_COMPLETE:
-				fire_event(EV_SAVE_OK,m_slot);
 				m_state = ST_IDLE;
 				break;
 			case ST_WRITE_ERROR:
@@ -239,32 +242,23 @@ memset((byte*)m_data, 0, sizeof(m_data));//TODO
 		switch(m_state) {
 		case ST_READ:
 			m_state = ST_READ_COMPLETE;
-			g_midi_led.set(0);
 			break;
 		case ST_WRITE:
 			if(status == kStatus_Success) {
+
 				m_address += SZ_PAGE_SIZE;
 				m_index += SZ_PAGE_SIZE;
 				m_bytes -= SZ_PAGE_SIZE;
-				if(m_bytes <= 0) {
-					// done
-					m_state = ST_WRITE_COMPLETE;
-					g_midi_led.set(0);
-				}
-				else {
-					// delay between pages
-					if((byte)g_clock.get_ms() != m_ms_lsb);
-					m_write_delay = WRITE_DELAY;
-					m_state = ST_WRITE_DELAY;
-				}
+
+				// post-write delay allows EEPROM to commit the page
+				m_ms_lsb = (byte)g_clock.get_ms();
+				m_write_delay = WRITE_DELAY;
+				m_state = ST_WRITE_DELAY;
 			}
 			else {
-				// some other error
+				// error
 				m_state = ST_WRITE_ERROR;
 			}
-			break;
-		default:
-			m_state = ST_IDLE;
 			break;
 		}
 	}

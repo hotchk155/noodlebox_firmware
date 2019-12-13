@@ -127,12 +127,6 @@ public:
 				load_patch_complete(param);
 			}
 			break;
-		case EV_LOAD_FAIL:
-		case EV_SAVE_FAIL:
-			if(param>=SLOT_PATCH1) {
-				g_popup.text("M.ERR");
-			}
-			break;
 		}
 		for(int i=0; i<NUM_LAYERS; ++i) {
 			m_layers[i]->event(event,param);
@@ -249,14 +243,15 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void load_patch_complete(int slot) {
 		byte *buf = g_i2c_eeprom.buf();
-		NO_HIDE int len = get_cfg_size();
-		NO_HIDE byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
+		int len = get_cfg_size();
+		byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
 		if(buf[0] == PATCH_DATA_COOKIE1 && buf[1] == PATCH_DATA_COOKIE2 && buf[len+2] == checksum) {
 			buf+=2;
 			set_cfg(&buf);
 			init_state();
 			switch(slot) {
 			case SLOT_CONFIG:
+			//case SLOT_AUTOSAVE:
 				break;
 			case SLOT_TEMPLATE:
 				clear();
@@ -270,6 +265,7 @@ public:
 		else {
 			switch(slot) {
 			case SLOT_CONFIG:
+			//case SLOT_AUTOSAVE:
 				break;
 			default:
 				g_popup.text("EMPTY");

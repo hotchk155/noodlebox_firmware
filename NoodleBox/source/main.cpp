@@ -176,15 +176,17 @@ void fire_event(int event, uint32_t param) {
 		g_sequence_editor.event(event, param);
 		break;
 	///////////////////////////////////
+	case EV_SAVE_FAIL:
+	case EV_LOAD_FAIL:
+		g_popup.text("M.ERR");
+		break;
 	case EV_SEQ_STOP:
 	case EV_SEQ_RESTART:
 	case EV_SEQ_CONTINUE:
 	case EV_CLOCK_RESET:
 	case EV_REAPPLY_CONFIG:
 	case EV_LOAD_OK:
-	case EV_LOAD_FAIL:
 	case EV_SAVE_OK:
-	case EV_SAVE_FAIL:
 		g_clock.event(event, param);
 		g_outs.event(event, param);
 		g_sequence.event(event, param);
@@ -229,13 +231,12 @@ void test() {
 /////////////////////////////////////////////////////////////////////////////////////////////
 void save_config() {
 	byte *ptr = g_i2c_eeprom.buf();
-	NO_HIDE  int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
+	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
 	*ptr++ = CONFIG_DATA_COOKIE1;
 	*ptr++ = CONFIG_DATA_COOKIE2;
 	g_outs.get_cfg(&ptr);
 	g_clock.get_cfg(&ptr);
-	NO_HIDE int q= ptr-g_i2c_eeprom.buf();
-	NO_HIDE  byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
+	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
 	*ptr++ = checksum;
 	g_i2c_eeprom.write(SLOT_CONFIG, len + 3);
 	g_i2c_bus.wait_for_idle();
@@ -243,10 +244,10 @@ void save_config() {
 /////////////////////////////////////////////////////////////////////////////////////////////
 void load_config() {
 	byte *buf = g_i2c_eeprom.buf();
-	NO_HIDE int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
+	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
 	g_i2c_eeprom.read(SLOT_CONFIG, len + 3);
 	g_i2c_bus.wait_for_idle();
-	NO_HIDE byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
+	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
 	if(buf[0] == CONFIG_DATA_COOKIE1 && buf[1] == CONFIG_DATA_COOKIE2 && buf[len+2] == checksum) {
 		buf+=2;
 		g_outs.set_cfg(&buf);
@@ -281,13 +282,12 @@ int main(void) {
     g_midi.init();
     g_sequence.init();
     load_config();
-    //if(g_ui.is_key_down(KEY_CV)) {
-      //  g_sequence.load_patch(SLOT_TEMPLATE);
-    //}
-    //else {
-        //g_sequence.load_patch(SLOT_AUTOSAVE);
-    //}
-    g_sequence.load_patch(SLOT_PATCH8);
+    if(g_ui.is_key_down(KEY_CV)) {
+    	g_sequence.load_patch(SLOT_TEMPLATE);
+    }
+    else {
+        g_sequence.load_patch(SLOT_AUTOSAVE);
+    }
     g_i2c_bus.wait_for_idle();
 
 
