@@ -1431,6 +1431,12 @@ public:
 				m_cur_page = layer.is_cue_mode()? 0 : layer.get_play_page();
 				show_layer_page();
 			}
+			break;
+		case EV_LOAD_OK:
+			// when a patch is loaded, return to layer 1 page A
+			m_cur_layer = 0;
+			m_cur_page = 0;
+			break;
 		}
 	}
 

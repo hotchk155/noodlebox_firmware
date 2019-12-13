@@ -185,11 +185,12 @@ void fire_event(int event, uint32_t param) {
 	case EV_SEQ_CONTINUE:
 	case EV_CLOCK_RESET:
 	case EV_REAPPLY_CONFIG:
-	case EV_LOAD_OK:
 	case EV_SAVE_OK:
+	case EV_LOAD_OK:
 		g_clock.event(event, param);
 		g_outs.event(event, param);
 		g_sequence.event(event, param);
+		g_sequence_editor.event(event, param);
 		break;
 	///////////////////////////////////
 	default:
