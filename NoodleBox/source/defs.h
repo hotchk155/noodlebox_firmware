@@ -23,7 +23,7 @@
 	#define ASSERT(e)
 #endif
 
-#if DEBUGcc
+#if DEBUG
 	#include "stdio.h"
 	#define DBGLOG0(s) printf("%s\r\n",s)
 	#define DBGLOG1(s,t) printf(s,t)
@@ -33,6 +33,8 @@
 	#define DBGLOG1(s,t)
 	#define DBGLOG2(s,t,u)
 #endif
+
+#define NO_HIDE	volatile
 
 enum {
 	EV_NONE,
@@ -47,15 +49,38 @@ enum {
 	EV_SEQ_STOP,			// sequencer playback stopped
 	EV_SEQ_CONTINUE,		// sequencer playback resumes from current position
 	EV_CLOCK_RESET,			// reset clock timing info
-	EV_CHANGE_LAYER			// change the current editor layer
+	EV_CHANGE_LAYER,		// change the current editor layer
+
+	EV_LOAD_OK,
+	EV_LOAD_FAIL,
+	EV_SAVE_OK,
+	EV_SAVE_FAIL,
+
+	EV_REAPPLY_CONFIG,
 };
 
 #define I2C_ADDR_DAC 	0b1100000
 #define I2C_ADDR_EEPROM	0b1010000
 
-#define PATCH_SLOT_SIZE		2048
+enum {
+	SLOT_CONFIG,		// configuration settings
+	SLOT_AUTOSAVE,		// the working state for save at shutdown/powerup
+	SLOT_TEMPLATE,		// a patch that is used as a template for new sessions
+	SLOT_PATCH1,		// user patches...
+	SLOT_PATCH2,
+	SLOT_PATCH3,
+	SLOT_PATCH4,
+	SLOT_PATCH5,
+	SLOT_PATCH6,
+	SLOT_PATCH7,
+	SLOT_PATCH8
+};
+
+#define PATCH_SLOT_SIZE		2560
 #define PATCH_DATA_COOKIE1	0x12
 #define PATCH_DATA_COOKIE2	0x34
+#define CONFIG_DATA_COOKIE1	0xAA
+#define CONFIG_DATA_COOKIE2	0x01
 
 typedef unsigned char byte;
 

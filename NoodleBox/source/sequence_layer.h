@@ -263,15 +263,23 @@ public:
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_midi_bend = 0;
 		m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
-		m_cfg.m_max_page_no = 0;
 		m_cfg.m_loop_per_page = 0;
-		m_cfg.m_cue_list_count = 0;
-		m_cfg.m_cue_mode = CUE_NONE;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
-		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 		m_cfg.m_scaled_view = 1;
 		set_mode(m_cfg.m_mode);
 		clear();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void clear() {
+		for(int i=0; i<NUM_PAGES; ++i) {
+			CSequencePage& page = get_page(i);
+			page.clear(get_zero_value());
+		}
+		m_cfg.m_max_page_no = 0;
+		m_cfg.m_cue_list_count = 0;
+		m_cfg.m_cue_mode = CUE_NONE;
+		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -324,6 +332,9 @@ public:
 		case EV_SEQ_STOP:
 			break;
 		case EV_SEQ_CONTINUE:
+			break;
+		case EV_LOAD_OK:
+			init_state();
 			break;
 		}
 	}
@@ -538,16 +549,6 @@ public:
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
 		prepare_page(page_no, INIT_BLANK);
 		get_page(page_no) = page;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void clear() {
-		for(int i=0; i<NUM_PAGES; ++i) {
-			CSequencePage& page = get_page(i);
-			page.clear(get_zero_value());
-		}
-		m_cfg.m_max_page_no = 0;
-		m_cfg.m_cue_list_count = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -1262,16 +1263,17 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void get_cfg(byte **dest) {
-		memcpy((*dest), &m_cfg, sizeof m_cfg);
+		*((CONFIG*)*dest) = m_cfg;
 		(*dest) += sizeof m_cfg;
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].get_cfg(dest);
 		}
 	}
 
+
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
-		memcpy(&m_cfg, (*src), sizeof m_cfg);
+		m_cfg = *((CONFIG*)*src);
 		(*src) += sizeof m_cfg;
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].set_cfg(src);

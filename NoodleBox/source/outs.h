@@ -69,6 +69,13 @@ public:
 		SCALING = 0x10000L
 	};
 
+	// calibration values
+	typedef struct {
+		int scale[MAX_CV];
+		int offset[MAX_CV];
+	} CONFIG;
+	CONFIG m_cfg;
+
 	typedef struct {
 		GATE_STATUS	gate_status;	// current state of the gate
 		byte trig_delay;			// ms remaining before rising edge in trig state
@@ -107,6 +114,14 @@ public:
 		memset((byte*)m_chan,0,sizeof m_chan);
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_SEQ_STOP:
+			close_all_gates();
+			break;
+		}
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void gate(byte which, GATE_STATUS gate) {
@@ -238,6 +253,20 @@ public:
 				}
 			}
 		}
+	}
+	///////////////////////////////////////////////////
+	static int get_cfg_size() {
+		return sizeof(m_cfg);
+	}
+	///////////////////////////////////////////////////
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=get_cfg_size();
+	}
+	///////////////////////////////////////////////////
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=get_cfg_size();
 	}
 };
 

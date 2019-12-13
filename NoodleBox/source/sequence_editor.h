@@ -198,8 +198,15 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	const char *get_memo_slot() {
 		static char text[4];
-		text[0] = 'M' ;
-		text[1] = '0' + m_memo_slot;
+		switch(m_memo_slot) {
+			case SLOT_TEMPLATE:
+				text[0] = 'T';
+				text[1] = 'M';
+				break;
+			default:
+				text[0] = 'M' ;
+				text[1] = '1' + (m_memo_slot - SLOT_PATCH1);
+		}
 		text[2] = ':';
 		text[3] = '\0';
 		return text;
@@ -475,7 +482,7 @@ class CSequenceEditor {
 			m_edit_value = 1;
 			m_num_values = 3;
 			m_cmd_prompt = get_memo_slot();
-			m_cmd_values = "EXIT|LOAD|SAVE";
+			m_cmd_values = "CXL|LOAD|SAVE";
 			break;
 		}
 		command_prompt();
@@ -584,11 +591,13 @@ class CSequenceEditor {
 				}
 			}
 		case CMD_MEMORY:
-			if(value == 1) {
-				g_sequence.load_patch(m_memo_slot);
-			}
-			else if(value == 2) {
-				g_sequence.save_patch(m_memo_slot);
+			if(m_memo_slot) {
+				if(value == 1) {
+					g_sequence.load_patch(m_memo_slot);
+				}
+				else if(value == 2) {
+					g_sequence.save_patch(m_memo_slot);
+				}
 			}
 		}
 		return 0;
@@ -1251,14 +1260,15 @@ class CSequenceEditor {
 		case ACTION_KEY_COMBO:
 			m_memo_slot = 0;
 			switch(m_key_combo) {
-			case KEY_MEMO|KEY2_MEMO_1: m_memo_slot = 1; break;
-			case KEY_MEMO|KEY2_MEMO_2: m_memo_slot = 2; break;
-			case KEY_MEMO|KEY2_MEMO_3: m_memo_slot = 3; break;
-			case KEY_MEMO|KEY2_MEMO_4: m_memo_slot = 4; break;
-			case KEY_MEMO|KEY2_MEMO_5: m_memo_slot = 5; break;
-			case KEY_MEMO|KEY2_MEMO_6: m_memo_slot = 6; break;
-			case KEY_MEMO|KEY2_MEMO_7: m_memo_slot = 7; break;
-			case KEY_MEMO|KEY2_MEMO_8: m_memo_slot = 8; break;
+			case KEY_MEMO|KEY2_MEMO_1: m_memo_slot = SLOT_PATCH1; break;
+			case KEY_MEMO|KEY2_MEMO_2: m_memo_slot = SLOT_PATCH2; break;
+			case KEY_MEMO|KEY2_MEMO_3: m_memo_slot = SLOT_PATCH3; break;
+			case KEY_MEMO|KEY2_MEMO_4: m_memo_slot = SLOT_PATCH4; break;
+			case KEY_MEMO|KEY2_MEMO_5: m_memo_slot = SLOT_PATCH5; break;
+			case KEY_MEMO|KEY2_MEMO_6: m_memo_slot = SLOT_PATCH6; break;
+			case KEY_MEMO|KEY2_MEMO_7: m_memo_slot = SLOT_PATCH7; break;
+			case KEY_MEMO|KEY2_MEMO_8: m_memo_slot = SLOT_PATCH8; break;
+			case KEY_MEMO|KEY2_MEMO_TEMPLATE: m_memo_slot = SLOT_TEMPLATE; break;
 			}
 			if(m_memo_slot) {
 				command_mode(CMD_MEMORY);

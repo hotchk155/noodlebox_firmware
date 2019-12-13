@@ -36,22 +36,28 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	CSequence() {
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i] = &m_layer_content[i];
-		}
 	}
 
 	void init() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i] = &m_layer_content[i];
 			m_layers[i]->init();
 			m_layers[i]->set_id(i);
 		}
 		m_is_running = 0;
 	}
+	///////////////////////////////////////////////////////////////////////////////
+	void clear() {
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->clear();
+		}
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_state() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i] = &m_layer_content[i];
+			m_layers[i]->set_id(i);
 			m_layers[i]->init_state();
 		}
 	}
@@ -110,6 +116,22 @@ public:
 			break;
 		case EV_SEQ_STOP:
 			m_is_running = 0;
+			break;
+		case EV_SAVE_OK:
+			if(param>SLOT_CONFIG) {
+				save_patch_complete(param);
+			}
+			break;
+		case EV_LOAD_OK:
+			if(param>SLOT_CONFIG) {
+				load_patch_complete(param);
+			}
+			break;
+		case EV_LOAD_FAIL:
+		case EV_SAVE_FAIL:
+			if(param>=SLOT_PATCH1) {
+				g_popup.text("M.ERR");
+			}
 			break;
 		}
 		for(int i=0; i<NUM_LAYERS; ++i) {
@@ -204,48 +226,57 @@ public:
 		}
 	}
 
-	void save_patch(int which) {
-	}
-	/*
-		int address = PATCH_SLOT_SIZE * which;
-		int cfg_size = get_cfg_size() + 2;
-		byte buf[cfg_size] = {0};
-		buf[cfg_size-2] = PATCH_DATA_COOKIE1;
-		buf[cfg_size-1] = PATCH_DATA_COOKIE2;
-		byte *ptr = buf;
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	byte save_patch(int slot) {
+		byte *ptr = g_i2c_eeprom.buf();
+		int len = get_cfg_size();
+		*ptr++ = PATCH_DATA_COOKIE1;
+		*ptr++ = PATCH_DATA_COOKIE2;
 		get_cfg(&ptr);
-		if(!g_storage.write(address, buf, cfg_size)) {
-			g_popup.text("ERROR");
-		}
-		else {
-			g_popup.text("DONE");
-		}
-	}*/
-	void load_patch(int which) {
+		*ptr++ = g_i2c_eeprom.buf_checksum(len + 2);
+		return g_i2c_eeprom.write(slot, len + 3);
 	}
-	/*
-		int address = PATCH_SLOT_SIZE * which;
-		int cfg_size = get_cfg_size() + 2;
-		byte buf[cfg_size] = {0};
-		if(!g_storage.read(address, buf, cfg_size)) {
-			g_popup.text("ERROR");
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void save_patch_complete(int slot) {
+		g_popup.text("SAVED");
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	byte load_patch(int slot) {
+		return g_i2c_eeprom.read(slot, get_cfg_size() + 3);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void load_patch_complete(int slot) {
+		byte *buf = g_i2c_eeprom.buf();
+		NO_HIDE int len = get_cfg_size();
+		NO_HIDE byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
+		if(buf[0] == PATCH_DATA_COOKIE1 && buf[1] == PATCH_DATA_COOKIE2 && buf[len+2] == checksum) {
+			buf+=2;
+			set_cfg(&buf);
+			init_state();
+			switch(slot) {
+			case SLOT_CONFIG:
+				break;
+			case SLOT_TEMPLATE:
+				clear();
+				g_popup.text("INIT");
+				break;
+			default:
+				g_popup.text("LOADED");
+				break;
+			}
 		}
 		else {
-			if(buf[cfg_size-2] == PATCH_DATA_COOKIE1 && buf[cfg_size-1] == PATCH_DATA_COOKIE2) {
-				byte *ptr = buf;
-				set_cfg(&ptr);
-				init_state();
-				if(which) {
-					g_popup.text("DONE");
-				}
+			switch(slot) {
+			case SLOT_CONFIG:
+				break;
+			default:
+				g_popup.text("EMPTY");
+				break;
 			}
-			else {
-				if(which) {
-					g_popup.text("EMPTY");
-				}
-			}
-	 	}
-	}*/
+		}
+	}
 
 };
 

@@ -28,7 +28,7 @@ void i2c_master_callback(I2C_Type *base, i2c_master_handle_t *handle, status_t s
 class CI2CDac{
 	enum { SZ_DATA = 8 };
 	volatile byte m_data[SZ_DATA];
-	enum { ST_INIT1, ST_INIT2, ST_IDLE, ST_PENDING } m_state;
+	volatile enum { ST_INIT1, ST_INIT2, ST_IDLE, ST_PENDING } m_state;
 	uint16_t m_dac[4];
 public:
 	///////////////////////////////////////////////////////////////////////////////
@@ -109,18 +109,28 @@ CI2CDac g_i2c_dac;
 class CI2CEeprom{
 	enum {
 		SZ_PAGE_SIZE = 64,
-		SZ_DATA = 3200,
+		SZ_DATA = PATCH_SLOT_SIZE,
 		WRITE_DELAY = 10
 	};
 	volatile byte m_data[SZ_DATA];
-	enum { ST_IDLE, ST_READ, ST_WRITE, ST_WRITE_DELAY } m_state;
+	volatile enum {
+		ST_IDLE,
+		ST_READ,
+		ST_READ_COMPLETE,
+		ST_READ_ERROR,
+		ST_WRITE,
+		ST_WRITE_DELAY,
+		ST_WRITE_COMPLETE,
+		ST_WRITE_ERROR
+	} m_state;
 
-	int m_address;
-	int m_bytes;
-	int m_index;
-	byte m_ms_lsb;
-	byte m_write_delay;
-	status_t m_status;
+	volatile int m_slot;
+	volatile int m_address;
+	volatile int m_bytes;
+	volatile int m_index;
+	volatile byte m_ms_lsb;
+	volatile byte m_write_delay;
+	volatile status_t m_status;
 public:
 	///////////////////////////////////////////////////////////////////////////////
 	CI2CEeprom() {
@@ -133,31 +143,44 @@ public:
 	status_t get_status() {
 		return m_status;
 	}
-	inline byte& operator[](int i) {
-		return (byte&)m_data[i];
+	byte *buf() {
+		return (byte*)&m_data;
+	}
+	int buf_size() {
+		return SZ_DATA;
+	}
+	byte buf_checksum(int len) {
+		byte result = 0;
+		for(int i=0; i<len; ++i) {
+			result+=m_data[i];
+		}
+		return result;
 	}
 	byte is_busy() {
 		return (m_state != ST_IDLE);
 	}
-	byte read(int address, int size) {
+	byte read(int slot, int size) {
 		if(m_state != ST_IDLE) {
 			return 0;
 		}
 		ASSERT(size <= SZ_DATA);
 		m_status = -1;
-		m_address = address;
+		m_slot = slot;
+		m_address = slot * PATCH_SLOT_SIZE;
 		m_bytes = size;
 		m_state = ST_READ;
+memset((byte*)m_data, 0, sizeof(m_data));//TODO
 		g_midi_led.set(1);
 		return 1;
 	}
-	byte write(int address, int size) {
+	byte write(int slot, int size) {
 		if(m_state != ST_IDLE) {
 			return 0;
 		}
 		ASSERT(size <= SZ_DATA);
 		m_status = -1;
-		m_address = address; // must be on 64 byte boundary
+		m_slot = slot;
+		m_address = slot * PATCH_SLOT_SIZE;
 		m_bytes = size;
 		m_index = 0;
 		m_state = ST_WRITE;
@@ -165,7 +188,6 @@ public:
 		return 1;
 	}
 	byte get_tx(i2c_master_transfer_t& xfer) {
-
 		xfer.slaveAddress = I2C_ADDR_EEPROM;
 		xfer.subaddress = m_address;
 		xfer.subaddressSize = 2;
@@ -191,6 +213,22 @@ public:
 				xfer.data = (byte*)&m_data[m_index];
 				xfer.dataSize = SZ_PAGE_SIZE;
 				return 1;
+			case ST_READ_COMPLETE:
+				fire_event(EV_LOAD_OK,m_slot);
+				m_state = ST_IDLE;
+				break;
+			case ST_READ_ERROR:
+				fire_event(EV_LOAD_FAIL,m_slot);
+				m_state = ST_IDLE;
+				break;
+			case ST_WRITE_COMPLETE:
+				fire_event(EV_SAVE_OK,m_slot);
+				m_state = ST_IDLE;
+				break;
+			case ST_WRITE_ERROR:
+				fire_event(EV_SAVE_FAIL,m_slot);
+				m_state = ST_IDLE;
+				break;
 		}
 		return 0;
 	}
@@ -200,7 +238,7 @@ public:
 		m_status = status;
 		switch(m_state) {
 		case ST_READ:
-			m_state = ST_IDLE;
+			m_state = ST_READ_COMPLETE;
 			g_midi_led.set(0);
 			break;
 		case ST_WRITE:
@@ -210,7 +248,7 @@ public:
 				m_bytes -= SZ_PAGE_SIZE;
 				if(m_bytes <= 0) {
 					// done
-					m_state = ST_IDLE;
+					m_state = ST_WRITE_COMPLETE;
 					g_midi_led.set(0);
 				}
 				else {
@@ -222,7 +260,7 @@ public:
 			}
 			else {
 				// some other error
-				m_state = ST_IDLE;
+				m_state = ST_WRITE_ERROR;
 			}
 			break;
 		default:
@@ -230,68 +268,6 @@ public:
 			break;
 		}
 	}
-
-	/*
-		//M24256 EEPROM
-		status_t write_eeprom(uint16_t eeprom_addr, byte *data, int size) {
-			status_t result = kStatus_Fail;
-			while(size > 0) {
-
-				// get the target EEPROM page base address (64 bytes per page)
-				uint16_t page_mask = (eeprom_addr & 0xFFC0);
-
-				// set up transfer block
-				i2c_master_transfer_t xfer;
-				xfer.slaveAddress = EEPROM_ADDRESS;
-				xfer.direction = kI2C_Write;
-				xfer.subaddress = eeprom_addr;
-				xfer.subaddressSize = 2;
-				xfer.data = data;
-				xfer.dataSize = 0;
-				xfer.flags = kI2C_TransferDefaultFlag;
-
-				// we can only send continuous bytes up until the EEPROM page boundary
-				// then we'll need to start a new transaction
-				while(size > 0 && ((eeprom_addr & 0xFFC0) == page_mask)) {
-					++eeprom_addr;
-					++data;
-					--size;
-					xfer.dataSize++;
-				}
-
-				// the EEPROM can NAK us while internal write cycle takes place
-				for(int retries = 20;retries>0;--retries) {
-					result = I2C_MasterTransferBlocking(I2C0, &xfer);
-					if(result != kStatus_I2C_Addr_Nak) {
-						break;
-					}
-					g_clock.wait_ms(1);
-				}
-			    if(result != kStatus_Success) {
-			    	break;
-			    }
-			}
-			return result;
-		}
-
-		status_t read_eeprom(uint16_t eeprom_addr, byte *data, int size) {
-			i2c_master_transfer_t xfer;
-			xfer.slaveAddress = EEPROM_ADDRESS;
-			xfer.direction = kI2C_Read;
-			xfer.subaddress = eeprom_addr;
-			xfer.subaddressSize = 2;
-			xfer.data = data;
-			xfer.dataSize = size;
-			xfer.flags = kI2C_TransferDefaultFlag;
-		    return I2C_MasterTransferBlocking(I2C0, &xfer);
-		}
-
-		void write_blocking(byte addr, int len) {
-			write(addr, len);
-			wait();
-		}*/
-
-
 };
 CI2CEeprom g_i2c_eeprom;
 
@@ -311,6 +287,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	CI2CBus() {
 		m_state = ST_IDLE;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	byte is_busy() {
+		return (m_state != ST_IDLE) || g_i2c_eeprom.is_busy();
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void init() {
@@ -334,6 +314,12 @@ public:
 				m_state = ST_DAC_BUSY;
 			}
 		}
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	void wait_for_idle() {
+		do {
+			run();
+		} while(is_busy());
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_txn_complete(I2C_Type *base, i2c_master_handle_t *handle, status_t status, void *userData) {

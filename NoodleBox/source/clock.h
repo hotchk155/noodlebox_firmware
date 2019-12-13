@@ -105,8 +105,10 @@ public:
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPulseClockSource : public IClockSource {
-
-	V_CLOCK_IN_RATE m_clock_in_rate;
+	typedef struct {
+		V_CLOCK_IN_RATE m_clock_in_rate;
+	} CONFIG;
+	CONFIG m_cfg;
 
 	TICKS_TYPE m_ticks; 	// tick counter incremented by m_period when external clock pulse is received
 	TICKS_TYPE m_period;	// the period of the clock in whole ticks
@@ -137,6 +139,9 @@ public:
 		case EV_SEQ_RESTART:
 			m_ticks = 0;
 			break;
+		case EV_REAPPLY_CONFIG:
+			set_rate(m_cfg.m_clock_in_rate);
+			break;
 		}
 	}
 	////////////////////////////////////////
@@ -154,12 +159,12 @@ public:
 	////////////////////////////////////////
 	void set_rate(V_CLOCK_IN_RATE clock_in_rate) {
 		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_16, PP24_8};
-		m_clock_in_rate = clock_in_rate;
+		m_cfg.m_clock_in_rate = clock_in_rate;
 		m_period = pp24_to_ticks(rate[clock_in_rate]);
 	}
 	////////////////////////////////////////
 	V_CLOCK_IN_RATE get_rate() {
-		return m_clock_in_rate;
+		return m_cfg.m_clock_in_rate;
 	}
 	////////////////////////////////////////
 	void on_pulse(uint32_t ms) {
@@ -188,6 +193,17 @@ public:
 			m_state = CLOCK_STOPPED;
 			fire_event(EV_SEQ_STOP,0);
 		}
+	}
+	static int get_cfg_size() {
+		return sizeof(m_cfg);
+	}
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=get_cfg_size();
+	}
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=get_cfg_size();
 	}
 };
 CPulseClockSource g_pulse_clock_in;
@@ -292,8 +308,13 @@ CMidiClockSource g_midi_clock_in;
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CFixedClockSource	: public IClockSource {
+	friend class CClock;
+	typedef struct {
+		int m_bpm;
+	} CONFIG;
+	CONFIG m_cfg;
+
 	double m_ticks_per_ms;
-	float m_bpm;
 public:
 	////////////////////////////////////////
 	CFixedClockSource() {
@@ -301,6 +322,11 @@ public:
 	}
 	////////////////////////////////////////
 	void event(int event, uint32_t param) {
+		switch(event) {
+		case EV_REAPPLY_CONFIG:
+			set_bpm(m_cfg.m_bpm);
+			break;
+		}
 	}
 	////////////////////////////////////////
 	TICKS_TYPE min_ticks() {
@@ -315,13 +341,24 @@ public:
 		return m_ticks_per_ms;
 	}
 	////////////////////////////////////////
-	void set_bpm(float bpm) {
-		m_ticks_per_ms = (bpm * PP24_4 * 256) / (60.0 * 1000.0);
-		m_bpm = bpm;
+	void set_bpm(int bpm) {
+		m_ticks_per_ms = ((double)bpm * PP24_4 * 256) / (60.0 * 1000.0);
+		m_cfg.m_bpm = bpm;
 	}
 	////////////////////////////////////////
-	float get_bpm() {
-		return m_bpm;
+	int get_bpm() {
+		return m_cfg.m_bpm;
+	}
+	static int get_cfg_size() {
+		return sizeof(m_cfg);
+	}
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=get_cfg_size();
+	}
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=get_cfg_size();
 	}
 };
 CFixedClockSource g_fixed_clock;
@@ -332,8 +369,11 @@ CFixedClockSource g_fixed_clock;
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPulseClockOut {
-
-	V_CLOCK_OUT_RATE m_clock_out_rate;
+	friend class CClock;
+	typedef struct {
+		V_CLOCK_OUT_RATE m_clock_out_rate;
+	} CONFIG;
+	CONFIG m_cfg;
 
 	const int HIGH_MS = 15;		// duration of high part of pulse
 	const int LOW_MS = 2;		// MIN low time between pulses
@@ -352,12 +392,12 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_rate(V_CLOCK_OUT_RATE clock_out_rate) {
 		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8, PP24_16, PP24_8 };
-		m_clock_out_rate = clock_out_rate;
+		m_cfg.m_clock_out_rate = clock_out_rate;
 		m_period = rate[clock_out_rate];
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	V_CLOCK_OUT_RATE get_rate() {
-		return m_clock_out_rate;
+		return m_cfg.m_clock_out_rate;
 	}
 	void event(int event, uint32_t param) {
 		switch(event) {
@@ -376,13 +416,16 @@ public:
 		case EV_SEQ_CONTINUE:
 			m_running = 1;
 			break;
+		case EV_REAPPLY_CONFIG:
+			set_rate(m_cfg.m_clock_out_rate);
+			break;
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
 		ASSERT(m_period);
-		switch(m_clock_out_rate) {
+		switch(m_cfg.m_clock_out_rate) {
 		case V_CLOCK_OUT_RATE_16_GATE:
 		case V_CLOCK_OUT_RATE_8_GATE:
 			if(!m_running) {
@@ -433,6 +476,17 @@ public:
 		}
 
 	}
+	static int get_cfg_size() {
+		return sizeof(m_cfg);
+	}
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=get_cfg_size();
+	}
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=get_cfg_size();
+	}
 };
 CPulseClockOut g_pulse_clock_out;
 
@@ -443,7 +497,12 @@ CPulseClockOut g_pulse_clock_out;
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CMidiClockOut {
-	V_MIDI_CLOCK_OUT m_mode;
+	friend class CClock;
+	typedef struct {
+		V_MIDI_CLOCK_OUT m_mode;
+	} CONFIG;
+	CONFIG m_cfg;
+
 	byte m_is_running;
 public:
 	///////////////////////////////////////////////////////////////////////////////
@@ -453,17 +512,17 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_mode(V_MIDI_CLOCK_OUT mode) {
-		m_mode = mode;
+		m_cfg.m_mode = mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	V_MIDI_CLOCK_OUT get_mode() {
-		return m_mode;
+		return m_cfg.m_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void event(int event, uint32_t param) {
 		switch(event) {
 		case EV_SEQ_RESTART:
-			switch(m_mode) {
+			switch(m_cfg.m_mode) {
 			case V_MIDI_CLOCK_OUT_ON_TRAN:
 			case V_MIDI_CLOCK_OUT_GATE_TRAN:
 				g_midi.send_byte(midi::MIDI_START);
@@ -472,7 +531,7 @@ public:
 			m_is_running = 1;
 			break;
 		case EV_SEQ_STOP:
-			switch(m_mode) {
+			switch(m_cfg.m_mode) {
 			case V_MIDI_CLOCK_OUT_ON_TRAN:
 			case V_MIDI_CLOCK_OUT_GATE_TRAN:
 				g_midi.send_byte(midi::MIDI_STOP);
@@ -481,7 +540,7 @@ public:
 			m_is_running = 0;
 			break;
 		case EV_SEQ_CONTINUE:
-			switch(m_mode) {
+			switch(m_cfg.m_mode) {
 			case V_MIDI_CLOCK_OUT_ON_TRAN:
 			case V_MIDI_CLOCK_OUT_GATE_TRAN:
 				g_midi.send_byte(midi::MIDI_CONTINUE);
@@ -491,12 +550,15 @@ public:
 			break;
 		case EV_CLOCK_RESET:
 			break;
+		case EV_REAPPLY_CONFIG:
+			set_mode(m_cfg.m_mode);
+			break;
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24() {
-		switch(m_mode) {
+		switch(m_cfg.m_mode) {
 		case V_MIDI_CLOCK_OUT_GATE:
 		case V_MIDI_CLOCK_OUT_GATE_TRAN:
 			if(!m_is_running) {
@@ -508,6 +570,17 @@ public:
 			g_midi.send_byte(midi::MIDI_TICK);
 			break;
 		}
+	}
+	static int get_cfg_size() {
+		return sizeof(m_cfg);
+	}
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=get_cfg_size();
+	}
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=get_cfg_size();
 	}
 };
 CMidiClockOut g_midi_clock_out;
@@ -534,12 +607,40 @@ CBeatLedOut g_beat_led_out;
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CClock {
-	V_CLOCK_SRC m_source_mode;
+	typedef struct {
+		V_CLOCK_SRC m_source_mode;
+	} CONFIG;
+	CONFIG m_cfg;
+
 	IClockSource *m_source;
 	volatile byte m_ms_tick;					// flag set each time 1ms is up
 	volatile uint32_t m_ms;					// ms counter
 	volatile TICKS_TYPE m_ticks;
 	volatile double m_ticks_remainder;
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_source_mode(V_CLOCK_SRC source_mode) {
+		switch(source_mode) {
+		case V_CLOCK_SRC_EXTERNAL:
+			m_source = &g_pulse_clock_in;
+			break;
+		case V_CLOCK_SRC_MIDI_CLOCK_ONLY:
+			m_source = &g_midi_clock_in;
+			g_midi_clock_in.set_transport(0);
+			break;
+		case V_CLOCK_SRC_MIDI_TRANSPORT:
+			m_source = &g_midi_clock_in;
+			g_midi_clock_in.set_transport(1);
+			break;
+		case V_CLOCK_SRC_INTERNAL:
+		default:
+			m_source = &g_fixed_clock;
+			break;
+		}
+		m_cfg.m_source_mode = source_mode;
+	}
+
 public:
 	///////////////////////////////////////////////////////////////////////////////
 	CClock() : m_source(&g_fixed_clock) {
@@ -587,24 +688,7 @@ public:
 				g_fixed_clock.set_bpm(value);
 				break;
 			case P_CLOCK_SRC:
-				switch(value) {
-				case V_CLOCK_SRC_EXTERNAL:
-					m_source = &g_pulse_clock_in;
-					break;
-				case V_CLOCK_SRC_MIDI_CLOCK_ONLY:
-					m_source = &g_midi_clock_in;
-					g_midi_clock_in.set_transport(0);
-					break;
-				case V_CLOCK_SRC_MIDI_TRANSPORT:
-					m_source = &g_midi_clock_in;
-					g_midi_clock_in.set_transport(1);
-					break;
-				case V_CLOCK_SRC_INTERNAL:
-				default:
-					m_source = &g_fixed_clock;
-					break;
-				}
-				m_source_mode = (V_CLOCK_SRC)value;
+				set_source_mode((V_CLOCK_SRC)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_IN_RATE:
@@ -627,7 +711,7 @@ public:
 	int get(PARAM_ID param) {
 		switch(param) {
 		case P_CLOCK_BPM: return g_fixed_clock.get_bpm();
-		case P_CLOCK_SRC: return m_source_mode;
+		case P_CLOCK_SRC: return m_cfg.m_source_mode;
 		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
 		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
 		case P_MIDI_CLOCK_OUT: return g_midi_clock_out.get_mode();
@@ -638,8 +722,8 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		case P_CLOCK_BPM: return !!(m_source_mode == V_CLOCK_SRC_INTERNAL);
-		case P_CLOCK_IN_RATE: return !!(m_source_mode == V_CLOCK_SRC_EXTERNAL);
+		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
+		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
 		default: return 1;
 		}
 	}
@@ -647,11 +731,6 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// handle sequencer events
 	void event(int event, uint32_t param) {
-		g_fixed_clock.event(event, param);
-		g_pulse_clock_in.event(event, param);
-		g_pulse_clock_out.event(event, param);
-		g_midi_clock_in.event(event, param);
-		g_midi_clock_out.event(event, param);
 
 		switch(event) {
 		case EV_SEQ_STOP:
@@ -662,7 +741,16 @@ public:
 			m_ticks = 0;
 			m_ticks_remainder = 0;
 			break;
+		case EV_REAPPLY_CONFIG:
+			set_source_mode(m_cfg.m_source_mode);
+			break;
 		}
+		g_fixed_clock.event(event, param);
+		g_pulse_clock_in.event(event, param);
+		g_pulse_clock_out.event(event, param);
+		g_midi_clock_in.event(event, param);
+		g_midi_clock_out.event(event, param);
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -761,6 +849,30 @@ public:
 	inline void ext_clock_isr() {
 		g_pulse_clock_in.on_pulse(m_ms);
 	}
+	static int get_cfg_size() {
+		return sizeof(m_cfg) +
+			CFixedClockSource::get_cfg_size() +
+			CPulseClockSource::get_cfg_size() +
+			CPulseClockOut::get_cfg_size() +
+			CMidiClockOut::get_cfg_size();
+	}
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest)+=sizeof(m_cfg);
+		g_fixed_clock.get_cfg(dest);
+		g_pulse_clock_in.get_cfg(dest);
+		g_pulse_clock_out.get_cfg(dest);
+		g_midi_clock_out.get_cfg(dest);
+	}
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src)+=sizeof(m_cfg);
+		g_fixed_clock.set_cfg(src);
+		g_pulse_clock_in.set_cfg(src);
+		g_pulse_clock_out.set_cfg(src);
+		g_midi_clock_out.set_cfg(src);
+	}
+
 
 };
 

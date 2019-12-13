@@ -136,6 +136,7 @@
 #define KEY2_MEMO_6				KEY_B6
 #define KEY2_MEMO_7				KEY_B7
 #define KEY2_MEMO_8				KEY_B8
+#define KEY2_MEMO_TEMPLATE		KEY_R3
 
 
 // debounce times (ms)
