@@ -58,21 +58,19 @@ public:
 		GATE_TRIG,
 	} GATE_STATUS;
 	enum {
-		MAX_CV = 4,
-		MAX_GATE = 4,
+		MAX_CHAN = 4,
 		I2C_BUF_SIZE = 100,
 		TRIG_DURATION = 15,
 		TRIG_DELAY_MS = 2
 	};
-
 	enum : long {
 		SCALING = 0x10000L
 	};
 
 	// calibration values
 	typedef struct {
-		int scale[MAX_CV];
-		int offset[MAX_CV];
+		int scale[MAX_CHAN];
+		int offset[MAX_CHAN];
 	} CONFIG;
 	CONFIG m_cfg;
 
@@ -82,26 +80,60 @@ public:
 		int pitch;					// 32-bit current pitch value (dac << 16)
 		int target;  				// 32-bit current target value (dac << 16)
 		int glide_rate;  			// glide rate applied per ms to the pitch
+		byte cv_src;
+		byte gate_src;
 	} CHAN_STATE;
-	CHAN_STATE m_chan[MAX_CV];
+	CHAN_STATE m_chan[MAX_CHAN];
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void impl_gate_on(byte which) {
-		switch(which) {
-		case 0: SET_GPIOA(BIT_GATE1); break;
-		case 1: SET_GPIOA(BIT_GATE2); break;
-		case 2: SET_GPIOA(BIT_GATE3); break;
-		case 3: SET_GPIOA(BIT_GATE4); break;
+	void impl_set_gate(byte which, byte state) {
+		if(m_chan[0].gate_src == which) {
+			if(state) {
+				SET_GPIOA(BIT_GATE1);
+			}
+			else {
+				CLR_GPIOA(BIT_GATE1);
+			}
+		}
+		if(m_chan[1].gate_src == which) {
+			if(state) {
+				SET_GPIOA(BIT_GATE2);
+			}
+			else {
+				CLR_GPIOA(BIT_GATE2);
+			}
+		}
+		if(m_chan[2].gate_src == which) {
+			if(state) {
+				SET_GPIOA(BIT_GATE3);
+			}
+			else {
+				CLR_GPIOA(BIT_GATE3);
+			}
+		}
+		if(m_chan[3].gate_src == which) {
+			if(state) {
+				SET_GPIOA(BIT_GATE4);
+			}
+			else {
+				CLR_GPIOA(BIT_GATE4);
+			}
 		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void impl_gate_off(byte which) {
-		switch(which) {
-		case 0: CLR_GPIOA(BIT_GATE1); break;
-		case 1: CLR_GPIOA(BIT_GATE2); break;
-		case 2: CLR_GPIOA(BIT_GATE3); break;
-		case 3: CLR_GPIOA(BIT_GATE4); break;
+	void impl_set_cv(byte which, uint16_t dac) {
+		if(m_chan[0].cv_src == which) {
+			g_i2c_dac.set(0, dac);
+		}
+		if(m_chan[1].cv_src == which) {
+			g_i2c_dac.set(1, dac);
+		}
+		if(m_chan[2].cv_src == which) {
+			g_i2c_dac.set(2, dac);
+		}
+		if(m_chan[3].cv_src == which) {
+			g_i2c_dac.set(3, dac);
 		}
 	}
 
@@ -112,6 +144,10 @@ public:
 	COuts()
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
+		for(int i=0; i<MAX_CHAN; ++i) {
+			m_chan[i].cv_src = i;
+			m_chan[i].gate_src = i;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -129,13 +165,13 @@ public:
 		if(m_chan[which].gate_status != gate) {
 			switch(gate) {
 				case GATE_CLOSED:
-					impl_gate_off(which);
+					impl_set_gate(which,0);
 					m_chan[which].gate_status = GATE_CLOSED;
 					break;
 				case GATE_TRIG:
 					if(m_chan[which].gate_status == GATE_OPEN) {
 						// gate is open so need to generate a new rising edge
-						impl_gate_off(which);
+						impl_set_gate(which,0);
 						m_chan[which].gate_status = GATE_TRIG;
 						m_chan[which].trig_delay = TRIG_DELAY_MS;
 						g_gate_led.blink(g_gate_led.MEDIUM_BLINK);
@@ -143,7 +179,7 @@ public:
 					}
 					// else fall thru
 				case GATE_OPEN:
-					impl_gate_on(which);
+					impl_set_gate(which,1);
 					m_chan[which].gate_status = GATE_OPEN;
 					g_gate_led.blink(g_gate_led.MEDIUM_BLINK);
 					break;
@@ -153,8 +189,8 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void close_all_gates() {
-		for(int i=0; i<MAX_GATE; ++i) {
-			impl_gate_off(i);
+		for(int i=0; i<MAX_CHAN; ++i) {
+			impl_set_gate(i,0);
 			m_chan[i].gate_status = GATE_CLOSED;
 		}
 	}
@@ -209,13 +245,13 @@ public:
 		else {
 			m_chan[which].pitch = ((uint32_t)dac)<<16;
 			m_chan[which].glide_rate = 0;
-			g_i2c_dac.set(which, dac);
+			impl_set_cv(which,dac);
 		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void test_dac(int which, int dac) {
-		g_i2c_dac.set(which, dac);
+		impl_set_cv(which,dac);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +259,7 @@ public:
 	void run() {
 
 		// processing for each output
-		for(int i=0; i<MAX_CV; ++i) {
+		for(int i=0; i<MAX_CHAN; ++i) {
 
 			// handle pitch glide
 			if(m_chan[i].glide_rate) {
@@ -241,7 +277,7 @@ public:
 					}
 				}
 				int dac = m_chan[i].pitch>>16;
-				g_i2c_dac.set(i, dac);
+				impl_set_cv(i,dac);
 			}
 
 
@@ -249,10 +285,23 @@ public:
 			if(m_chan[i].gate_status == GATE_TRIG && m_chan[i].trig_delay) {
 				if(!--m_chan[i].trig_delay) {
 					m_chan[i].gate_status = GATE_OPEN;
-					impl_gate_on(i);
+					impl_set_gate(i,1);
 				}
 			}
 		}
+	}
+
+	///////////////////////////////////////////////////
+	void set_cv_alias(byte which, byte src) {
+		ASSERT(out<MAX_CHAN);
+		ASSERT(src<MAX_CHAN);
+		m_chan[which].cv_src = src;
+	}
+	///////////////////////////////////////////////////
+	void set_gate_alias(byte which, byte src) {
+		ASSERT(out<MAX_CHAN);
+		ASSERT(src<MAX_CHAN);
+		m_chan[which].gate_src = src;
 	}
 	///////////////////////////////////////////////////
 	static int get_cfg_size() {

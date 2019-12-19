@@ -118,8 +118,8 @@ const uint32_t title_screen[] = {
 
 typedef enum:byte {
 	 VIEW_SEQUENCER,
-	 VIEW_LAYER_MENU,
-	 VIEW_GLOBAL_MENU
+	 VIEW_MENU_A,
+	 VIEW_MENU_B
  } VIEW_TYPE;
 
 VIEW_TYPE g_view = VIEW_SEQUENCER;
@@ -131,8 +131,8 @@ void dispatch_event(int event, uint32_t param) {
 	case VIEW_SEQUENCER:
 		g_sequence_editor.event(event, param);
 		break;
-	case VIEW_LAYER_MENU:
-	case VIEW_GLOBAL_MENU:
+	case VIEW_MENU_A:
+	case VIEW_MENU_B:
 		g_menu.event(event, param);
 		break;
 	}
@@ -160,29 +160,29 @@ void fire_event(int event, uint32_t param) {
 		switch(param) {
 		case KEY_LAYER:
 			switch(g_view) {
-			case VIEW_LAYER_MENU:
-			case VIEW_GLOBAL_MENU:
+			case VIEW_MENU_A:
+			case VIEW_MENU_B:
 				g_view = VIEW_SEQUENCER;
 				g_sequence_editor.activate();
 				break;
 			case VIEW_SEQUENCER:
 			default:
-				g_menu.activate(CMenu::LAYER_MENU);
-				g_view = VIEW_LAYER_MENU;
+				g_view = VIEW_MENU_A;
+				g_menu.activate(CMenu::MENU_A);
 				break;
 			}
 			break;
 		case KEY_LAYER|KEY_FUNC:
 			switch(g_view) {
-			case VIEW_GLOBAL_MENU:
-				g_menu.activate(CMenu::LAYER_MENU);
-				g_view = VIEW_LAYER_MENU;
+			case VIEW_MENU_B:
+				g_view = VIEW_MENU_A;
+				g_menu.activate(CMenu::MENU_A);
 				break;
-			case VIEW_LAYER_MENU:
+			case VIEW_MENU_A:
 			case VIEW_SEQUENCER:
 			default:
-				g_menu.activate(CMenu::GLOBAL_MENU);
-				g_view = VIEW_GLOBAL_MENU;
+				g_view = VIEW_MENU_B;
+				g_menu.activate(CMenu::MENU_B);
 				break;
 			}
 			break;
@@ -191,6 +191,7 @@ void fire_event(int event, uint32_t param) {
 			break;
 		}
 		break;
+
 	///////////////////////////////////
 	case EV_CHANGE_LAYER:
 		g_sequence_editor.event(event, param);
@@ -311,7 +312,7 @@ int main(void) {
     }
     g_i2c_bus.wait_for_idle();
 
-
+    g_sequence_editor.activate();
 
     while(1) {
 
@@ -331,8 +332,8 @@ int main(void) {
 			case VIEW_SEQUENCER:
 				g_sequence_editor.repaint();
 				break;
-			case VIEW_LAYER_MENU:
-			case VIEW_GLOBAL_MENU:
+			case VIEW_MENU_A:
+			case VIEW_MENU_B:
 				g_menu.repaint();
 				break;
 			}

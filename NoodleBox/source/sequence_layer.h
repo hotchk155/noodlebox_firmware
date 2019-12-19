@@ -84,6 +84,8 @@ private:
 		int 			m_scaled_view:1;	// whether the pitch view is 7 rows/oct
 		int 			m_loop_per_page:1;
 		int 			m_enabled:1;
+		V_SQL_CV_ALIAS 	m_cv_alias;
+		V_SQL_GATE_ALIAS m_gate_alias;
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
@@ -219,11 +221,33 @@ private:
 		}
 	}
 
-
+	///////////////////////////////////////////////////////////////////////////////
 	void recalc_data_points_all_pages() {
 		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
 			page.recalc(m_cfg.m_fill_mode, get_zero_value());
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_cv_alias(V_SQL_CV_ALIAS value) {
+		m_cfg.m_cv_alias = value;
+		if(value == V_SQL_CV_ALIAS_NONE) {
+			g_outs.set_cv_alias(m_id, m_id);
+		}
+		else {
+			g_outs.set_cv_alias(m_id, value - V_SQL_CV_ALIAS_FROM_L1);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_gate_alias(V_SQL_GATE_ALIAS value) {
+		m_cfg.m_gate_alias = value;
+		if(value == V_SQL_GATE_ALIAS_NONE) {
+			g_outs.set_gate_alias(m_id, m_id);
+		}
+		else {
+			g_outs.set_gate_alias(m_id, value - V_SQL_GATE_ALIAS_FROM_L1);
 		}
 	}
 
@@ -266,6 +290,8 @@ public:
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scaled_view = 1;
+		set_cv_alias(V_SQL_CV_ALIAS_NONE);
+		set_gate_alias(V_SQL_GATE_ALIAS_NONE);
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -298,6 +324,9 @@ public:
 			m_page[i].init_state();
 		}
 		reset();
+
+		set_cv_alias(m_cfg.m_cv_alias);
+		set_gate_alias(m_cfg.m_gate_alias);
 	}
 
 
@@ -368,9 +397,13 @@ public:
 		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
+		case P_SQL_CV_ALIAS: set_cv_alias((V_SQL_CV_ALIAS)value); break;
+		case P_SQL_GATE_ALIAS: set_gate_alias((V_SQL_GATE_ALIAS)value); break;
 		default: break;
 		}
 	}
+
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
@@ -397,6 +430,8 @@ public:
 		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
 		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
+		case P_SQL_CV_ALIAS: return m_cfg.m_cv_alias;
+		case P_SQL_GATE_ALIAS: return m_cfg.m_gate_alias;
 		default:return 0;
 		}
 	}

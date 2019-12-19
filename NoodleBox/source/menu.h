@@ -32,12 +32,12 @@ public:
 		ACTION_VALUE_CHANGED,
 	};
 	enum {
-		LAYER_MENU,
-		GLOBAL_MENU
+		MENU_A,
+		MENU_B
 	};
 
-	static const int NUM_LAYER_MENU_OPTS = 19;
-	const OPTION m_layer_menu[NUM_LAYER_MENU_OPTS] = {
+	static const int NUM_MENU_A_OPTS = 19;
+	const OPTION m_menu_a[NUM_MENU_A_OPTS] = {
 			{"TYP", P_SQL_SEQ_MODE, PT_ENUMERATED, "PTCH|MOD|OFFS"},
 			{"DUR", P_SQL_TRIG_DUR, PT_ENUMERATED, "01|02|03|04|08|06|07|08|09|10|11|12|13|14|15|16"},
 			{"RAT", P_SQL_STEP_RATE, PT_ENUMERATED, "1|2D|2|4D|2T|4|8D|4T|8|16D|8T|16|16T|32"},
@@ -59,44 +59,45 @@ public:
 			{"BND", P_SQL_MIDI_BEND, PT_ENUMERATED, "OFF|1|2|3|4|5|6|7|8|9|10|11|12"},
 	};
 
-	static const int NUM_GLOBAL_MENU_OPTS = 6;
-	const OPTION m_global_menu[NUM_GLOBAL_MENU_OPTS] = {
+	static const int NUM_MENU_B_OPTS = 9;
+	const OPTION m_menu_b[NUM_MENU_B_OPTS] = {
 			{"CLK", P_CLOCK_SRC, PT_ENUMERATED, "INT|MIDI|MC+T|EXT"},
 			{"BPM", P_CLOCK_BPM, PT_BPM},
 			{"CKI",  P_CLOCK_IN_RATE, PT_ENUMERATED, "8|16|24PP"},
 			{"CKO", P_CLOCK_OUT_MODE, PT_ENUMERATED, "OFF|ON|RUN"},
-			{"  :", P_CLOCK_OUT_RATE, PT_ENUMERATED, "8|16|24PP"},
-			{"MCK", P_MIDI_CLOCK_OUT, PT_ENUMERATED, "OFF|ON|RUN|ON+T|RN+T"}
+			{"CKO", P_CLOCK_OUT_RATE, PT_ENUMERATED, "8|16|24PP"},
+			{"MCK", P_MIDI_CLOCK_OUT, PT_ENUMERATED, "OFF|ON|RUN|ON+T|RN+T"},
+			{0},
+			{"CV", P_SQL_CV_ALIAS, PT_ENUMERATED, "NORM|L1|L2|L3|L4"},
+			{"GAT", P_SQL_GATE_ALIAS, PT_ENUMERATED, "NORM|L1|L2|L3|L4"}
 	};
-
 
 	const OPTION *m_opts;
 	byte m_num_opts;
-
-	byte m_item;
+	int m_item;
 	int m_value;
 	byte m_repaint;
-
 	byte m_action;
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	CMenu() {
-		activate(LAYER_MENU);
+		activate(MENU_A);
 	}
 
 	void activate(byte which) {
-		m_action = ACTION_NONE;
-		m_item = 0;
-		m_repaint = 1;
-		if(which == GLOBAL_MENU) {
-			m_opts = m_global_menu;
-			m_num_opts = NUM_GLOBAL_MENU_OPTS;
+		if(which == MENU_B) {
+			m_opts = m_menu_b;
+			m_num_opts = NUM_MENU_B_OPTS;
 		}
 		else {
-			m_opts = m_layer_menu;
-			m_num_opts = NUM_LAYER_MENU_OPTS;
+			m_opts = m_menu_a;
+			m_num_opts = NUM_MENU_A_OPTS;
 		}
+		m_action = ACTION_NONE;
+		m_item = 0;
+		m_value = 0;
+		m_repaint = 1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////

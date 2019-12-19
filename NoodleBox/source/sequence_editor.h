@@ -108,6 +108,8 @@ class CSequenceEditor {
 	byte m_cur_page;			// the page within the layer that is being viewed
 	byte m_memo_slot;
 	byte m_ppi_timeout;			// play page indicator timeout
+	byte m_edit_mutes;
+
 
 	CSequenceStep m_clone_step;	// during clone operation..
 	CSequencePage m_save_page; // during randomization
@@ -118,13 +120,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// initialise everything
 	void init_state() {
-		m_action = ACTION_NONE;
-		m_action_key = 0;
-		m_last_action_key = 0;
-		m_key_combo = 0;
-		m_encoder_moved = 0;
 		m_cursor = 0;
-		m_edit_value = 0;
 		m_sel_from = -1;
 		m_sel_to = -1;
 		m_gate_view = GATE_VIEW_GATE_TIE;
@@ -132,14 +128,9 @@ class CSequenceEditor {
 		m_clone_status = CLONE_NONE;
 		m_cur_layer = 0;
 		m_cur_page = 0;
-		//m_confirm_pending = 0;
-		m_command = CMD_NONE;
-		m_cmd_prompt = NULL;
-		m_cmd_values = NULL;
-		m_num_values = 0;
-		m_edit_param = P_NONE;
 		m_memo_slot = 0;
 		m_rand_seed = 0;
+		activate();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -1154,11 +1145,10 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	// MENU BUTTON
 	void layer_action(CSequenceLayer& layer, ACTION what) {
-		static byte edit_mutes = 0;
 		switch(what) {
 			////////////////////////////////////////////////
 		case ACTION_BEGIN:
-			edit_mutes = 0;
+			m_edit_mutes = 0;
 			break;
 		case ACTION_ENC_LEFT:
 			scroll(layer, -1);
@@ -1167,7 +1157,7 @@ class CSequenceEditor {
 			scroll(layer, +1);
 			break;
 		case ACTION_KEY_COMBO:
-			if(edit_mutes) {
+			if(m_edit_mutes) {
 				int layer_no = -1;
 				switch(m_key_combo) {
 					case KEY_LAYER|KEY2_LAYER_1:
@@ -1208,7 +1198,7 @@ class CSequenceEditor {
 						fire_event(EV_CHANGE_LAYER, 3);
 						break;
 					case KEY_LAYER|KEY2_LAYER_MUTE:
-						edit_mutes = 1;
+						m_edit_mutes = 1;
 						show_layer_mutes();
 						break;
 				}
@@ -1374,6 +1364,18 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void activate() {
+		m_action = ACTION_NONE;
+		m_action_key = 0;
+		m_last_action_key = 0;
+		m_key_combo = 0;
+		m_encoder_moved = 0;
+		m_edit_value = 0;
+		m_edit_mutes = 0;
+		m_command = CMD_NONE;
+		m_cmd_prompt = NULL;
+		m_cmd_values = NULL;
+		m_num_values = 0;
+		m_edit_param = P_NONE;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
