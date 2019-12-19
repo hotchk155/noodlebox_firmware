@@ -443,7 +443,7 @@ public:
 				if(ST_IDLE == m_state) {
 					g_clock_out.set(1);
 					m_state = ST_HIGH;
-					m_timeout = (m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PPQN)?
+					m_timeout = (m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PP)?
 						HIGH_MS_24PPQN : HIGH_MS;
 				}
 				else {
