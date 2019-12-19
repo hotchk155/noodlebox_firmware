@@ -137,6 +137,60 @@ public:
 		}
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////
+	int calc_hzvolt(CV_TYPE value) {
+
+		int bend = value & 0xFF;
+		value >>= 8;
+
+		// use a hard coded lookup table to get the
+		// the DAC value for note in top octave
+		int dac;
+		if(value == 72) {
+			dac = 4000;	// we can just about manage a C6!
+		} else switch((byte)value % 12) {
+			case 0: dac = 2000; break;
+			case 1: dac = 2119; break;
+			case 2: dac = 2245; break;
+			case 3: dac = 2378; break;
+			case 4: dac = 2520; break;
+			case 5: dac = 2670; break;
+			case 6: dac = 2828; break;
+			case 7: dac = 2997; break;
+			case 8: dac = 3175; break;
+			case 9: dac = 3364; break;
+			case 10: dac = 3564; break;
+			case 11: dac = 3775; break;
+		}
+
+		/*
+			next dac note will be dac*(2^(1/12))
+			approximately equal to dac * (1 + 244/(16*256))
+			pitch_bend contains 256 * fractional note (signed)
+			so dac offset for fractional bend =
+				dac * (pitch_bend/256)*(244/(16*256))
+
+				= (dac * 244 * pitch_bend) / (16*256*256)
+				= (dac * 244 * pitch_bend) / 1048576 		(0x100000L)
+
+
+			NB: this results in linear interpolation between the notes,
+			which is a bad approximation of a smooth bend since the
+			mapping of V to Hz is logarithmic not linear!
+
+			It'll have to do for now...
+		*/
+		dac += ((dac*244*bend)/0x100000L);
+
+		// transpose to the requested octave by
+		// right shifting
+		byte octave = ((byte)value)/12;
+		if(octave > 5) octave = 5;
+		dac >>= (5-octave);
+
+		return dac;
+	}
+
 public:
 
 
@@ -223,7 +277,7 @@ public:
 				}
 				break;
 			case V_SQL_CVSCALE_HZVOLT:
-				//TODO
+				dac = calc_hzvolt(v2);
 				break;
 			case V_SQL_CVSCALE_1VOCT:
 			default:
