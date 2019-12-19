@@ -118,7 +118,8 @@ const uint32_t title_screen[] = {
 
 typedef enum:byte {
 	 VIEW_SEQUENCER,
-	 VIEW_MENU
+	 VIEW_LAYER_MENU,
+	 VIEW_GLOBAL_MENU
  } VIEW_TYPE;
 
 VIEW_TYPE g_view = VIEW_SEQUENCER;
@@ -130,7 +131,8 @@ void dispatch_event(int event, uint32_t param) {
 	case VIEW_SEQUENCER:
 		g_sequence_editor.event(event, param);
 		break;
-	case VIEW_MENU:
+	case VIEW_LAYER_MENU:
+	case VIEW_GLOBAL_MENU:
 		g_menu.event(event, param);
 		break;
 	}
@@ -157,13 +159,31 @@ void fire_event(int event, uint32_t param) {
 	case EV_KEY_CLICK:
 		switch(param) {
 		case KEY_LAYER:
-			if(g_view != VIEW_MENU) {
-				g_view = VIEW_MENU;
-				g_menu.activate();
-			}
-			else {
+			switch(g_view) {
+			case VIEW_LAYER_MENU:
+			case VIEW_GLOBAL_MENU:
 				g_view = VIEW_SEQUENCER;
-				g_menu.activate();
+				g_sequence_editor.activate();
+				break;
+			case VIEW_SEQUENCER:
+			default:
+				g_menu.activate(CMenu::LAYER_MENU);
+				g_view = VIEW_LAYER_MENU;
+				break;
+			}
+			break;
+		case KEY_LAYER|KEY_FUNC:
+			switch(g_view) {
+			case VIEW_GLOBAL_MENU:
+				g_menu.activate(CMenu::LAYER_MENU);
+				g_view = VIEW_LAYER_MENU;
+				break;
+			case VIEW_LAYER_MENU:
+			case VIEW_SEQUENCER:
+			default:
+				g_menu.activate(CMenu::GLOBAL_MENU);
+				g_view = VIEW_GLOBAL_MENU;
+				break;
 			}
 			break;
 		default:
@@ -311,7 +331,8 @@ int main(void) {
 			case VIEW_SEQUENCER:
 				g_sequence_editor.repaint();
 				break;
-			case VIEW_MENU:
+			case VIEW_LAYER_MENU:
+			case VIEW_GLOBAL_MENU:
 				g_menu.repaint();
 				break;
 			}

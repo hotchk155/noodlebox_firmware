@@ -30,12 +30,14 @@ public:
 		ACTION_NONE = 0,
 		ACTION_VALUE_SELECTED,
 		ACTION_VALUE_CHANGED,
-
-		NUM_MENU_OPTS = 26,
-
+	};
+	enum {
+		LAYER_MENU,
+		GLOBAL_MENU
 	};
 
-	const OPTION m_opts[NUM_MENU_OPTS] = {
+	static const int NUM_LAYER_MENU_OPTS = 19;
+	const OPTION m_layer_menu[NUM_LAYER_MENU_OPTS] = {
 			{"TYP", P_SQL_SEQ_MODE, PT_ENUMERATED, "PTCH|MOD|OFFS"},
 			{"DUR", P_SQL_TRIG_DUR, PT_ENUMERATED, "01|02|03|04|08|06|07|08|09|10|11|12|13|14|15|16"},
 			{"RAT", P_SQL_STEP_RATE, PT_ENUMERATED, "1|2D|2|4D|2T|4|8D|4T|8|16D|8T|16|16T|32"},
@@ -55,7 +57,10 @@ public:
 			{"SMO",  P_SQL_MIDI_CC_SMOOTH, PT_ENUMERATED, "OFF|ON"},
 			{"VEL", P_SQL_MIDI_VEL, PT_NUMBER_7BIT},
 			{"BND", P_SQL_MIDI_BEND, PT_ENUMERATED, "OFF|1|2|3|4|5|6|7|8|9|10|11|12"},
-			{0},
+	};
+
+	static const int NUM_GLOBAL_MENU_OPTS = 6;
+	const OPTION m_global_menu[NUM_GLOBAL_MENU_OPTS] = {
 			{"CLK", P_CLOCK_SRC, PT_ENUMERATED, "INT|MIDI|MC+T|EXT"},
 			{"BPM", P_CLOCK_BPM, PT_BPM},
 			{"CKI",  P_CLOCK_IN_RATE, PT_ENUMERATED, "8|16|24PP"},
@@ -64,8 +69,9 @@ public:
 			{"MCK", P_MIDI_CLOCK_OUT, PT_ENUMERATED, "OFF|ON|RUN|ON+T|RN+T"}
 	};
 
-	//byte m_num_opts;
-	//const OPTION *m_opts;
+
+	const OPTION *m_opts;
+	byte m_num_opts;
 
 	byte m_item;
 	int m_value;
@@ -73,15 +79,24 @@ public:
 
 	byte m_action;
 
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	CMenu() {
-		activate();
+		activate(LAYER_MENU);
 	}
 
-	void activate() {
+	void activate(byte which) {
 		m_action = ACTION_NONE;
 		m_item = 0;
 		m_repaint = 1;
+		if(which == GLOBAL_MENU) {
+			m_opts = m_global_menu;
+			m_num_opts = NUM_GLOBAL_MENU_OPTS;
+		}
+		else {
+			m_opts = m_layer_menu;
+			m_num_opts = NUM_LAYER_MENU_OPTS;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +121,7 @@ public:
 					else {
 						++i;
 					}
-					if(i<0 || i>=NUM_MENU_OPTS) {
+					if(i<0 || i>=m_num_opts) {
 						break;
 					}
 					if(m_opts[i].prompt && CParams::is_valid_for_menu(m_opts[i].param)) {
@@ -155,11 +170,12 @@ public:
 		m_repaint = 1;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////
 	int draw_menu_option(int opt, int row) {
 		uint32_t buf[5] = {0};
 		int state = 0;
 		int visible = 0;
-		if(opt >= 0 && opt < NUM_MENU_OPTS) {
+		if(opt >= 0 && opt < m_num_opts) {
 			const CMenu::OPTION &this_opt = m_opts[opt];
 			if(this_opt.prompt) {
 				int value;
@@ -242,7 +258,7 @@ public:
 			visible = 1;
 			opt = m_item;
 			row = 5;
-			while(opt < NUM_MENU_OPTS && visible) {
+			while(opt < m_num_opts && visible) {
 				if(!m_opts[opt].prompt || CParams::is_valid_for_menu(m_opts[opt].param)) {
 					visible = draw_menu_option(opt,row);
 					row += (m_opts[opt].prompt)? 6:2;
