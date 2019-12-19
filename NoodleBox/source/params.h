@@ -18,7 +18,13 @@
 
 class CParams {
 	/////////////////////////////////////////////////////////////////////////////////////////////////
-	static void format_number(int value, char *buf, int digits) {
+	static void format_number(int value, char *buf, int digits, int sign) {
+		if(sign) {
+			*buf++ = (value<0)? '-':'+';
+		}
+		if(value<0) {
+			value=-value;
+		}
 		if(digits > 2) {
 			*buf++ = '0' + value/100;
 		}
@@ -81,17 +87,20 @@ public:
 			buf[pos] = 0;
 			break;
 		case PT_MIDI_CHANNEL:
-			format_number(value + 1, buf, 2);
+			format_number(value + 1, buf, 2, 0);
 			break;
 		case PT_DURATION:
-			format_number(value, buf, 2);
+			format_number(value, buf, 2, 0);
 			break;
 		case PT_NUMBER_7BIT:
 		case PT_BPM:
-			format_number(value, buf, 3);
+			format_number(value, buf, 3, 0);
+			break;
+		case PT_CALIBRATION:
+			format_number(value, buf, 2, 1);
 			break;
 		case PT_VOLT_RANGE:
-			format_number(value, buf, 1);
+			format_number(value, buf, 1, 0);
 			buf[1] = 'V';
 			buf[2] = 0;
 			break;
@@ -130,6 +139,8 @@ public:
 			return 300;
 		case PT_PATTERN:
 			return 39;
+		case PT_CALIBRATION:
+			return 99;
 		default:
 			return 0;
 		}
@@ -139,6 +150,8 @@ public:
 		switch(type) {
 		case PT_BPM:
 			return 30;
+		case PT_CALIBRATION:
+			return -99;
 		default:
 			return 0;
 		}

@@ -121,6 +121,8 @@ private:
 
 		clock::TICKS_TYPE m_next_step_time;
 		//TICKS_TYPE m_next_step_grid_time;
+
+		V_SQL_OUT_CAL m_cal_mode;
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -350,6 +352,7 @@ public:
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
 		m_state.m_first_step = 1;
+		m_state.m_cal_mode = V_SQL_OUT_CAL_NONE;
 	}
 
 	void event(int event, uint32_t param) {
@@ -399,6 +402,9 @@ public:
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
 		case P_SQL_CV_ALIAS: set_cv_alias((V_SQL_CV_ALIAS)value); break;
 		case P_SQL_GATE_ALIAS: set_gate_alias((V_SQL_GATE_ALIAS)value); break;
+		case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; g_outs.test_dac(m_id, m_state.m_cal_mode); break;
+		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
+		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		default: break;
 		}
 	}
@@ -432,6 +438,9 @@ public:
 		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
 		case P_SQL_CV_ALIAS: return m_cfg.m_cv_alias;
 		case P_SQL_GATE_ALIAS: return m_cfg.m_gate_alias;
+		case P_SQL_OUT_CAL: return m_state.m_cal_mode;
+		case P_SQL_OUT_CAL_SCALE: return g_outs.get_cal_scale(m_id);
+		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
 		default:return 0;
 		}
 	}
@@ -448,6 +457,9 @@ public:
 		case P_SQL_MIDI_CC_SMOOTH:
 			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_CC);
 		case P_SQL_MIX: return (m_id!=0);
+		case P_SQL_OUT_CAL_SCALE:
+		case P_SQL_OUT_CAL_OFFSET:
+			return !!m_state.m_cal_mode;
 		}
 		return 1;
 	}
@@ -1075,6 +1087,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
 	CV_TYPE process_cv(CV_TYPE this_input) {
+
+		if(m_state.m_cal_mode != V_SQL_OUT_CAL_NONE) {
+			return this_input;
+		}
 
 		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
 			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&

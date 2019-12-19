@@ -125,7 +125,11 @@ typedef enum:byte {
 	P_SQL_CVGLIDE,
 	P_SQL_CV_ALIAS,
 	P_SQL_GATE_ALIAS,
+	P_SQL_OUT_CAL,
+	P_SQL_OUT_CAL_SCALE,
+	P_SQL_OUT_CAL_OFFSET,
 	P_SQL_MAX,
+
 
 	P_CLOCK_BPM,
 	P_CLOCK_SRC,
@@ -144,7 +148,8 @@ typedef enum:byte {
 	PT_VOLT_RANGE,
 	PT_BPM,
 	PT_DURATION,
-	PT_PATTERN
+	PT_PATTERN,
+	PT_CALIBRATION
 } PARAM_TYPE;
 
 /*
@@ -357,6 +362,18 @@ typedef enum:byte {
 	V_SQL_GATE_ALIAS_MAX
 } V_SQL_GATE_ALIAS;
 
+typedef enum:byte {
+	V_SQL_OUT_CAL_NONE,
+	V_SQL_OUT_CAL_1V,
+	V_SQL_OUT_CAL_2V,
+	V_SQL_OUT_CAL_3V,
+	V_SQL_OUT_CAL_4V,
+	V_SQL_OUT_CAL_5V,
+	V_SQL_OUT_CAL_6V,
+	V_SQL_OUT_CAL_7V,
+	V_SQL_OUT_CAL_8V,
+	V_SQL_OUT_CAL_MAX
+} V_SQL_OUT_CAL;
 
 
 extern void fire_event(int event, uint32_t param);

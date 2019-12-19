@@ -122,18 +122,18 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void impl_set_cv(byte which, uint16_t dac) {
-		if(m_chan[0].cv_src == which) {
-			g_i2c_dac.set(0, dac);
-		}
-		if(m_chan[1].cv_src == which) {
-			g_i2c_dac.set(1, dac);
-		}
-		if(m_chan[2].cv_src == which) {
-			g_i2c_dac.set(2, dac);
-		}
-		if(m_chan[3].cv_src == which) {
-			g_i2c_dac.set(3, dac);
+	void impl_set_cv(byte which, int dac) {
+		for(int i=0; i<MAX_CHAN; ++i) {
+			if(m_chan[i].cv_src == which) {
+				int this_dac = (dac * (4096 + m_cfg.scale[i]))/4096 + m_cfg.offset[i];
+				if(this_dac < 0) {
+					this_dac = 0;
+				}
+				if(this_dac > 4095) {
+					this_dac = 4095;
+				}
+				g_i2c_dac.set(i, this_dac);
+			}
 		}
 	}
 
@@ -144,6 +144,7 @@ public:
 	COuts()
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
+		memset((byte*)&m_cfg,0,sizeof m_cfg);
 		for(int i=0; i<MAX_CHAN; ++i) {
 			m_chan[i].cv_src = i;
 			m_chan[i].gate_src = i;
@@ -250,8 +251,8 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
-	void test_dac(int which, int dac) {
-		impl_set_cv(which,dac);
+	void test_dac(int which, int volts) {
+		impl_set_cv(which,500 * volts);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -302,6 +303,22 @@ public:
 		ASSERT(out<MAX_CHAN);
 		ASSERT(src<MAX_CHAN);
 		m_chan[which].gate_src = src;
+	}
+	///////////////////////////////////////////////////
+	void set_cal_scale(byte which, int value) {
+		m_cfg.scale[which] = value;
+	}
+	///////////////////////////////////////////////////
+	int get_cal_scale(byte which) {
+		return m_cfg.scale[which];
+	}
+	///////////////////////////////////////////////////
+	void set_cal_ofs(byte which, int value) {
+		m_cfg.offset[which] = value;
+	}
+	///////////////////////////////////////////////////
+	int get_cal_ofs(byte which) {
+		return m_cfg.offset[which];
 	}
 	///////////////////////////////////////////////////
 	static int get_cfg_size() {
