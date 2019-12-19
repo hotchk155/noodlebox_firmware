@@ -69,7 +69,7 @@ private:
 		char			m_transpose;		// manual transpose amount for the layer
 		V_SQL_TRIG_DUR	m_trig_dur;
 		V_SQL_MIDI_OUT  m_midi_out;
-		byte 			m_midi_channel;		// MIDI channel
+		byte 			m_midi_out_chan;		// MIDI channel
 		byte 			m_midi_cc;			// MIDI CC
 		byte 			m_midi_cc_smooth;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
@@ -86,6 +86,10 @@ private:
 		int 			m_enabled:1;
 		V_SQL_CV_ALIAS 	m_cv_alias;
 		V_SQL_GATE_ALIAS m_gate_alias;
+
+		V_SQL_MIDI_IN_MODE m_midi_in_mode;
+		V_SQL_MIDI_IN_CHAN m_midi_in_chan;
+
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
@@ -279,7 +283,7 @@ public:
 		m_cfg.m_trig_dur	= V_SQL_NOTE_DUR_8;
 		m_cfg.m_combine_prev= V_SQL_COMBINE_OFF;
 		m_cfg.m_transpose	= 0;
-		m_cfg.m_midi_channel 	= m_id;	// default to midi chans 1-4
+		m_cfg.m_midi_out_chan 	= m_id;	// default to midi chans 1-4
 		m_cfg.m_midi_cc = 1;
 		m_cfg.m_midi_cc_smooth = 0;
 		m_cfg.m_enabled = 1;
@@ -292,6 +296,8 @@ public:
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scaled_view = 1;
+		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
+		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		set_cv_alias(V_SQL_CV_ALIAS_NONE);
 		set_gate_alias(V_SQL_GATE_ALIAS_NONE);
 		set_mode(m_cfg.m_mode);
@@ -384,7 +390,7 @@ public:
 		case P_SQL_STEP_TIMING: m_cfg.m_step_mod = (V_SQL_STEP_TIMING)value; m_cfg.m_step_mod_amount = MOD_AMOUNT_DEFAULT; break;
 		case P_SQL_STEP_MOD_AMOUNT: m_cfg.m_step_mod_amount = value; break;
 		case P_SQL_TRIG_DUR: m_cfg.m_trig_dur = (V_SQL_TRIG_DUR)value; break;
-		case P_SQL_MIDI_CHAN: m_cfg.m_midi_channel = value; break;
+		case P_SQL_MIDI_OUT_CHAN: m_cfg.m_midi_out_chan = value; break;
 		case P_SQL_MIDI_CC: m_cfg.m_midi_cc = value; break;
 		case P_SQL_MIDI_CC_SMOOTH: m_cfg.m_midi_cc_smooth = value; break;
 		case P_SQL_CVSCALE: m_cfg.m_cv_scale = (V_SQL_CVSCALE)value; break;
@@ -405,6 +411,8 @@ public:
 		case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
+		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
+		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
 		default: break;
 		}
 	}
@@ -420,7 +428,7 @@ public:
 		case P_SQL_STEP_TIMING: return m_cfg.m_step_mod;
 		case P_SQL_STEP_MOD_AMOUNT: return m_cfg.m_step_mod_amount;
 		case P_SQL_TRIG_DUR: return m_cfg.m_trig_dur;
-		case P_SQL_MIDI_CHAN: return m_cfg.m_midi_channel;
+		case P_SQL_MIDI_OUT_CHAN: return m_cfg.m_midi_out_chan;
 		case P_SQL_MIDI_CC: return m_cfg.m_midi_cc;
 		case P_SQL_MIDI_CC_SMOOTH: return m_cfg.m_midi_cc_smooth;
 		case P_SQL_CVSCALE: return m_cfg.m_cv_scale;
@@ -441,6 +449,8 @@ public:
 		case P_SQL_OUT_CAL: return m_state.m_cal_mode;
 		case P_SQL_OUT_CAL_SCALE: return g_outs.get_cal_scale(m_id);
 		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
+		case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
+		case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
 		default:return 0;
 		}
 	}
@@ -448,7 +458,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-		case P_SQL_MIDI_CHAN:
+		case P_SQL_MIDI_OUT_CHAN:
 			return (m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE);
 		case P_SQL_MIDI_VEL:
 		case P_SQL_MIDI_BEND:
@@ -460,6 +470,7 @@ public:
 		case P_SQL_OUT_CAL_SCALE:
 		case P_SQL_OUT_CAL_OFFSET:
 			return !!m_state.m_cal_mode;
+		case P_SQL_MIDI_IN_CHAN: return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 		}
 		return 1;
 	}
@@ -873,7 +884,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
 		if(m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE && m_state.m_midi_note != NO_MIDI_NOTE) {
-			g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
+			g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
 			m_state.m_midi_note = NO_MIDI_NOTE;
 		}
 	}
@@ -1047,7 +1058,7 @@ public:
 				}
 			}
 			if((m_state.m_midi_cc_value>>16) != value) {
-				g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, m_state.m_midi_cc_value>>16);
+				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, m_state.m_midi_cc_value>>16);
 			}
 		}
 
@@ -1065,7 +1076,7 @@ public:
 
 				// retrigger the MIDI note
 				if(m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
-					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
+					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, m_state.m_midi_vel);
 				}
 
 				// schedule the next retrigger
@@ -1224,7 +1235,7 @@ public:
 		if(!(m_state.m_step_value.is(CSequenceStep::TRIG_POINT)||m_state.m_step_value.is(CSequenceStep::TIE_POINT)) || m_state.m_suppress_step) {
 
 			if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
-				g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
+				g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
 				m_state.m_midi_note = NO_MIDI_NOTE;
 			}
 		}
@@ -1267,23 +1278,23 @@ public:
 			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && m_state.m_midi_note != NO_MIDI_NOTE) {
 				// check that we're not simply extending the same note
 				if(m_state.m_midi_note != note) {
-					g_midi.start_note(m_cfg.m_midi_channel, m_state.m_midi_note, m_state.m_midi_vel);
-					g_midi.stop_note(m_cfg.m_midi_channel, note);
+					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, m_state.m_midi_vel);
+					g_midi.stop_note(m_cfg.m_midi_out_chan, note);
 				}
 				// check if any change to pitch bend needed
 				if(m_state.m_midi_bend != bend) {
-					g_midi.bend(m_cfg.m_midi_channel, bend);
+					g_midi.bend(m_cfg.m_midi_out_chan, bend);
 					m_state.m_midi_bend = bend;
 				}
 			}
 			else {
 				// not tying notes
-				g_midi.stop_note(m_cfg.m_midi_channel, m_state.m_midi_note);
+				g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
 				if(m_state.m_midi_bend != bend) {
-					g_midi.bend(m_cfg.m_midi_channel, bend);
+					g_midi.bend(m_cfg.m_midi_out_chan, bend);
 					m_state.m_midi_bend = bend;
 				}
-				g_midi.start_note(m_cfg.m_midi_channel, note, m_state.m_midi_vel);
+				g_midi.start_note(m_cfg.m_midi_out_chan, note, m_state.m_midi_vel);
 			}
 			m_state.m_midi_note = note;
 		}
@@ -1301,7 +1312,7 @@ public:
 		else {
 			if(m_state.m_midi_cc_value != m_state.m_midi_cc_target) {
 				m_state.m_midi_cc_value = m_state.m_midi_cc_target;
-				g_midi.send_cc(m_cfg.m_midi_channel, m_cfg.m_midi_cc, value);
+				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, value);
 			}
 		}
 	}
