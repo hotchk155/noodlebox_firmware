@@ -272,6 +272,7 @@ public:
 				break;
 			}
 		}
+		fire_event(EV_CLOCK_RESET,0);
 	}
 
 };

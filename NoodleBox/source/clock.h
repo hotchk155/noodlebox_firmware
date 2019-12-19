@@ -158,7 +158,7 @@ public:
 	}
 	////////////////////////////////////////
 	void set_rate(V_CLOCK_IN_RATE clock_in_rate) {
-		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_16, PP24_8};
+		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_8, PP24_16, PP24_24PPQN};
 		m_cfg.m_clock_in_rate = clock_in_rate;
 		m_period = pp24_to_ticks(rate[clock_in_rate]);
 	}
@@ -371,12 +371,14 @@ CFixedClockSource g_fixed_clock;
 class CPulseClockOut {
 	friend class CClock;
 	typedef struct {
+		V_CLOCK_OUT_MODE m_clock_out_mode;
 		V_CLOCK_OUT_RATE m_clock_out_rate;
 	} CONFIG;
 	CONFIG m_cfg;
 
-	const int HIGH_MS = 15;		// duration of high part of pulse
-	const int LOW_MS = 2;		// MIN low time between pulses
+	const int HIGH_MS = 15;				// duration of high part of pulse
+	const int HIGH_MS_24PPQN = 5;		// duration of high part of pulse in 24ppqn mode
+	const int LOW_MS = 2;				// MIN low time between pulses
 
 	enum { ST_IDLE, ST_HIGH, ST_LOW } m_state; // pulse state
 	int m_timeout;				// time to remain in state
@@ -390,8 +392,16 @@ public:
 		m_running = 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
+	void set_mode(V_CLOCK_OUT_MODE clock_out_mode) {
+		m_cfg.m_clock_out_mode = clock_out_mode;
+	}
+	///////////////////////////////////////////////////////////////////////////////
+	V_CLOCK_OUT_MODE get_mode() {
+		return m_cfg.m_clock_out_mode;
+	}
+	///////////////////////////////////////////////////////////////////////////////
 	void set_rate(V_CLOCK_OUT_RATE clock_out_rate) {
-		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_16, PP24_8, PP24_16, PP24_8 };
+		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_8, PP24_16, PP24_24PPQN };
 		m_cfg.m_clock_out_rate = clock_out_rate;
 		m_period = rate[clock_out_rate];
 	}
@@ -399,6 +409,7 @@ public:
 	V_CLOCK_OUT_RATE get_rate() {
 		return m_cfg.m_clock_out_rate;
 	}
+	///////////////////////////////////////////////////////////////////////////////
 	void event(int event, uint32_t param) {
 		switch(event) {
 		case EV_CLOCK_RESET:
@@ -425,28 +436,21 @@ public:
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
 		ASSERT(m_period);
-		switch(m_cfg.m_clock_out_rate) {
-		case V_CLOCK_OUT_RATE_16_GATE:
-		case V_CLOCK_OUT_RATE_8_GATE:
-			if(!m_running) {
-				break;
-			}
-			//fallthru
-		case V_CLOCK_OUT_RATE_16:
-		case V_CLOCK_OUT_RATE_8:
+		if(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_ON ||
+			(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_GATE && m_running))	{
 			if(!(pp24%m_period)) {
 				// can we do it immediately?
 				if(ST_IDLE == m_state) {
 					g_clock_out.set(1);
 					m_state = ST_HIGH;
-					m_timeout = HIGH_MS;
+					m_timeout = (m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PPQN)?
+						HIGH_MS_24PPQN : HIGH_MS;
 				}
 				else {
 					// queue it up
 					++m_pulses;
 				}
 			}
-			break;
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////
@@ -695,6 +699,10 @@ public:
 				g_pulse_clock_in.set_rate((V_CLOCK_IN_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
+			case P_CLOCK_OUT_MODE:
+				g_pulse_clock_out.set_mode((V_CLOCK_OUT_MODE)value);
+				fire_event(EV_CLOCK_RESET, 0);
+				break;
 			case P_CLOCK_OUT_RATE:
 				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
@@ -713,6 +721,7 @@ public:
 		case P_CLOCK_BPM: return g_fixed_clock.get_bpm();
 		case P_CLOCK_SRC: return m_cfg.m_source_mode;
 		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
+		case P_CLOCK_OUT_MODE: return g_pulse_clock_out.get_mode();
 		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
 		case P_MIDI_CLOCK_OUT: return g_midi_clock_out.get_mode();
 		default: return 0;
@@ -724,6 +733,7 @@ public:
 		switch(param) {
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
 		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
+		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() != V_CLOCK_OUT_MODE_NONE);
 		default: return 1;
 		}
 	}
