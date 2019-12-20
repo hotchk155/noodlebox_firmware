@@ -912,10 +912,5 @@ extern "C" void KBI0_IRQHandler(void)
     }
 }
 
-// Global event notification so MIDI code can pass realtime messages over to the
-// the clock code
-void midi::handle_realtime(byte ch) {
-	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
-}
 
 #endif // CLOCK_H_

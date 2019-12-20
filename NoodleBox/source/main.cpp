@@ -124,6 +124,14 @@ typedef enum:byte {
 
 VIEW_TYPE g_view = VIEW_SEQUENCER;
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+void midi::handle_note(byte chan, byte note, byte vel) {
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+void midi::handle_realtime(byte ch) {
+	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
+}
 
 
 void dispatch_event(int event, uint32_t param) {
