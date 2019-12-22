@@ -75,6 +75,8 @@ class CSequenceEditor {
 	};
 
 	typedef struct {
+		V_SQL_MIDI_IN_MODE m_midi_in_mode;
+		V_SQL_MIDI_IN_CHAN m_midi_in_chan;
 		int m_show_grid:1;
 		int m_auto_gate:1;
 	} CONFIG;
@@ -87,7 +89,6 @@ class CSequenceEditor {
 	uint32_t m_action_key;		// the key to which the action applies
 	uint32_t m_last_action_key;
 	uint32_t m_key_combo;		// keys pressed in conjunction with edit shift
-	byte m_encoder_moved;		// whether encoder has been previously moved since action was in progress
 	byte m_combo_clicks;
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
@@ -103,12 +104,14 @@ class CSequenceEditor {
 	int m_gate_view;			// which gate layer is being viewed
 	int m_clone_source;			// column from which to clone data
 	byte m_clone_status;
-	//byte m_confirm_pending;
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
 	byte m_memo_slot;
 	byte m_ppi_timeout;			// play page indicator timeout
-	byte m_edit_mutes;
+
+	int m_edit_mutes:1;		// are we currently editing mutes
+	int m_encoder_moved:1;		// whether encoder has been previously moved since action was in progress
+	int m_rec_arm:1;
 
 
 	CSequenceStep m_clone_step;	// during clone operation..
@@ -130,11 +133,14 @@ class CSequenceEditor {
 		m_cur_page = 0;
 		m_memo_slot = 0;
 		m_rand_seed = 0;
+		m_rec_arm = 0;
 		activate();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
+		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
+		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		m_cfg.m_show_grid = 1;
 		m_cfg.m_auto_gate = 1;
 	}
@@ -1233,7 +1239,7 @@ class CSequenceEditor {
 				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
 				break;
 			case KEY_FUNC|KEY2_FUNC_PAGE_ADV:
-				//toggle(P_SQL_CUE_MODE, "PAGE:", "FGD|BKG");
+				toggle(P_EDIT_REC_ARM, "REC:", "OFF|ARM");
 				break;
 			}
 			break;
@@ -1337,6 +1343,9 @@ public:
 		switch(param) {
 		case P_EDIT_AUTO_GATE_INSERT: return !!m_cfg.m_auto_gate;
 		case P_EDIT_SHOW_GRID: return !!m_cfg.m_show_grid;
+		case P_EDIT_REC_ARM: return !!m_rec_arm;
+		case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
+		case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
 		default:
 			return g_sequence.get_layer(m_cur_layer).get(param);
 		}
@@ -1346,6 +1355,9 @@ public:
 		switch(param) {
 		case P_EDIT_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
 		case P_EDIT_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
+		case P_EDIT_REC_ARM: m_rec_arm = !!value; break;
+		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
+		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
 		default:
 			g_sequence.get_layer(m_cur_layer).set(param, value);
 		}
@@ -1357,6 +1369,8 @@ public:
 			case P_EDIT_AUTO_GATE_INSERT:
 			case P_EDIT_SHOW_GRID:
 				return 1;
+			case P_SQL_MIDI_IN_CHAN:
+				return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 			default:
 				return g_sequence.get_layer(m_cur_layer).is_valid_param(param);
 		}
@@ -1443,6 +1457,17 @@ public:
 			m_cur_layer = 0;
 			m_cur_page = 0;
 			break;
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void handle_midi_note(byte chan, byte note, byte vel) {
+
+//TODO NOTE PRIORITIY AND BUFFERING
+		if(m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE) {
+			if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
+				g_sequence.get_layer(m_cur_layer).handle_midi_note(note, vel, m_cfg.m_midi_in_mode, m_rec_arm);
+			}
 		}
 	}
 
@@ -1667,20 +1692,20 @@ public:
 			}
 		}
 	}
-/*
-	int get_cfg(byte *dest, int size) {
-		int len = sizeof(CONFIG);
-		ASSERT(size >= len);
-		memcpy(dest, &m_cfg, len);
-		return len;
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	static int get_cfg_size() {
+		return sizeof(CONFIG);
 	}
-	void set_cfg(byte *src, int size) {
-		int len = sizeof(CONFIG);
-		ASSERT(size >= len);
-		memcpy(&m_cfg, src, len);
-		return;
-	}*/
-
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void get_cfg(byte **dest) {
+		*((CONFIG*)*dest) = m_cfg;
+		(*dest) += sizeof m_cfg;
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void set_cfg(byte **src) {
+		m_cfg = *((CONFIG*)*src);
+		(*src) += sizeof m_cfg;
+	}
 };
 CSequenceEditor g_sequence_editor;
 

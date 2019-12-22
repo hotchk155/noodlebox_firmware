@@ -50,6 +50,7 @@ enum {
 	EV_SEQ_CONTINUE,		// sequencer playback resumes from current position
 	EV_CLOCK_RESET,			// reset clock timing info
 	EV_CHANGE_LAYER,		// change the current editor layer
+	EV_REPAINT_MENU,
 
 	EV_LOAD_OK,
 	EV_LOAD_FAIL,
@@ -78,9 +79,9 @@ enum {
 
 #define PATCH_SLOT_SIZE		2560
 #define PATCH_DATA_COOKIE1	0x12
-#define PATCH_DATA_COOKIE2	0x34
+#define PATCH_DATA_COOKIE2	0x40
 #define CONFIG_DATA_COOKIE1	0xAA
-#define CONFIG_DATA_COOKIE2	0x01
+#define CONFIG_DATA_COOKIE2	0x03
 
 typedef unsigned char byte;
 
@@ -100,6 +101,7 @@ typedef enum:byte {
 
 	P_EDIT_AUTO_GATE_INSERT,
 	P_EDIT_SHOW_GRID,
+	P_EDIT_REC_ARM,
 
 	P_SQL_SEQ_MODE,
 	P_SQL_MIX,
@@ -121,7 +123,8 @@ typedef enum:byte {
 	P_SQL_MIDI_VEL,
 	P_SQL_MIDI_BEND,
 	P_SQL_CVSCALE,
-	P_SQL_CVSHIFT,
+	P_SQL_CV_OCTAVE,
+	P_SQL_CV_TRANSPOSE,
 	P_SQL_CVGLIDE,
 	P_SQL_CV_ALIAS,
 	P_SQL_GATE_ALIAS,
@@ -151,17 +154,9 @@ typedef enum:byte {
 	PT_BPM,
 	PT_DURATION,
 	PT_PATTERN,
-	PT_CALIBRATION
+	PT_CALIBRATION,
+	PT_TRANSPOSE
 } PARAM_TYPE;
-
-/*
-typedef enum:byte {
-	V_SQL_CUE_MODE_NONE,
-	V_SQL_CUE_MODE_AUTO,
-	V_SQL_CUE_MODE_RANDOM,
-	V_SQL_CUE_MODE_MANUAL
-} V_SQL_CUE_MODE;
-*/
 
 typedef enum:byte {
 	V_SQL_SEQ_MODE_PITCH = 0,
@@ -380,10 +375,12 @@ typedef enum:byte {
 
 typedef enum:byte {
 	V_SQL_MIDI_IN_MODE_NONE,
-	V_SQL_MIDI_IN_MODE_REC,
-	V_SQL_MIDI_IN_MODE_REC_CV,
+	V_SQL_MIDI_IN_MODE_CV,
+	V_SQL_MIDI_IN_MODE_GATE,
+	V_SQL_MIDI_IN_MODE_BOTH,
 	V_SQL_MIDI_IN_MODE_PLAY,
 	V_SQL_MIDI_IN_MODE_TRANSPOSE,
+	V_SQL_MIDI_IN_MODE_MAX
 } V_SQL_MIDI_IN_MODE;
 
 typedef enum:byte {

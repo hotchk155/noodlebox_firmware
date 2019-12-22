@@ -97,6 +97,7 @@ public:
 			format_number(value, buf, 3, 0);
 			break;
 		case PT_CALIBRATION:
+		case PT_TRANSPOSE:
 			format_number(value, buf, 2, 1);
 			break;
 		case PT_VOLT_RANGE:
@@ -141,6 +142,8 @@ public:
 			return 39;
 		case PT_CALIBRATION:
 			return 99;
+		case PT_TRANSPOSE:
+			return 24;
 		default:
 			return 0;
 		}
@@ -152,6 +155,8 @@ public:
 			return 30;
 		case PT_CALIBRATION:
 			return -99;
+		case PT_TRANSPOSE:
+			return -24;
 		default:
 			return 0;
 		}

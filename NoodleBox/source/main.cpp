@@ -126,6 +126,7 @@ VIEW_TYPE g_view = VIEW_SEQUENCER;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 void midi::handle_note(byte chan, byte note, byte vel) {
+	g_sequence_editor.handle_midi_note(chan, note, vel);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +200,10 @@ void fire_event(int event, uint32_t param) {
 			break;
 		}
 		break;
-
+	///////////////////////////////////
+	case EV_REPAINT_MENU:
+		g_menu.event(event,param);
+		break;
 	///////////////////////////////////
 	case EV_CHANGE_LAYER:
 		g_sequence_editor.event(event, param);
@@ -261,11 +265,12 @@ void test() {
 /////////////////////////////////////////////////////////////////////////////////////////////
 void save_config() {
 	byte *ptr = g_i2c_eeprom.buf();
-	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
+	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
 	*ptr++ = CONFIG_DATA_COOKIE1;
 	*ptr++ = CONFIG_DATA_COOKIE2;
 	g_outs.get_cfg(&ptr);
 	g_clock.get_cfg(&ptr);
+	g_sequence_editor.get_cfg(&ptr);
 	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
 	*ptr++ = checksum;
 	g_i2c_eeprom.write(SLOT_CONFIG, len + 3);
@@ -282,6 +287,7 @@ void load_config() {
 		buf+=2;
 		g_outs.set_cfg(&buf);
 		g_clock.set_cfg(&buf);
+		g_sequence_editor.set_cfg(&buf);
 		fire_event(EV_REAPPLY_CONFIG, 0);
 	}
 }
@@ -312,10 +318,7 @@ int main(void) {
     g_midi.init();
     g_sequence.init();
     load_config();
-    if(g_ui.is_key_down(KEY_CV)) {
-    	g_sequence.load_patch(SLOT_TEMPLATE);
-    }
-    else {
+    if(!g_ui.is_key_down(KEY_CV)) {
         g_sequence.load_patch(SLOT_AUTOSAVE);
     }
     g_i2c_bus.wait_for_idle();

@@ -41,7 +41,11 @@ private:
 		MAX_PLAYING_NOTES = 8,
 		DEFAULT_SCROLL_OFS = 31,
 		SCROLL_MARGIN = 3,
-		MAX_CUE_LIST = 16
+		MAX_CUE_LIST = 16,
+		MIDI_TRANSPOSE_ZERO = 60,
+		MIDI_TRANSPOSE_RANGE = 24,
+		MIDI_TRANSPOSE_MIN = (MIDI_TRANSPOSE_ZERO - MIDI_TRANSPOSE_RANGE),
+		MIDI_TRANSPOSE_MAX = (MIDI_TRANSPOSE_ZERO + MIDI_TRANSPOSE_RANGE)
 	};
 
 	enum :byte {
@@ -73,7 +77,8 @@ private:
 		byte 			m_midi_cc;			// MIDI CC
 		byte 			m_midi_cc_smooth;			// MIDI CC
 		V_SQL_CVSCALE	m_cv_scale;
-		V_SQL_CVSHIFT	m_cv_shift;
+		V_SQL_CVSHIFT	m_cv_octave;
+		int16_t			m_cv_transpose;
 		V_SQL_CVGLIDE	m_cv_glide;
 		V_SQL_COMBINE	m_combine_prev;
 		byte 			m_midi_vel;
@@ -87,8 +92,8 @@ private:
 		V_SQL_CV_ALIAS 	m_cv_alias;
 		V_SQL_GATE_ALIAS m_gate_alias;
 
-		V_SQL_MIDI_IN_MODE m_midi_in_mode;
-		V_SQL_MIDI_IN_CHAN m_midi_in_chan;
+		//V_SQL_MIDI_IN_MODE m_midi_in_mode;
+		//V_SQL_MIDI_IN_CHAN m_midi_in_chan;
 
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
@@ -127,6 +132,8 @@ private:
 		//TICKS_TYPE m_next_step_grid_time;
 
 		V_SQL_OUT_CAL m_cal_mode;
+
+		byte m_input_note;
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -288,7 +295,8 @@ public:
 		m_cfg.m_midi_cc_smooth = 0;
 		m_cfg.m_enabled = 1;
 		m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
-		m_cfg.m_cv_shift = V_SQL_CVSHIFT_NONE;
+		m_cfg.m_cv_octave = V_SQL_CVSHIFT_NONE;
+		m_cfg.m_cv_transpose = 0;
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_midi_bend = 0;
@@ -296,8 +304,8 @@ public:
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scaled_view = 1;
-		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
-		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
+//		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
+//		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		set_cv_alias(V_SQL_CV_ALIAS_NONE);
 		set_gate_alias(V_SQL_GATE_ALIAS_NONE);
 		set_mode(m_cfg.m_mode);
@@ -326,7 +334,7 @@ public:
 		m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_cue_list_next = 0;
-
+		m_state.m_input_note = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
@@ -403,7 +411,8 @@ public:
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
-		case P_SQL_CVSHIFT: m_cfg.m_cv_shift = (V_SQL_CVSHIFT)value; break;
+		case P_SQL_CV_OCTAVE: m_cfg.m_cv_octave = (V_SQL_CVSHIFT)value; break;
+		case P_SQL_CV_TRANSPOSE: m_cfg.m_cv_transpose = value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
 		case P_SQL_CV_ALIAS: set_cv_alias((V_SQL_CV_ALIAS)value); break;
@@ -411,8 +420,8 @@ public:
 		case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
-		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
-		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
+		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
+		//case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
 		default: break;
 		}
 	}
@@ -441,7 +450,8 @@ public:
 		case P_SQL_LOOP_PER_PAGE: return !!m_cfg.m_loop_per_page;
 //		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
-		case P_SQL_CVSHIFT: return m_cfg.m_cv_shift;
+		case P_SQL_CV_OCTAVE: return m_cfg.m_cv_octave;
+		case P_SQL_CV_TRANSPOSE: return m_cfg.m_cv_transpose;
 		case P_SQL_MIDI_OUT: return m_cfg.m_midi_out;
 		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
 		case P_SQL_CV_ALIAS: return m_cfg.m_cv_alias;
@@ -449,8 +459,8 @@ public:
 		case P_SQL_OUT_CAL: return m_state.m_cal_mode;
 		case P_SQL_OUT_CAL_SCALE: return g_outs.get_cal_scale(m_id);
 		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
-		case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
-		case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
+		//case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
+		//case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
 		default:return 0;
 		}
 	}
@@ -470,7 +480,7 @@ public:
 		case P_SQL_OUT_CAL_SCALE:
 		case P_SQL_OUT_CAL_OFFSET:
 			return !!m_state.m_cal_mode;
-		case P_SQL_MIDI_IN_CHAN: return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
+		//case P_SQL_MIDI_IN_CHAN: return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 		}
 		return 1;
 	}
@@ -1112,12 +1122,21 @@ public:
 		else
 		{
 			if(!m_state.m_suppress_step) {
-				// get the scaled data point
-				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
-					m_state.m_step_output = COuts::SCALING*(m_state.m_step_value.get_value() - OFFSET_ZERO);
+
+				int value;
+				if(m_state.m_input_note) {
+					value = m_state.m_input_note;
 				}
 				else {
-					m_state.m_step_output = COuts::SCALING*m_state.m_step_value.get_value();
+					value = m_state.m_step_value.get_value();
+				}
+
+				// get the scaled data point
+				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
+					m_state.m_step_output = COuts::SCALING*(value - OFFSET_ZERO);
+				}
+				else {
+					m_state.m_step_output = COuts::SCALING*value;
 				}
 
 				// check if we have an absolute volts range (1V - 8V). If so scale the output
@@ -1136,10 +1155,11 @@ public:
 				m_state.m_output = m_state.m_step_output;
 			}
 
-			// apply octave shift
-			if(m_cfg.m_cv_shift != V_SQL_CVSHIFT_NONE) {
-				m_state.m_output = m_state.m_output + 12 * COuts::SCALING * (m_cfg.m_cv_shift - V_SQL_CVSHIFT_NONE);
+			// apply transposition
+			if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
+				m_state.m_output = m_state.m_output + 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
 			}
+			m_state.m_output = m_state.m_output + COuts::SCALING * m_cfg.m_cv_transpose;
 
 			// quantize the output to scale if needed
 			switch(m_cfg.m_quantize) {
@@ -1319,6 +1339,29 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
+	void handle_midi_note(byte note, byte vel, V_SQL_MIDI_IN_MODE mode, byte rec_arm) {
+		switch(mode) {
+		case V_SQL_MIDI_IN_MODE_CV:
+		case V_SQL_MIDI_IN_MODE_BOTH:
+			if(vel) {
+				m_state.m_input_note = note;
+			}
+			else {
+				m_state.m_input_note = 0;
+			}
+			break;
+		case V_SQL_MIDI_IN_MODE_TRANSPOSE:
+			if(vel) {
+				if(note >= MIDI_TRANSPOSE_MIN && note <= MIDI_TRANSPOSE_MAX) {
+					m_cfg.m_cv_transpose = (int16_t)note-MIDI_TRANSPOSE_ZERO;
+				}
+				fire_event(EV_REPAINT_MENU,0);
+			}
+			break;
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
 	static int get_cfg_size() {
 		return sizeof(CONFIG) + NUM_PAGES * CSequencePage::get_cfg_size();
 	}
@@ -1331,8 +1374,6 @@ public:
 			m_page[i].get_cfg(dest);
 		}
 	}
-
-
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
 		m_cfg = *((CONFIG*)*src);
