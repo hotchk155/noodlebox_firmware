@@ -51,6 +51,7 @@ enum {
 	EV_CLOCK_RESET,			// reset clock timing info
 	EV_CHANGE_LAYER,		// change the current editor layer
 	EV_REPAINT_MENU,
+	EV_MIDI_IN_RESET,
 
 	EV_LOAD_OK,
 	EV_LOAD_FAIL,
@@ -376,8 +377,7 @@ typedef enum:byte {
 typedef enum:byte {
 	V_SQL_MIDI_IN_MODE_NONE,
 	V_SQL_MIDI_IN_MODE_CV,
-	V_SQL_MIDI_IN_MODE_GATE,
-	V_SQL_MIDI_IN_MODE_BOTH,
+	V_SQL_MIDI_IN_MODE_CV_GATE,
 	V_SQL_MIDI_IN_MODE_PLAY,
 	V_SQL_MIDI_IN_MODE_TRANSPOSE,
 	V_SQL_MIDI_IN_MODE_MAX

@@ -22,10 +22,15 @@ class CSequenceEditor {
 
 	// misc constants
 	enum {
-		GRID_WIDTH = 32,	// number of columns in the grid
-		GRID_HEIGHT = 16,	// number of rows in the grid
+		GRID_WIDTH = 32,		// number of columns in the grid
+		GRID_HEIGHT = 16,		// number of rows in the grid
 		POPUP_MS = 2000,		// how long popup window is to be displayed
-		PPI_MS = 100		// play page indicator timeout
+		PPI_MS = 100,			// play page indicator timeout
+		MAX_MIDI_IN_NOTES = 10, 	// max number of held midi notes that we can track
+		MIDI_TRANSPOSE_ZERO = 60,
+		MIDI_TRANSPOSE_RANGE = 24,
+		MIDI_TRANSPOSE_MIN = (MIDI_TRANSPOSE_ZERO - MIDI_TRANSPOSE_RANGE),
+		MIDI_TRANSPOSE_MAX = (MIDI_TRANSPOSE_ZERO + MIDI_TRANSPOSE_RANGE)
 	};
 
 	// enumeration of the "gestures" or actions that the user can perform
@@ -112,6 +117,9 @@ class CSequenceEditor {
 	int m_edit_mutes:1;		// are we currently editing mutes
 	int m_encoder_moved:1;		// whether encoder has been previously moved since action was in progress
 	int m_rec_arm:1;
+	byte m_midi_in_note[MAX_MIDI_IN_NOTES];
+	int m_num_midi_in_notes;
+
 
 
 	CSequenceStep m_clone_step;	// during clone operation..
@@ -134,6 +142,7 @@ class CSequenceEditor {
 		m_memo_slot = 0;
 		m_rand_seed = 0;
 		m_rec_arm = 0;
+		m_num_midi_in_notes = 0;
 		activate();
 	}
 
@@ -306,6 +315,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void inc_step_value(CSequenceStep& step, int delta, byte fine, CSequenceLayer& layer) {
 		int value;
+		int min_value = 0;
 		int max_value = 127;
 		value = step.get_value();
 		switch(layer.get_mode()) {
@@ -327,11 +337,13 @@ class CSequenceEditor {
 			} // else fall thru
 		case V_SQL_SEQ_MODE_OFFSET:
 		default:
+			min_value = CSequenceLayer::OFFSET_MIN;
+			max_value = CSequenceLayer::OFFSET_MAX;
 			value += delta;
 			break;
 		}
-		if(value<0) {
-			value = 0;
+		if(min_value<0) {
+			value = min_value;
 		}
 		else if(value>max_value) {
 			value = max_value;
@@ -1323,6 +1335,54 @@ class CSequenceEditor {
 		}
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	byte process_midi_in_note(byte note, byte vel) {
+		byte result = 0;
+		int pos;
+		if (vel) {
+			// determine the insertion point for the new note
+			for (pos = 0; pos < m_num_midi_in_notes; ++pos) {
+				if(note > m_midi_in_note[pos]) {
+					break;
+				}
+			}
+
+			// increase count of notes in the buffer if there is space
+			if (m_num_midi_in_notes < MAX_MIDI_IN_NOTES) {
+				++m_num_midi_in_notes;
+			}
+
+			// can the new note be inserted in the buffer? (lower priority notes
+			// will be shifted along if there is space, otherwise the lowest
+			// note will drop of the buffer)
+			if (pos < m_num_midi_in_notes) {
+
+				// shift down along which are after the insertion point
+				for(int i = m_num_midi_in_notes - 2; i >= pos; --i) {
+					m_midi_in_note[i+1] = m_midi_in_note[i];
+				}
+				// insert the new note in the buffer
+				m_midi_in_note[pos] = note;
+				result = (pos==0);
+			}
+		}
+		else { // note off - remove from the buffer
+
+			// search for the note
+			for(int i = 0; i < m_num_midi_in_notes; ++i) {
+				if(m_midi_in_note[i] == note) {
+					result = (i==0);
+
+					// remove the note by shufflng all later notes down
+					--m_num_midi_in_notes;
+					for(; i<m_num_midi_in_notes; ++i) {
+						m_midi_in_note[i] = m_midi_in_note[i+1];
+					}
+				}
+			}
+		}
+		return result;
+	}
 
 
 public:
@@ -1356,8 +1416,8 @@ public:
 		case P_EDIT_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
 		case P_EDIT_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
 		case P_EDIT_REC_ARM: m_rec_arm = !!value; break;
-		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
-		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
+		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; fire_event(EV_MIDI_IN_RESET,0); break;
+		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; fire_event(EV_MIDI_IN_RESET,0); break;
 		default:
 			g_sequence.get_layer(m_cur_layer).set(param, value);
 		}
@@ -1457,8 +1517,12 @@ public:
 			m_cur_layer = 0;
 			m_cur_page = 0;
 			break;
+		case EV_MIDI_IN_RESET:
+			m_num_midi_in_notes = 0;
+			break;
 		}
 	}
+
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void handle_midi_note(byte chan, byte note, byte vel) {
@@ -1466,7 +1530,25 @@ public:
 //TODO NOTE PRIORITIY AND BUFFERING
 		if(m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE) {
 			if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
-				g_sequence.get_layer(m_cur_layer).handle_midi_note(note, vel, m_cfg.m_midi_in_mode, m_rec_arm);
+				if(process_midi_in_note(note,vel)) { // any change to the held note?
+					if(m_num_midi_in_notes) {
+						switch(m_cfg.m_midi_in_mode) {
+							case V_SQL_MIDI_IN_MODE_TRANSPOSE:
+								g_sequence.get_layer(m_cur_layer).set(P_SQL_CV_TRANSPOSE, (int)m_midi_in_note[0]-MIDI_TRANSPOSE_ZERO);
+								fire_event(EV_REPAINT_MENU,0);
+								break;
+							case V_SQL_MIDI_IN_MODE_CV:
+								g_sequence.midi_note_on(m_cur_layer, m_rec_arm, m_midi_in_note[0], 0);
+								break;
+							case V_SQL_MIDI_IN_MODE_CV_GATE:
+								g_sequence.midi_note_on(m_cur_layer, m_rec_arm, m_midi_in_note[0], !!vel);
+								break;
+						}
+					}
+					else {
+						g_sequence.midi_note_off();
+					}
+				}
 			}
 		}
 	}

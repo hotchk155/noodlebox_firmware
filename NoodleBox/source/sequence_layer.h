@@ -23,11 +23,20 @@ class CSequenceLayer {
 public:
 
 	enum {
-		OFFSET_ZERO = 64,		// step value for zero transpose offset
 		NUM_PAGES = 4,					// number of pages
+		MAX_PLAYING_NOTES = 8,
+		DEFAULT_SCROLL_OFS = 31,
+		SCROLL_MARGIN = 3,
+		MAX_CUE_LIST = 16,
+	};
+
+	enum {
+		OFFSET_ZERO = 60,
+		OFFSET_MIN = 0,
+		OFFSET_MAX = 127,
 		MOD_AMOUNT_DEFAULT = 50,
 		MOD_AMOUNT_MIN = 25,
-		MOD_AMOUNT_MAX = 75,
+		MOD_AMOUNT_MAX = 75
 	};
 
 	enum {
@@ -37,16 +46,6 @@ public:
 	};
 private:
 
-	enum {
-		MAX_PLAYING_NOTES = 8,
-		DEFAULT_SCROLL_OFS = 31,
-		SCROLL_MARGIN = 3,
-		MAX_CUE_LIST = 16,
-		MIDI_TRANSPOSE_ZERO = 60,
-		MIDI_TRANSPOSE_RANGE = 24,
-		MIDI_TRANSPOSE_MIN = (MIDI_TRANSPOSE_ZERO - MIDI_TRANSPOSE_RANGE),
-		MIDI_TRANSPOSE_MAX = (MIDI_TRANSPOSE_ZERO + MIDI_TRANSPOSE_RANGE)
-	};
 
 	enum :byte {
 		NO_MIDI_NOTE = 0xff,
@@ -133,7 +132,7 @@ private:
 
 		V_SQL_OUT_CAL m_cal_mode;
 
-		byte m_input_note;
+		//byte m_input_note;
 	} STATE;
 
 //	const uint32_t INFINITE_GATE = (uint32_t)(-1);
@@ -334,7 +333,7 @@ public:
 		m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_cue_list_next = 0;
-		m_state.m_input_note = 0;
+		//m_state.m_input_note = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
@@ -880,6 +879,7 @@ public:
 		m_state = other.m_state;
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
@@ -1104,6 +1104,19 @@ public:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	// Called when we are in a recording mode (armed or note). We override the
+	// current step value based on MIDI input
+	void rec(byte rec_arm, byte note, CSequenceStep::POINT_TYPE gate) {
+
+		m_state.m_step_value.set_value(note);
+		m_state.m_step_value.set(CSequenceStep::TRIG_POINT, !!(gate == CSequenceStep::TRIG_POINT));
+		m_state.m_step_value.set(CSequenceStep::TIE_POINT, !!(gate == CSequenceStep::TIE_POINT));
+		if(rec_arm) {
+			set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
+		}
+	}
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
@@ -1123,13 +1136,7 @@ public:
 		{
 			if(!m_state.m_suppress_step) {
 
-				int value;
-				if(m_state.m_input_note) {
-					value = m_state.m_input_note;
-				}
-				else {
-					value = m_state.m_step_value.get_value();
-				}
+				int value = m_state.m_step_value.get_value();
 
 				// get the scaled data point
 				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
@@ -1334,30 +1341,6 @@ public:
 				m_state.m_midi_cc_value = m_state.m_midi_cc_target;
 				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, value);
 			}
-		}
-	}
-
-
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	void handle_midi_note(byte note, byte vel, V_SQL_MIDI_IN_MODE mode, byte rec_arm) {
-		switch(mode) {
-		case V_SQL_MIDI_IN_MODE_CV:
-		case V_SQL_MIDI_IN_MODE_BOTH:
-			if(vel) {
-				m_state.m_input_note = note;
-			}
-			else {
-				m_state.m_input_note = 0;
-			}
-			break;
-		case V_SQL_MIDI_IN_MODE_TRANSPOSE:
-			if(vel) {
-				if(note >= MIDI_TRANSPOSE_MIN && note <= MIDI_TRANSPOSE_MAX) {
-					m_cfg.m_cv_transpose = (int16_t)note-MIDI_TRANSPOSE_ZERO;
-				}
-				fire_event(EV_REPAINT_MENU,0);
-			}
-			break;
 		}
 	}
 

@@ -31,7 +31,13 @@ private:
 	CSequenceLayer m_layer_content[NUM_LAYERS];
 	CSequenceLayer *m_layers[NUM_LAYERS];
 
-	byte m_is_running;
+	byte m_is_running;		// whether the sequencer is running
+
+	int m_rec_layer;
+	int m_rec_arm:1;
+	byte m_rec_note;
+	byte m_rec_gate;
+
 public:
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -45,6 +51,10 @@ public:
 			m_layers[i]->set_id(i);
 		}
 		m_is_running = 0;
+		m_rec_layer = -1;
+		m_rec_arm = 0;
+		m_rec_note = 0;
+		m_rec_gate = 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
@@ -138,6 +148,24 @@ public:
 		return m_is_running;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void midi_note_on(int layer, byte arm, byte note, byte retrig) {
+		m_rec_layer = layer;
+		m_rec_arm = arm;
+		m_rec_note = note;
+		if(retrig) {
+			m_rec_gate = 2;
+		}
+		else {
+			m_rec_gate = 1;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void midi_note_off() {
+		m_rec_layer = -1;
+	}
+
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// called once per ms
@@ -159,8 +187,31 @@ public:
 			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
-				if(layer->play(ticks, dice_roll)) {
+				if(m_rec_layer == i) {
+					int play_page = layer->get_play_page();
+					int pos = layer->get_pos();
+					if(layer->play(ticks, dice_roll)) {
+						if(m_rec_arm && m_rec_gate == 1) { // note is still held at the end of a previous step, so mark it as tied
+							CSequenceStep step = layer->get_step(play_page,  pos);
+							step.set(CSequenceStep::TIE_POINT, 1);
+							layer->set_step(play_page, pos, step);
+						}
+
+						if(m_rec_gate == 2) { // note triggered ay this step
+							layer->rec(m_rec_arm, m_rec_note, CSequenceStep::TRIG_POINT);
+							m_rec_gate = 1;
+						}
+						else {
+							layer->rec(m_rec_arm, m_rec_note, CSequenceStep::TIE_POINT);
+						}
+
+					}
 					played_step = 1;
+				}
+				else {
+					if(layer->play(ticks, dice_roll)) {
+						played_step = 1;
+					}
 				}
 			}
 
