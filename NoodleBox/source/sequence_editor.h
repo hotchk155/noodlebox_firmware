@@ -1247,11 +1247,11 @@ class CSequenceEditor {
 			case KEY_FUNC|KEY2_FUNC_GRID:
 				toggle(P_EDIT_SHOW_GRID, "GRID:", "HID|SHO");
 				break;
-			case KEY_FUNC|KEY2_FUNC_LOOP_MODE:
-				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG");
+			case KEY_FUNC|KEY2_FUNC_REC_MODE:
+				toggle(P_SQL_MIDI_IN_MODE, "REC:", "NONE|CV|CVGT|TRAN",4);
 				break;
 			case KEY_FUNC|KEY2_FUNC_PAGE_ADV:
-				toggle(P_EDIT_REC_ARM, "REC:", "OFF|ARM");
+				toggle(P_EDIT_REC_ARM, "ARM:", "OFF|ON");
 				break;
 			}
 			break;
