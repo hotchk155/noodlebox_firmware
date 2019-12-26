@@ -1527,21 +1527,23 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void handle_midi_note(byte chan, byte note, byte vel) {
 
-//TODO NOTE PRIORITIY AND BUFFERING
 		if(m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE) {
 			if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
 				if(process_midi_in_note(note,vel)) { // any change to the held note?
 					if(m_num_midi_in_notes) {
+						byte flags = CSequenceLayer::REC_IS_GATE |
+								(vel? CSequenceLayer::REC_IS_TRIG:0) |
+								(m_rec_arm? CSequenceLayer::REC_ARM:0);
 						switch(m_cfg.m_midi_in_mode) {
 							case V_SQL_MIDI_IN_MODE_TRANSPOSE:
 								g_sequence.get_layer(m_cur_layer).set(P_SQL_CV_TRANSPOSE, (int)m_midi_in_note[0]-MIDI_TRANSPOSE_ZERO);
 								fire_event(EV_REPAINT_MENU,0);
 								break;
 							case V_SQL_MIDI_IN_MODE_CV:
-								g_sequence.midi_note_on(m_cur_layer, m_rec_arm, m_midi_in_note[0], 0);
+								g_sequence.midi_note_on(m_cur_layer, CSequenceLayer::REC_NOTE_INFO | flags, m_midi_in_note[0]);
 								break;
 							case V_SQL_MIDI_IN_MODE_CV_GATE:
-								g_sequence.midi_note_on(m_cur_layer, m_rec_arm, m_midi_in_note[0], !!vel);
+								g_sequence.midi_note_on(m_cur_layer, CSequenceLayer::REC_NOTE_INFO | CSequenceLayer::REC_GATE_INFO | flags, m_midi_in_note[0]);
 								break;
 						}
 					}

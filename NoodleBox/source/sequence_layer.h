@@ -44,6 +44,16 @@ public:
 		INIT_FIRST,
 		INIT_LAST
 	};
+
+	enum:byte {
+		REC_ARM			= 0x01,
+		REC_GATE_INFO	= 0x02,
+		REC_NOTE_INFO	= 0x04,
+		REC_IS_GATE		= 0x08,
+		REC_IS_TRIG		= 0x10,
+		REC_IS_TIE		= 0x20
+	};
+
 private:
 
 
@@ -967,7 +977,8 @@ public:
 	// The maximum offset from grid is +/- half of a grid step, so it is never
 	// possible for steps to be scheduled out of order
 	//
-	byte play(clock::TICKS_TYPE ticks, int dice_roll) {
+
+	byte play(clock::TICKS_TYPE ticks, int dice_roll, byte *rec_flags, byte rec_note) {
 
 		m_state.m_played_step = 0;
 
@@ -987,6 +998,28 @@ public:
 		// move to the next step, unless this is the very first step following
 		// a restart, in which case we are already pointing at step zero
 		if(do_advance) {
+
+
+			if(rec_flags) {
+				// is there a note gate present at the end of the current step
+				if(*rec_flags & REC_IS_GATE) {
+					// has there been a note gate present throughout the entire step?
+					if(*rec_flags & REC_IS_TIE) {
+
+						// are we armed for recording?
+						if((*rec_flags & (REC_GATE_INFO|REC_ARM)) == (REC_GATE_INFO|REC_ARM)) {
+							// flag that this step is tied
+							m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
+							set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::GATE_DATA, 0);
+						}
+					}
+					else {
+						// set the sustain flag
+						*rec_flags |= REC_IS_TIE;
+					}
+				}
+			}
+
 			m_state.m_page_advanced = 0;
 			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
 				if(m_cfg.m_cue_mode != CUE_NONE) {
@@ -999,7 +1032,29 @@ public:
 
 		if(do_play) {
 			if(m_cfg.m_enabled) { // is the layer enabled?
+
 				m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
+
+				if(rec_flags) {
+					// should we override note info with incoming MIDI?
+					if(*rec_flags & REC_NOTE_INFO) {
+						m_state.m_step_value.set_value(rec_note);
+					}
+
+					// should we override gate info with incoming MIDI
+					if(*rec_flags & REC_GATE_INFO) {
+						if(*rec_flags & REC_IS_TRIG) {
+							// record triggers
+							m_state.m_step_value.set(CSequenceStep::TRIG_POINT, 1);
+							*rec_flags &= ~REC_IS_TRIG;
+						}
+					}
+					// should we save over the old step value?
+					if(*rec_flags & REC_ARM) {
+						set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
+					}
+				}
+
 				m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
 				m_state.m_played_step = 1;
 				m_state.m_suppress_step = 0;

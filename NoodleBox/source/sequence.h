@@ -34,9 +34,8 @@ private:
 	byte m_is_running;		// whether the sequencer is running
 
 	int m_rec_layer;
-	int m_rec_arm:1;
 	byte m_rec_note;
-	byte m_rec_gate;
+	byte m_rec_flags;
 
 public:
 
@@ -52,9 +51,7 @@ public:
 		}
 		m_is_running = 0;
 		m_rec_layer = -1;
-		m_rec_arm = 0;
-		m_rec_note = 0;
-		m_rec_gate = 0;
+		m_rec_flags = 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
@@ -149,23 +146,18 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void midi_note_on(int layer, byte arm, byte note, byte retrig) {
+	void midi_note_on(int layer, byte flags, byte note) {
 		m_rec_layer = layer;
-		m_rec_arm = arm;
 		m_rec_note = note;
-		if(retrig) {
-			m_rec_gate = 2;
-		}
-		else {
-			m_rec_gate = 1;
-		}
+		m_rec_flags &= ~CSequenceLayer::REC_IS_TIE; // tie flag is preserved (legato shift btw notes)
+		m_rec_flags |= flags;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void midi_note_off() {
 		m_rec_layer = -1;
+		m_rec_flags = 0;
 	}
-
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// called once per ms
@@ -188,28 +180,12 @@ public:
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
 				if(m_rec_layer == i) {
-					int play_page = layer->get_play_page();
-					int pos = layer->get_pos();
-					if(layer->play(ticks, dice_roll)) {
-						if(m_rec_arm && m_rec_gate == 1) { // note is still held at the end of a previous step, so mark it as tied
-							CSequenceStep step = layer->get_step(play_page,  pos);
-							step.set(CSequenceStep::TIE_POINT, 1);
-							layer->set_step(play_page, pos, step);
-						}
-
-						if(m_rec_gate == 2) { // note triggered ay this step
-							layer->rec(m_rec_arm, m_rec_note, CSequenceStep::TRIG_POINT);
-							m_rec_gate = 1;
-						}
-						else {
-							layer->rec(m_rec_arm, m_rec_note, CSequenceStep::TIE_POINT);
-						}
-
+					if(layer->play(ticks, dice_roll, &m_rec_flags, m_rec_note)) {
+						played_step = 1;
 					}
-					played_step = 1;
 				}
 				else {
-					if(layer->play(ticks, dice_roll)) {
+					if(layer->play(ticks, dice_roll, NULL, 0)) {
 						played_step = 1;
 					}
 				}
