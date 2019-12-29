@@ -50,13 +50,13 @@ pin_labels:
  * END ****************************************************************************************************************/
 void BOARD_InitBootPins(void)
 {
-    BOARD_InitPins();
+    BOARD_InitPins_Proto();
 }
 
 /* clang-format off */
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
-BOARD_InitPins:
+BOARD_InitPins_Proto:
 - options: {callFromInitBoot: 'true', coreID: core0, enableClock: 'true'}
 - pin_list:
   - {pin_num: '32', peripheral: I2C0, signal: SCL, pin_signal: PTA3/KBI0_P3/UART0_TX/I2C0_SCL}
@@ -94,11 +94,11 @@ BOARD_InitPins:
 
 /* FUNCTION ************************************************************************************************************
  *
- * Function Name : BOARD_InitPins
+ * Function Name : BOARD_InitPins_Proto
  * Description   : Configures pin routing and optionally pin electrical features.
  *
  * END ****************************************************************************************************************/
-void BOARD_InitPins(void)
+void BOARD_InitPins_Proto(void)
 {
 
     gpio_pin_config_t KEYSCAN2_config = {
@@ -106,42 +106,42 @@ void BOARD_InitPins(void)
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTA12 (pin 13) */
-    GPIO_PinInit(BOARD_INITPINS_KEYSCAN2_GPIO_PORT, BOARD_INITPINS_KEYSCAN2_PIN, &KEYSCAN2_config);
+    GPIO_PinInit(BOARD_INITPINS_PROTO_KEYSCAN2_GPIO_PORT, BOARD_INITPINS_PROTO_KEYSCAN2_PIN, &KEYSCAN2_config);
 
     gpio_pin_config_t KEYSCAN1_config = {
         .pinDirection = kGPIO_DigitalInput,
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTA22 (pin 37) */
-    GPIO_PinInit(BOARD_INITPINS_KEYSCAN1_GPIO_PORT, BOARD_INITPINS_KEYSCAN1_PIN, &KEYSCAN1_config);
+    GPIO_PinInit(BOARD_INITPINS_PROTO_KEYSCAN1_GPIO_PORT, BOARD_INITPINS_PROTO_KEYSCAN1_PIN, &KEYSCAN1_config);
 
     gpio_pin_config_t OFF_SWITCH_config = {
         .pinDirection = kGPIO_DigitalInput,
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTB1 (pin 39) */
-    GPIO_PinInit(BOARD_INITPINS_OFF_SWITCH_GPIO_PORT, BOARD_INITPINS_OFF_SWITCH_PIN, &OFF_SWITCH_config);
+    GPIO_PinInit(BOARD_INITPINS_PROTO_OFF_SWITCH_GPIO_PORT, BOARD_INITPINS_PROTO_OFF_SWITCH_PIN, &OFF_SWITCH_config);
 
     gpio_pin_config_t POWER_CTRL_config = {
         .pinDirection = kGPIO_DigitalOutput,
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTB2 (pin 38) */
-    GPIO_PinInit(BOARD_INITPINS_POWER_CTRL_GPIO_PORT, BOARD_INITPINS_POWER_CTRL_PIN, &POWER_CTRL_config);
+    GPIO_PinInit(BOARD_INITPINS_PROTO_POWER_CTRL_GPIO_PORT, BOARD_INITPINS_PROTO_POWER_CTRL_PIN, &POWER_CTRL_config);
     /* Pull Enable for Port B Bit 4: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTB, BOARD_INITPINS_KEYSCAN2_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTB, BOARD_INITPINS_PROTO_KEYSCAN2_PIN, true);
     /* Pull Enable for Port C Bit 6: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTC, BOARD_INITPINS_KEYSCAN1_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTC, BOARD_INITPINS_PROTO_KEYSCAN1_PIN, true);
     /* Pull Enable for Port D Bit 0: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_ENCODER2_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_PROTO_ENCODER2_PIN, true);
     /* Pull Enable for Port D Bit 1: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_ENCODER1_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_PROTO_ENCODER1_PIN, true);
     /* Pull Enable for Port D Bit 6: 0x01u */
     PORT_SetPinPullUpEnable(PORT, kPORT_PTD, 6U, true);
     /* Pull Enable for Port D Bit 7: 0x01u */
     PORT_SetPinPullUpEnable(PORT, kPORT_PTD, 7U, true);
     /* Pull Enable for Port E Bit 1: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTE, BOARD_INITPINS_OFF_SWITCH_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTE, BOARD_INITPINS_PROTO_OFF_SWITCH_PIN, true);
     /* pin 32,33 is configured as I2C0_SCL, I2C0_SDA */
     PORT_SetPinSelect(kPORT_I2C0, kPORT_I2C0_SCLPTA3_SDAPTA2);
     /* pin 24,23 is configured as UART0_RX, UART0_TX */

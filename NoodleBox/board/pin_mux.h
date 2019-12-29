@@ -37,167 +37,167 @@ void BOARD_InitBootPins(void);
 
 /*! @name PORTA6 (number 26), GATEOUT4
   @{ */
-#define BOARD_INITPINS_GATEOUT4_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_GATEOUT4_GPIO_PORT kGPIO_PORTA /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_GATEOUT4_PORT PORTA            /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_GATEOUT4_PIN 6U                /*!<@brief PORTA pin index: 6 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_GATEOUT4_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_GATEOUT4_GPIO_PORT kGPIO_PORTA /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_GATEOUT4_PORT PORTA            /*!<@brief PORT device name: PORTA */
+#define BOARD_INITPINS_PROTO_GATEOUT4_PIN 6U                /*!<@brief PORTA pin index: 6 */
+                                                            /* @} */
 
 /*! @name PORTB2 (number 22), P_ASCK
   @{ */
-#define BOARD_INITPINS_P_ASCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_P_ASCK_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_P_ASCK_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_P_ASCK_PIN 2U                /*!<@brief PORTB pin index: 2 */
-                                                    /* @} */
+#define BOARD_INITPINS_PROTO_P_ASCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_P_ASCK_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_P_ASCK_PORT PORTB            /*!<@brief PORT device name: PORTB */
+#define BOARD_INITPINS_PROTO_P_ASCK_PIN 2U                /*!<@brief PORTB pin index: 2 */
+                                                          /* @} */
 
 /*! @name PORTB3 (number 21), P_ADAT
   @{ */
-#define BOARD_INITPINS_P_ADAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_P_ADAT_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_P_ADAT_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_P_ADAT_PIN 3U                /*!<@brief PORTB pin index: 3 */
-                                                    /* @} */
+#define BOARD_INITPINS_PROTO_P_ADAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_P_ADAT_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_P_ADAT_PORT PORTB            /*!<@brief PORT device name: PORTB */
+#define BOARD_INITPINS_PROTO_P_ADAT_PIN 3U                /*!<@brief PORTB pin index: 3 */
+                                                          /* @} */
 
 /*! @name PORTB5 (number 12), LED1
   @{ */
-#define BOARD_INITPINS_LED1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_LED1_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_LED1_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_LED1_PIN 5U                /*!<@brief PORTB pin index: 5 */
-                                                  /* @} */
+#define BOARD_INITPINS_PROTO_LED1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_LED1_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_LED1_PORT PORTB            /*!<@brief PORT device name: PORTB */
+#define BOARD_INITPINS_PROTO_LED1_PIN 5U                /*!<@brief PORTB pin index: 5 */
+                                                        /* @} */
 
 /*! @name PORTC0 (number 20), P_ARCK
   @{ */
-#define BOARD_INITPINS_P_ARCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_P_ARCK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_P_ARCK_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_P_ARCK_PIN 0U                /*!<@brief PORTC pin index: 0 */
-                                                    /* @} */
+#define BOARD_INITPINS_PROTO_P_ARCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_P_ARCK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_P_ARCK_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_P_ARCK_PIN 0U                /*!<@brief PORTC pin index: 0 */
+                                                          /* @} */
 
 /*! @name PORTC1 (number 19), P_KDAT
   @{ */
-#define BOARD_INITPINS_P_KCLK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_P_KCLK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_P_KCLK_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_P_KCLK_PIN 1U                /*!<@brief PORTC pin index: 1 */
-                                                    /* @} */
+#define BOARD_INITPINS_PROTO_P_KCLK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_P_KCLK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_P_KCLK_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_P_KCLK_PIN 1U                /*!<@brief PORTC pin index: 1 */
+                                                          /* @} */
 
 /*! @name PORTC2 (number 15), LED3
   @{ */
-#define BOARD_INITPINS_LED3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_LED3_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_LED3_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_LED3_PIN 2U                /*!<@brief PORTC pin index: 2 */
-                                                  /* @} */
+#define BOARD_INITPINS_PROTO_LED3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_LED3_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_LED3_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_LED3_PIN 2U                /*!<@brief PORTC pin index: 2 */
+                                                        /* @} */
 
 /*! @name PORTC3 (number 14), LED2
   @{ */
-#define BOARD_INITPINS_LED2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_LED2_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_LED2_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_LED2_PIN 3U                /*!<@brief PORTC pin index: 3 */
-                                                  /* @} */
+#define BOARD_INITPINS_PROTO_LED2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_LED2_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_LED2_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_LED2_PIN 3U                /*!<@brief PORTC pin index: 3 */
+                                                        /* @} */
 
 /*! @name PORTC5 (number 41), SYNCOUT
   @{ */
-#define BOARD_INITPINS_SYNCOUT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_SYNCOUT_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_SYNCOUT_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_SYNCOUT_PIN 5U                /*!<@brief PORTC pin index: 5 */
-                                                     /* @} */
+#define BOARD_INITPINS_PROTO_SYNCOUT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_SYNCOUT_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_SYNCOUT_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_SYNCOUT_PIN 5U                /*!<@brief PORTC pin index: 5 */
+                                                           /* @} */
 
 /*! @name PORTC6 (number 37), KEYSCAN1
   @{ */
-#define BOARD_INITPINS_KEYSCAN1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_KEYSCAN1_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_KEYSCAN1_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_KEYSCAN1_PIN 6U                /*!<@brief PORTC pin index: 6 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_KEYSCAN1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_KEYSCAN1_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_KEYSCAN1_PORT PORTC            /*!<@brief PORT device name: PORTC */
+#define BOARD_INITPINS_PROTO_KEYSCAN1_PIN 6U                /*!<@brief PORTC pin index: 6 */
+                                                            /* @} */
 
 /*! @name PORTD0 (number 2), ENCODER2
   @{ */
-#define BOARD_INITPINS_ENCODER2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_ENCODER2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_ENCODER2_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_ENCODER2_PIN 0U                /*!<@brief PORTD pin index: 0 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_ENCODER2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_ENCODER2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_ENCODER2_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_ENCODER2_PIN 0U                /*!<@brief PORTD pin index: 0 */
+                                                            /* @} */
 
 /*! @name PORTD1 (number 1), ENCODER1
   @{ */
-#define BOARD_INITPINS_ENCODER1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_ENCODER1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_ENCODER1_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_ENCODER1_PIN 1U                /*!<@brief PORTD pin index: 1 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_ENCODER1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_ENCODER1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_ENCODER1_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_ENCODER1_PIN 1U                /*!<@brief PORTD pin index: 1 */
+                                                            /* @} */
 
 /*! @name PORTD2 (number 31), GATEOUT1
   @{ */
-#define BOARD_INITPINS_GATEOUT1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_GATEOUT1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_GATEOUT1_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_GATEOUT1_PIN 2U                /*!<@brief PORTD pin index: 2 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_GATEOUT1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_GATEOUT1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_GATEOUT1_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_GATEOUT1_PIN 2U                /*!<@brief PORTD pin index: 2 */
+                                                            /* @} */
 
 /*! @name PORTD3 (number 30), GATEOUT2
   @{ */
-#define BOARD_INITPINS_GATEOUT2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_GATEOUT2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_GATEOUT2_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_GATEOUT2_PIN 3U                /*!<@brief PORTD pin index: 3 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_GATEOUT2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_GATEOUT2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_GATEOUT2_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_GATEOUT2_PIN 3U                /*!<@brief PORTD pin index: 3 */
+                                                            /* @} */
 
 /*! @name PORTD4 (number 29), GATEOUT3
   @{ */
-#define BOARD_INITPINS_GATEOUT3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_GATEOUT3_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_GATEOUT3_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_GATEOUT3_PIN 4U                /*!<@brief PORTD pin index: 4 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_GATEOUT3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_GATEOUT3_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_GATEOUT3_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_GATEOUT3_PIN 4U                /*!<@brief PORTD pin index: 4 */
+                                                            /* @} */
 
 /*! @name PORTD5 (number 18), P_KDAT
   @{ */
-#define BOARD_INITPINS_P_KDAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_P_KDAT_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_P_KDAT_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_P_KDAT_PIN 5U                /*!<@brief PORTD pin index: 5 */
-                                                    /* @} */
+#define BOARD_INITPINS_PROTO_P_KDAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_P_KDAT_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_P_KDAT_PORT PORTD            /*!<@brief PORT device name: PORTD */
+#define BOARD_INITPINS_PROTO_P_KDAT_PIN 5U                /*!<@brief PORTD pin index: 5 */
+                                                          /* @} */
 
 /*! @name PORTE1 (number 39), OFF_SWITCH
   @{ */
-#define BOARD_INITPINS_OFF_SWITCH_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
-#define BOARD_INITPINS_OFF_SWITCH_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
-#define BOARD_INITPINS_OFF_SWITCH_PORT PORTE            /*!<@brief PORT device name: PORTE */
-#define BOARD_INITPINS_OFF_SWITCH_PIN 1U                /*!<@brief PORTE pin index: 1 */
-                                                        /* @} */
+#define BOARD_INITPINS_PROTO_OFF_SWITCH_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
+#define BOARD_INITPINS_PROTO_OFF_SWITCH_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
+#define BOARD_INITPINS_PROTO_OFF_SWITCH_PORT PORTE            /*!<@brief PORT device name: PORTE */
+#define BOARD_INITPINS_PROTO_OFF_SWITCH_PIN 1U                /*!<@brief PORTE pin index: 1 */
+                                                              /* @} */
 
 /*! @name PORTE2 (number 38), POWER_CTRL
   @{ */
-#define BOARD_INITPINS_POWER_CTRL_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
-#define BOARD_INITPINS_POWER_CTRL_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
-#define BOARD_INITPINS_POWER_CTRL_PORT PORTE            /*!<@brief PORT device name: PORTE */
-#define BOARD_INITPINS_POWER_CTRL_PIN 2U                /*!<@brief PORTE pin index: 2 */
-                                                        /* @} */
+#define BOARD_INITPINS_PROTO_POWER_CTRL_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
+#define BOARD_INITPINS_PROTO_POWER_CTRL_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
+#define BOARD_INITPINS_PROTO_POWER_CTRL_PORT PORTE            /*!<@brief PORT device name: PORTE */
+#define BOARD_INITPINS_PROTO_POWER_CTRL_PIN 2U                /*!<@brief PORTE pin index: 2 */
+                                                              /* @} */
 
 /*! @name PORTA0 (number 35), EXTSYNC
   @{ */
-#define BOARD_INITPINS_EXTSYNC_PORT PORTA /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_EXTSYNC_PIN 0U     /*!<@brief PORTA pin index: 0 */
-                                          /* @} */
+#define BOARD_INITPINS_PROTO_EXTSYNC_PORT PORTA /*!<@brief PORT device name: PORTA */
+#define BOARD_INITPINS_PROTO_EXTSYNC_PIN 0U     /*!<@brief PORTA pin index: 0 */
+                                                /* @} */
 
 /*! @name PORTB4 (number 13), KEYSCAN2
   @{ */
-#define BOARD_INITPINS_KEYSCAN2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_KEYSCAN2_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_KEYSCAN2_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_KEYSCAN2_PIN 4U                /*!<@brief PORTB pin index: 4 */
-                                                      /* @} */
+#define BOARD_INITPINS_PROTO_KEYSCAN2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
+#define BOARD_INITPINS_PROTO_KEYSCAN2_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_PROTO_KEYSCAN2_PORT PORTB            /*!<@brief PORT device name: PORTB */
+#define BOARD_INITPINS_PROTO_KEYSCAN2_PIN 4U                /*!<@brief PORTB pin index: 4 */
+                                                            /* @} */
 
 /*!
  * @brief Configures pin routing and optionally pin electrical features.
  *
  */
-void BOARD_InitPins(void);
+void BOARD_InitPins_Proto(void);
 
 #if defined(__cplusplus)
 }

@@ -17,6 +17,8 @@
 #ifndef DEFS_H_
 #define DEFS_H_
 
+#define NB_PROTOTYPE 1
+
 #if DEBUG
 	#define ASSERT(e) {if(!(e)) for(;;) {}}
 #else

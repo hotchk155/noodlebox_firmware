@@ -57,10 +57,19 @@ public:
 			xfer.dataSize = 1;
 			break;
 		case ST_PENDING:
+#ifdef NB_PROTOTYPE
+			// prototype version
 			m_data[0] = ((m_dac[3]>>8) & 0xF);
 			m_data[1] = (byte)m_dac[3];
 			m_data[2] = ((m_dac[2]>>8) & 0xF);
 			m_data[3] = (byte)m_dac[2];
+#else
+			// release version
+			m_data[0] = ((m_dac[2]>>8) & 0xF);
+			m_data[1] = (byte)m_dac[2];
+			m_data[2] = ((m_dac[3]>>8) & 0xF);
+			m_data[3] = (byte)m_dac[3];
+#endif
 			m_data[4] = ((m_dac[1]>>8) & 0xF);
 			m_data[5] = (byte)m_dac[1];
 			m_data[6] = ((m_dac[0]>>8) & 0xF);
@@ -291,20 +300,34 @@ public:
 		i2c_master_config_t masterConfig;
 		I2C_MasterGetDefaultConfig(&masterConfig);
 		masterConfig.baudRate_Bps = 500000U;
+
+#ifdef NB_PROTOTYPE
 		I2C_MasterInit(I2C0, &masterConfig, CLOCK_GetFreq(kCLOCK_BusClk));
 		I2C_Enable(I2C0, true);
+		#define I2C_DAC	I2C0
+		#define I2C_EEPROM	I2C0
+#else
+		I2C_MasterInit(I2C0, &masterConfig, CLOCK_GetFreq(kCLOCK_BusClk));
+		I2C_Enable(I2C0, true);
+		I2C_MasterInit(I2C1, &masterConfig, CLOCK_GetFreq(kCLOCK_BusClk));
+		I2C_Enable(I2C1, true);
+		#define I2C_DAC	I2C0
+		#define I2C_EEPROM	I2C1
+#endif
+
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void run() {
 		if(m_state == ST_IDLE) {
 			if(g_i2c_eeprom.get_tx(m_xfer)) {
-				I2C_MasterTransferCreateHandle(I2C0, &m_handle, i2c_master_callback, NULL);
-				I2C_MasterTransferNonBlocking(I2C0, &m_handle, &m_xfer);
+				I2C_MasterTransferCreateHandle(I2C_EEPROM, &m_handle, i2c_master_callback, NULL);
+				I2C_MasterTransferNonBlocking(I2C_EEPROM, &m_handle, &m_xfer);
 				m_state = ST_EEPROM_BUSY;
 			}
 			else if(g_i2c_dac.get_tx(m_xfer)) {
-				I2C_MasterTransferCreateHandle(I2C0, &m_handle, i2c_master_callback, NULL);
-				I2C_MasterTransferNonBlocking(I2C0, &m_handle, &m_xfer);
+				I2C_MasterTransferCreateHandle(I2C_DAC, &m_handle, i2c_master_callback, NULL);
+				I2C_MasterTransferNonBlocking(I2C_DAC, &m_handle, &m_xfer);
+
 				m_state = ST_DAC_BUSY;
 			}
 		}

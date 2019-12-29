@@ -20,15 +20,27 @@
 //
 // MACRO DEFS
 //
-#define PORTD_BIT_GATE4 4
-#define PORTD_BIT_GATE2 3
-#define PORTD_BIT_GATE3 2
-#define PORTA_BIT_GATE1 6
+#if NB_PROTOTYPE
+	#define BIT_GATE1		MK_GPIOA_BIT(PORTA_BASE, 6)
+	#define BIT_GATE2		MK_GPIOA_BIT(PORTD_BASE, 3)	// gate 2 on different pin
+	#define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, 2)
+	#define BIT_GATE4		MK_GPIOA_BIT(PORTD_BASE, 4)
+	CDigitalOut<kGPIO_PORTA, 6> g_gate_1;
+	CDigitalOut<kGPIO_PORTD, 3> g_gate_2;
+	CDigitalOut<kGPIO_PORTD, 2> g_gate_3;
+	CDigitalOut<kGPIO_PORTD, 4> g_gate_4;
+#else
+	#define BIT_GATE1		MK_GPIOA_BIT(PORTA_BASE, 6)
+	#define BIT_GATE2		MK_GPIOA_BIT(PORTA_BASE, 7)
+	#define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, 2)
+	#define BIT_GATE4		MK_GPIOA_BIT(PORTD_BASE, 4)
+	CDigitalOut<kGPIO_PORTA, 6> g_gate_1;
+	CDigitalOut<kGPIO_PORTD, 7> g_gate_2;
+	CDigitalOut<kGPIO_PORTD, 2> g_gate_3;
+	CDigitalOut<kGPIO_PORTD, 4> g_gate_4;
+#endif
 
-#define BIT_GATE4		MK_GPIOA_BIT(PORTD_BASE, PORTD_BIT_GATE4)
-#define BIT_GATE2		MK_GPIOA_BIT(PORTD_BASE, PORTD_BIT_GATE2)
-#define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, PORTD_BIT_GATE3)
-#define BIT_GATE1		MK_GPIOA_BIT(PORTA_BASE, PORTA_BIT_GATE1)
+
 
 // This type is used for passing CV information around. It represents
 // a value in the 0-127 range of the sequencer data points. The top
@@ -39,11 +51,6 @@ typedef int32_t CV_TYPE;
 // GLOBAL DATA
 //
 
-// These definitions are used to initialise the port
-CDigitalOut<kGPIO_PORTA, PORTA_BIT_GATE1> g_gate_1;
-CDigitalOut<kGPIO_PORTD, PORTD_BIT_GATE2> g_gate_2;
-CDigitalOut<kGPIO_PORTD, PORTD_BIT_GATE3> g_gate_3;
-CDigitalOut<kGPIO_PORTD, PORTD_BIT_GATE4> g_gate_4;
 
 /////////////////////////////////////////////////////////////////////////////////
 //

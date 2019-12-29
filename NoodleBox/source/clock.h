@@ -20,12 +20,23 @@
 
 
 // define the GPIO pins used for clock (will initialise the port)
+#ifdef NB_PROTOTYPE
 CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
-CPulseOut<kGPIO_PORTC, 5> g_clock_out;
+CDigitalOut<kGPIO_PORTC, 5> g_clock_out;
+#else
+CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
+CDigitalOut<kGPIO_PORTD, 3> g_clock_out;
+CDigitalIn<kGPIO_PORTC, 7> g_aux_in;
+CDigitalOut<kGPIO_PORTC, 5> g_aux_out;
+#endif
 
 // This namespace wraps up various clock based utilities
 namespace clock {
 
+enum {
+	KBI0_BIT_CLOCKIN = (1<<0),
+	KBI0_BIT_AUXIN = (1<<23)
+};
 // Noodlebox uses the following type for handling "musical time"...
 // TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
 // increments per quarter note.
@@ -669,8 +680,12 @@ public:
 		// configure the KBI peripheral to cause an interrupt when sync pulse in is triggered
 		kbi_config_t kbiConfig;
 		kbiConfig.mode = kKBI_EdgesDetect;
-		kbiConfig.pinsEnabled = 0x01; // KBI0 pin 0
-		kbiConfig.pinsEdge = 0; // Falling Edge
+#ifdef NB_PROTOTYPE
+		kbiConfig.pinsEnabled = KBI0_BIT_CLOCKIN;
+#else
+		kbiConfig.pinsEnabled = KBI0_BIT_CLOCKIN|KBI0_BIT_AUXIN;
+#endif
+		kbiConfig.pinsEdge = 0; // Falling Edge (after Schmitt Trigger inverter on input)
 		KBI_Init(KBI0, &kbiConfig);
 	}
 
@@ -860,6 +875,13 @@ public:
 	inline void ext_clock_isr() {
 		g_pulse_clock_in.on_pulse(m_ms);
 	}
+
+#ifndef NB_PROTOTYPE
+	inline void aux_in_isr() {
+//TODO
+	}
+#endif
+
 	static int get_cfg_size() {
 		return sizeof(m_cfg) +
 			CFixedClockSource::get_cfg_size() +
@@ -907,10 +929,17 @@ extern "C" void PIT_CH0_IRQHandler(void) {
 extern "C" void KBI0_IRQHandler(void)
 {
     if (KBI_IsInterruptRequestDetected(KBI0)) {
+        uint32_t keys = KBI_GetSourcePinStatus(KBI0);
         KBI_ClearInterruptFlag(KBI0);
-        g_clock.ext_clock_isr();
+        if(keys & clock::KBI0_BIT_CLOCKIN) {
+        	g_clock.ext_clock_isr();
+        }
+#ifndef NB_PROTOTYPE
+        if(keys & clock::KBI0_BIT_AUXIN) {
+        	g_clock.aux_in_isr();
+        }
+#endif
     }
 }
-
 
 #endif // CLOCK_H_

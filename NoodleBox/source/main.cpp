@@ -1,35 +1,16 @@
-/*
- * Copyright (c) 2017, NXP Semiconductor, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of NXP Semiconductor, Inc. nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
- 
-/**
- */
+///////////////////////////////////////////////////////////////////////////////////
+//
+//                                  ~~  ~~             ~~
+//  ~~~~~~    ~~~~~    ~~~~~    ~~~~~~  ~~     ~~~~~   ~~~~~~    ~~~~~   ~~    ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~   ~~  ~~   ~~  ~~   ~~   ~~  ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~~~~~~  ~~   ~~  ~~   ~~     ~~
+//  ~~   ~~  ~~   ~~  ~~   ~~  ~~   ~~  ~~    ~~       ~~   ~~  ~~   ~~   ~~  ~~
+//  ~~   ~~   ~~~~~    ~~~~~    ~~~~~~   ~~~   ~~~~~   ~~~~~~    ~~~~~   ~~    ~~
+//
+//  Serendipity Sequencer                                   CC-NC-BY-SA
+//  hotchk155/2019                                          Sixty-four pixels ltd
+//
+///////////////////////////////////////////////////////////////////////////////////
 
 //
 // API INCLUDES
@@ -73,24 +54,6 @@
 
 
 const uint32_t title_screen[] = {
-		/*
-	(uint32_t)0x1C63390C,
-	(uint32_t)0x2294A512,
-	(uint32_t)0x4294A490,
-	(uint32_t)0x2294951C,
-	(uint32_t)0x22949510,
-	(uint32_t)0x4452A516,
-	(uint32_t)0x4461B9C8,
-	(uint32_t)0x0,
-	(uint32_t)0x618800,
-	(uint32_t)0x596504,
-	(uint32_t)0x3049220A,
-	(uint32_t)0x4871220A,
-	(uint32_t)0x40492502,
-	(uint32_t)0x21452942,
-	(uint32_t)0x1E7CC93C,
-	(uint32_t)0x0
-	*/
 		(uint32_t)0xFFFFFFFF,
 		(uint32_t)0xFFFFFFFF,
 		(uint32_t)0xFFFFFFFF,
@@ -110,10 +73,13 @@ const uint32_t title_screen[] = {
 };
 
 
-
+#if NB_PROTOTYPE
  CDigitalOut<kGPIO_PORTE, 2> PowerControl;
  CDigitalIn<kGPIO_PORTE, 1> OffSwitch;
-
+#else
+ CDigitalOut<kGPIO_PORTE, 2> PowerControl;
+ CDigitalIn<kGPIO_PORTE, 7> OffSwitch;
+#endif
 
 
 typedef enum:byte {
@@ -397,8 +363,6 @@ int main(void) {
     		g_midi_led.run();
     		g_gate_led.run();
     		g_tempo_led.run();
-    		g_clock_out.run();
-
     	}
 
     	// run the i2c bus.
