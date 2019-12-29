@@ -348,13 +348,13 @@ public:
 
 	///////////////////////////////////////////////////
 	void set_cv_alias(byte which, byte src) {
-		ASSERT(out<MAX_CHAN);
+		ASSERT(which<MAX_CHAN);
 		ASSERT(src<MAX_CHAN);
 		m_chan[which].cv_src = src;
 	}
 	///////////////////////////////////////////////////
 	void set_gate_alias(byte which, byte src) {
-		ASSERT(out<MAX_CHAN);
+		ASSERT(which<MAX_CHAN);
 		ASSERT(src<MAX_CHAN);
 		m_chan[which].gate_src = src;
 	}

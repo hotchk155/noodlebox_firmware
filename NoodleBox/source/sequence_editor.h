@@ -27,10 +27,6 @@ class CSequenceEditor {
 		POPUP_MS = 2000,		// how long popup window is to be displayed
 		PPI_MS = 100,			// play page indicator timeout
 		MAX_MIDI_IN_NOTES = 10, 	// max number of held midi notes that we can track
-		MIDI_TRANSPOSE_ZERO = 60,
-		MIDI_TRANSPOSE_RANGE = 24,
-		MIDI_TRANSPOSE_MIN = (MIDI_TRANSPOSE_ZERO - MIDI_TRANSPOSE_RANGE),
-		MIDI_TRANSPOSE_MAX = (MIDI_TRANSPOSE_ZERO + MIDI_TRANSPOSE_RANGE)
 	};
 
 	// enumeration of the "gestures" or actions that the user can perform
@@ -80,7 +76,7 @@ class CSequenceEditor {
 	};
 
 	typedef struct {
-		V_SQL_MIDI_IN_MODE m_midi_in_mode;
+		//V_SQL_MIDI_IN_MODE m_midi_in_mode;
 		V_SQL_MIDI_IN_CHAN m_midi_in_chan;
 		int m_show_grid:1;
 		int m_auto_gate:1;
@@ -148,7 +144,7 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init_config() {
-		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
+		//m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
 		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		m_cfg.m_show_grid = 1;
 		m_cfg.m_auto_gate = 1;
@@ -532,15 +528,15 @@ class CSequenceEditor {
 			m_edit_param = param;
 		}
 		else {
-			int value = get(param)+1;
+			int value = ::get(param)+1;
 			if(value > num_values-1) {
 				value = 0;
 			}
-			set(param, value);
+			::set(param, value);
 		}
 		m_cmd_prompt = prompt;
 		m_cmd_values = values;
-		m_edit_value = get(param);
+		m_edit_value = ::get(param);
 		command_prompt();
 	}
 
@@ -1239,19 +1235,19 @@ class CSequenceEditor {
 				toggle(P_SQL_SCALED_VIEW, "ROWS:", "CHR|SCA");
 				break;
 			case KEY_FUNC|KEY2_FUNC_AUTO_GATE:
-				toggle(P_EDIT_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
+				toggle(P_SQL_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
 				break;
 			case KEY_FUNC|KEY2_FUNC_INTERPOLATE:
 				toggle(P_SQL_FILL_MODE, "FILL:", "OFF|PAD|INT",3);
 				break;
 			case KEY_FUNC|KEY2_FUNC_GRID:
-				toggle(P_EDIT_SHOW_GRID, "GRID:", "HID|SHO");
+				toggle(P_SQL_SHOW_GRID, "GRID:", "HID|SHO");
 				break;
 			case KEY_FUNC|KEY2_FUNC_REC_MODE:
-				toggle(P_SQL_MIDI_IN_MODE, "REC:", "NONE|CV|CVGT|TRAN",4);
+				toggle(P_SEQ_REC_MODE, "REC:", "NONE|CV|CVGT|TRAN|PLAY",5);
 				break;
-			case KEY_FUNC|KEY2_FUNC_PAGE_ADV:
-				toggle(P_EDIT_REC_ARM, "ARM:", "OFF|ON");
+			case KEY_FUNC|KEY2_FUNC_REC_ARM:
+				toggle(P_SEQ_REC_ARM, "ARM:", "OFF|ON");
 				break;
 			}
 			break;
@@ -1401,10 +1397,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
 		switch(param) {
-		case P_EDIT_AUTO_GATE_INSERT: return !!m_cfg.m_auto_gate;
-		case P_EDIT_SHOW_GRID: return !!m_cfg.m_show_grid;
-		case P_EDIT_REC_ARM: return !!m_rec_arm;
-		case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
+		case P_SQL_AUTO_GATE_INSERT: return !!m_cfg.m_auto_gate;
+		case P_SQL_SHOW_GRID: return !!m_cfg.m_show_grid;
+		//case P_EDIT_REC_ARM: return !!m_rec_arm;
+		//case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
 		case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
 		default:
 			return g_sequence.get_layer(m_cur_layer).get(param);
@@ -1413,10 +1409,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set(PARAM_ID param, int value) {
 		switch(param) {
-		case P_EDIT_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
-		case P_EDIT_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
-		case P_EDIT_REC_ARM: m_rec_arm = !!value; break;
-		case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; fire_event(EV_MIDI_IN_RESET,0); break;
+		case P_SQL_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
+		case P_SQL_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
+		//case P_EDIT_REC_ARM: m_rec_arm = !!value; break;
+		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; fire_event(EV_MIDI_IN_RESET,0); break;
 		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; fire_event(EV_MIDI_IN_RESET,0); break;
 		default:
 			g_sequence.get_layer(m_cur_layer).set(param, value);
@@ -1426,11 +1422,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
-			case P_EDIT_AUTO_GATE_INSERT:
-			case P_EDIT_SHOW_GRID:
+			case P_SQL_AUTO_GATE_INSERT:
+			case P_SQL_SHOW_GRID:
 				return 1;
-			case P_SQL_MIDI_IN_CHAN:
-				return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
+			//case P_SQL_MIDI_IN_CHAN:
+				//return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 			default:
 				return g_sequence.get_layer(m_cur_layer).is_valid_param(param);
 		}
@@ -1527,10 +1523,20 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void handle_midi_note(byte chan, byte note, byte vel) {
 
-		if(m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE) {
-			if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
-				if(process_midi_in_note(note,vel)) { // any change to the held note?
-					if(m_num_midi_in_notes) {
+		if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
+			if(process_midi_in_note(note,vel)) { // any change to the held note?
+				if(m_num_midi_in_notes) {
+					g_sequence.midi_note_on(m_cur_layer, note, vel, g_ui.is_key_down(KEY_CLEAR));
+				}
+				else {
+					g_sequence.midi_note_off();
+				}
+			}
+		}
+	}
+
+	/*
+
 						byte flags = CSequenceLayer::REC_IS_GATE |
 								(vel? CSequenceLayer::REC_IS_TRIG:0) |
 								(m_rec_arm? CSequenceLayer::REC_ARM:0);
@@ -1554,6 +1560,7 @@ public:
 			}
 		}
 	}
+		*/
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// draw the display

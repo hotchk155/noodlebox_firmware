@@ -38,35 +38,6 @@ class CParams {
 	}
 
 public:
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	static void set(PARAM_ID param, int value) {
-		if(param < P_SQL_MAX) {
-			g_sequence_editor.set(param,value);
-		}
-		else if(param < P_CLOCK_MAX) {
-			g_clock.set(param,value);
-		}
-	}
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	static int get(PARAM_ID param) {
-		if(param < P_SQL_MAX) {
-			return g_sequence_editor.get(param);
-		}
-		else if(param < P_CLOCK_MAX) {
-			return g_clock.get(param);
-		}
-		return 0;
-	}
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	static int is_valid_for_menu(PARAM_ID param) {
-		if(param < P_SQL_MAX) {
-			return g_sequence_editor.is_valid_param(param);
-		}
-		else if(param < P_CLOCK_MAX) {
-			return g_clock.is_valid_param(param);
-		}
-		return 0;
-	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	static const char *value_string(PARAM_TYPE type, int value, const char *values_text) {

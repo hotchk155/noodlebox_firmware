@@ -100,13 +100,9 @@ typedef unsigned char byte;
 typedef enum:byte {
 	P_NONE = 0,
 
-	P_EDIT_AUTO_GATE_INSERT,
-	P_EDIT_SHOW_GRID,
-	P_EDIT_REC_ARM,
 
-	P_SQL_SCALE_TYPE,
-	P_SQL_SCALE_ROOT,
-	P_SQL_MIDI_IN_MODE,
+	P_SQL_AUTO_GATE_INSERT,
+	P_SQL_SHOW_GRID,
 	P_SQL_MIDI_IN_CHAN,
 	P_SQL_SEQ_MODE,
 	P_SQL_MIX,
@@ -134,6 +130,12 @@ typedef enum:byte {
 	P_SQL_OUT_CAL_SCALE,
 	P_SQL_OUT_CAL_OFFSET,
 	P_SQL_MAX,
+
+	P_SEQ_REC_MODE,
+	P_SEQ_REC_ARM,
+	P_SEQ_SCALE_TYPE,
+	P_SEQ_SCALE_ROOT,
+	P_SEQ_MAX,
 
 	P_CLOCK_BPM,
 	P_CLOCK_SRC,
@@ -373,12 +375,19 @@ typedef enum:byte {
 
 
 typedef enum:byte {
-	V_SQL_MIDI_IN_MODE_NONE,
-	V_SQL_MIDI_IN_MODE_CV,
-	V_SQL_MIDI_IN_MODE_CV_GATE,
-	V_SQL_MIDI_IN_MODE_TRANSPOSE,
-	V_SQL_MIDI_IN_MODE_MAX
-} V_SQL_MIDI_IN_MODE;
+	V_SEQ_REC_MODE_NONE,
+	V_SEQ_REC_MODE_CV,
+	V_SEQ_REC_MODE_CV_GATE,
+	V_SEQ_REC_MODE_TRANSPOSE,
+	V_SEQ_REC_MODE_PLAY,
+	V_SEQ_REC_MODE_MAX
+} V_SEQ_REC_MODE;
+
+typedef enum:byte {
+	V_SEQ_REC_ARM_OFF,
+	V_SEQ_REC_ARM_ON,
+	V_SEQ_REC_ARM_MAX
+} V_SEQ_REC_ARM;
 
 typedef enum:byte {
 	V_SQL_MIDI_IN_CHAN_1,
@@ -404,6 +413,9 @@ typedef enum:byte {
 extern void fire_event(int event, uint32_t param);
 extern void fire_note(byte midi_note, byte midi_vel);
 extern void force_full_repaint();
+void set(PARAM_ID param, int value);
+int get(PARAM_ID param);
+int is_valid_for_menu(PARAM_ID param);
 
 
 

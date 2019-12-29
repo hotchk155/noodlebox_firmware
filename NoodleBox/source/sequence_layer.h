@@ -45,15 +45,29 @@ public:
 		INIT_LAST
 	};
 
-	enum:byte {
+/*	enum:byte {
 		REC_ARM			= 0x01,
 		REC_GATE_INFO	= 0x02,
 		REC_NOTE_INFO	= 0x04,
 		REC_IS_GATE		= 0x08,
 		REC_IS_TRIG		= 0x10,
 		REC_IS_TIE		= 0x20
-	};
+	};*/
 
+	typedef enum:byte {
+		REC_GATE_OFF,
+		REC_GATE_TRIG,
+		REC_GATE_ON,
+		REC_GATE_TIE
+	} REC_GATE_STATE;
+
+	typedef struct {
+		V_SEQ_REC_MODE mode;
+		V_SEQ_REC_ARM arm;
+		REC_GATE_STATE gate_state;
+		byte note;
+		byte is_clear;
+	} REC_SESSION;
 private:
 
 
@@ -415,8 +429,6 @@ public:
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
 		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
-		case P_SQL_SCALE_TYPE: CScale::instance().set((V_SQL_SCALE_TYPE)value, CScale::instance().get_root()); break;
-		case P_SQL_SCALE_ROOT: CScale::instance().set(CScale::instance().get_type(), (V_SQL_SCALE_ROOT)value); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
@@ -454,8 +466,8 @@ public:
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
 		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
 		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
-		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
-		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
+//		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
+//		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
 		case P_SQL_LOOP_PER_PAGE: return !!m_cfg.m_loop_per_page;
 //		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
@@ -977,8 +989,7 @@ public:
 	// The maximum offset from grid is +/- half of a grid step, so it is never
 	// possible for steps to be scheduled out of order
 	//
-
-	byte play(clock::TICKS_TYPE ticks, int dice_roll, byte *rec_flags, byte rec_note) {
+	byte play(clock::TICKS_TYPE ticks, int dice_roll, REC_SESSION *rec) {
 
 		m_state.m_played_step = 0;
 
@@ -999,24 +1010,25 @@ public:
 		// a restart, in which case we are already pointing at step zero
 		if(do_advance) {
 
+			/*
+			switch(rec.mode) {
+			case V_SQL_MIDI_IN_MODE_NONE:
+			case V_SQL_MIDI_IN_MODE_CV:
+			case V_SQL_MIDI_IN_MODE_CV_GATE:
+			case V_SQL_MIDI_IN_MODE_TRANSPOSE:
+			case V_SQL_MIDI_IN_MODE_PLAY:
+			}
+			*/
 
-			if(rec_flags) {
-				// is there a note gate present at the end of the current step
-				if(*rec_flags & REC_IS_GATE) {
-					// has there been a note gate present throughout the entire step?
-					if(*rec_flags & REC_IS_TIE) {
-
-						// are we armed for recording?
-						if((*rec_flags & (REC_GATE_INFO|REC_ARM)) == (REC_GATE_INFO|REC_ARM)) {
-							// flag that this step is tied
-							m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
-							set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::GATE_DATA, 0);
-						}
-					}
-					else {
-						// set the sustain flag
-						*rec_flags |= REC_IS_TIE;
-					}
+			if(rec && rec->mode == V_SEQ_REC_MODE_CV_GATE && rec->arm == V_SEQ_REC_ARM_ON) {
+				switch(rec->gate_state) {
+				case REC_GATE_ON:
+					rec->gate_state = REC_GATE_TIE;
+					break;
+				case REC_GATE_TIE:
+					m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
+					set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::GATE_DATA, 0);
+					break;
 				}
 			}
 
@@ -1033,24 +1045,36 @@ public:
 		if(do_play) {
 			if(m_cfg.m_enabled) { // is the layer enabled?
 
+				if(rec && rec->is_clear && rec->note) {
+					clear_step(m_state.m_play_page_no, m_state.m_play_pos);
+				}
 				m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
 
-				if(rec_flags) {
-					// should we override note info with incoming MIDI?
-					if(*rec_flags & REC_NOTE_INFO) {
-						m_state.m_step_value.set_value(rec_note);
-					}
+				/*
+				switch(rec.mode) {
+				case V_SQL_MIDI_IN_MODE_NONE:
+				case V_SQL_MIDI_IN_MODE_CV:
+				case V_SQL_MIDI_IN_MODE_CV_GATE:
+				case V_SQL_MIDI_IN_MODE_TRANSPOSE:
+				case V_SQL_MIDI_IN_MODE_PLAY:
+				}
+				*/
 
-					// should we override gate info with incoming MIDI
-					if(*rec_flags & REC_GATE_INFO) {
-						if(*rec_flags & REC_IS_TRIG) {
-							// record triggers
-							m_state.m_step_value.set(CSequenceStep::TRIG_POINT, 1);
-							*rec_flags &= ~REC_IS_TRIG;
+
+				if(rec && (rec->mode == V_SEQ_REC_MODE_CV || rec->mode == V_SEQ_REC_MODE_CV_GATE)) {
+					m_state.m_step_value.set_value(rec->note);
+					if(rec->mode == V_SEQ_REC_MODE_CV_GATE) {
+						switch(rec->gate_state) {
+							case REC_GATE_TRIG:
+								m_state.m_step_value.set(CSequenceStep::TRIG_POINT, 1);
+								rec->gate_state = REC_GATE_ON;
+								break;
+							case REC_GATE_TIE:
+								m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
+								break;
 						}
 					}
-					// should we save over the old step value?
-					if(*rec_flags & REC_ARM) {
+					if(rec->arm == V_SEQ_REC_ARM_ON) {
 						set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
 					}
 				}
@@ -1099,11 +1123,11 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// called once per ms
 	void run() {
+
 		if(m_state.m_gate_timeout) {
 			if(!--m_state.m_gate_timeout) {
 				g_outs.gate(m_id, COuts::GATE_CLOSED);
 				stop_midi_note();
-
 			}
 		}
 
@@ -1159,6 +1183,7 @@ public:
 		}
 	}
 
+/*
 	///////////////////////////////////////////////////////////////////////////////
 	// Called when we are in a recording mode (armed or note). We override the
 	// current step value based on MIDI input
@@ -1171,12 +1196,14 @@ public:
 			set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
 		}
 	}
-
+*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
 	CV_TYPE process_cv(CV_TYPE this_input) {
 
+		// if the output is in calibration mode then we will not
+		// send any note information it it
 		if(m_state.m_cal_mode != V_SQL_OUT_CAL_NONE) {
 			return this_input;
 		}
@@ -1191,7 +1218,7 @@ public:
 		{
 			if(!m_state.m_suppress_step) {
 
-				int value = m_state.m_step_value.get_value();
+				int value = m_state.m_step_value.get_value() + (int)m_cfg.m_cv_transpose;;
 
 				// get the scaled data point
 				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
@@ -1216,29 +1243,27 @@ public:
 			else {
 				m_state.m_output = m_state.m_step_output;
 			}
+		}
 
-			// apply transposition
-			if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
-				m_state.m_output = m_state.m_output + 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
+		// apply transposition
+		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
+			m_state.m_output = m_state.m_output + 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
+		}
+
+		// quantize the output to scale if needed
+		switch(m_cfg.m_quantize) {
+		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
+			if(m_state.m_output < 0) {
+				m_state.m_output = 0;
 			}
-			m_state.m_output = m_state.m_output + COuts::SCALING * m_cfg.m_cv_transpose;
-
-			// quantize the output to scale if needed
-			switch(m_cfg.m_quantize) {
-			case V_SQL_SEQ_QUANTIZE_CHROMATIC:
-				if(m_state.m_output < 0) {
-					m_state.m_output = 0;
-				}
-				m_state.m_output = COuts::SCALING * (m_state.m_output/COuts::SCALING);
-				break;
-			case V_SQL_SEQ_QUANTIZE_SCALE:
-				if(m_state.m_output < 0) {
-					m_state.m_output = 0;
-				}
-				m_state.m_output = COuts::SCALING * CScale::instance().force_to_scale(m_state.m_output/COuts::SCALING);
-				break;
+			m_state.m_output = COuts::SCALING * (m_state.m_output/COuts::SCALING);
+			break;
+		case V_SQL_SEQ_QUANTIZE_SCALE:
+			if(m_state.m_output < 0) {
+				m_state.m_output = 0;
 			}
-
+			m_state.m_output = COuts::SCALING * CScale::instance().force_to_scale(m_state.m_output/COuts::SCALING);
+			break;
 		}
 		int glide_time;
 		switch(m_cfg.m_cv_glide) {

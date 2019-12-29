@@ -65,8 +65,8 @@ public:
 
 	static const int NUM_MENU_B_OPTS = 15;
 	const OPTION m_menu_b[NUM_MENU_B_OPTS] = {
-			{"SCA", P_SQL_SCALE_TYPE, PT_ENUMERATED, "IONI|DORI|PHRY|LYDI|MIXO|AEOL|LOCR"},
-			{"ROO", P_SQL_SCALE_ROOT, PT_ENUMERATED, "C|C#|D|D#|E|F|F#|G|G#|A|A#|B"},
+			{"SCA", P_SEQ_SCALE_TYPE, PT_ENUMERATED, "IONI|DORI|PHRY|LYDI|MIXO|AEOL|LOCR"},
+			{"ROO", P_SEQ_SCALE_ROOT, PT_ENUMERATED, "C|C#|D|D#|E|F|F#|G|G#|A|A#|B"},
 			{0},
 			{"CKI",  P_CLOCK_IN_RATE, PT_ENUMERATED, "8|16|24PP"},
 			{"CKO", P_CLOCK_OUT_MODE, PT_ENUMERATED, "OFF|ON|RUN"},
@@ -135,7 +135,7 @@ public:
 					if(i<0 || i>=m_num_opts) {
 						break;
 					}
-					if(m_opts[i].prompt && CParams::is_valid_for_menu(m_opts[i].param)) {
+					if(m_opts[i].prompt && ::is_valid_for_menu(m_opts[i].param)) {
 						m_item = i;
 						m_repaint = 1;
 						break;
@@ -145,13 +145,13 @@ public:
 			break;
 		case EV_KEY_PRESS:
 			if(param == KEY_CV) {
-				m_value = CParams::get(m_opts[m_item].param);
+				m_value = ::get(m_opts[m_item].param);
 				m_action = ACTION_VALUE_SELECTED;
 			}
 			break;
 		case EV_KEY_RELEASE:
 			if(m_action == ACTION_VALUE_CHANGED) {
-				CParams::set(m_opts[m_item].param, m_value);
+				::set(m_opts[m_item].param, m_value);
 				m_repaint = 1;
 			}
 			m_action = ACTION_NONE;
@@ -203,7 +203,7 @@ public:
 					}
 				}
 				if(state != 2) {
-					value = CParams::get(this_opt.param);
+					value = ::get(this_opt.param);
 				}
 
 				const char *sz = this_opt.prompt;
@@ -262,7 +262,7 @@ public:
 			int opt = m_item - 1;
 			int row = 5;
 			while(opt >= 0 && visible) {
-				if(!m_opts[opt].prompt || CParams::is_valid_for_menu(m_opts[opt].param)) {
+				if(!m_opts[opt].prompt || ::is_valid_for_menu(m_opts[opt].param)) {
 					row -= (m_opts[opt].prompt)? 6:2;
 					visible = draw_menu_option(opt,row);
 				}
@@ -273,7 +273,7 @@ public:
 			opt = m_item;
 			row = 5;
 			while(opt < m_num_opts && visible) {
-				if(!m_opts[opt].prompt || CParams::is_valid_for_menu(m_opts[opt].param)) {
+				if(!m_opts[opt].prompt || ::is_valid_for_menu(m_opts[opt].param)) {
 					visible = draw_menu_option(opt,row);
 					row += (m_opts[opt].prompt)? 6:2;
 				}

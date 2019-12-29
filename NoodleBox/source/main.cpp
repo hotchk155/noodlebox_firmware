@@ -135,6 +135,45 @@ void midi::handle_realtime(byte ch) {
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////////////////
+void set(PARAM_ID param, int value) {
+	if(param < P_SQL_MAX) {
+		g_sequence_editor.set(param,value);
+	}
+	else if(param < P_SEQ_MAX) {
+		g_sequence.set(param,value);
+	}
+	else if(param < P_CLOCK_MAX) {
+		g_clock.set(param,value);
+	}
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////
+int get(PARAM_ID param) {
+	if(param < P_SQL_MAX) {
+		return g_sequence_editor.get(param);
+	}
+	else if(param < P_SEQ_MAX) {
+		return g_sequence.get(param);
+	}
+	else if(param < P_CLOCK_MAX) {
+		return g_clock.get(param);
+	}
+	return 0;
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////
+int is_valid_for_menu(PARAM_ID param) {
+	if(param < P_SQL_MAX) {
+		return g_sequence_editor.is_valid_param(param);
+	}
+	else if(param < P_SEQ_MAX) {
+		return g_sequence.is_valid_param(param);
+	}
+	else if(param < P_CLOCK_MAX) {
+		return g_clock.is_valid_param(param);
+	}
+	return 0;
+}
+
 void dispatch_event(int event, uint32_t param) {
 	switch(g_view) {
 	case VIEW_SEQUENCER:

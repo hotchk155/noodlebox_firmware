@@ -24,6 +24,10 @@ class CSequence {
 public:
 	enum {
 		NUM_LAYERS = 4,	// number of layers in the sequence
+		MIDI_TRANSPOSE_ZERO = 60,
+		MIDI_TRANSPOSE_RANGE = 24,
+		MIDI_TRANSPOSE_MIN = (MIDI_TRANSPOSE_ZERO - MIDI_TRANSPOSE_RANGE),
+		MIDI_TRANSPOSE_MAX = (MIDI_TRANSPOSE_ZERO + MIDI_TRANSPOSE_RANGE)
 	};
 
 private:
@@ -34,9 +38,7 @@ private:
 	byte m_is_running;		// whether the sequencer is running
 
 	int m_rec_layer;
-	byte m_rec_note;
-	byte m_rec_flags;
-
+	CSequenceLayer::REC_SESSION m_rec;
 public:
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -50,8 +52,6 @@ public:
 			m_layers[i]->set_id(i);
 		}
 		m_is_running = 0;
-		m_rec_layer = -1;
-		m_rec_flags = 0;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
@@ -67,13 +67,22 @@ public:
 			m_layers[i]->set_id(i);
 			m_layers[i]->init_state();
 		}
+		m_rec_layer = -1;
+
+		m_rec.arm = V_SEQ_REC_ARM_OFF;
+		m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
+		m_rec.mode = V_SEQ_REC_MODE_NONE;
+		m_rec.is_clear = 0;
+		m_rec.note = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set(PARAM_ID param, int value) {
 		switch(param) {
-		case P_SQL_SCALE_TYPE: m_scale.set((V_SQL_SCALE_TYPE)value, m_scale.get_root()); break;
-		case P_SQL_SCALE_ROOT: m_scale.set(m_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
+		case P_SEQ_REC_ARM: m_rec.arm = (V_SEQ_REC_ARM)value; break;
+		case P_SEQ_REC_MODE: m_rec.mode = (V_SEQ_REC_MODE)value; break;
+		case P_SEQ_SCALE_TYPE: m_scale.set((V_SQL_SCALE_TYPE)value, m_scale.get_root()); break;
+		case P_SEQ_SCALE_ROOT: m_scale.set(m_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
 		default: break;
 		}
 	}
@@ -81,8 +90,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
 		switch(param) {
-		case P_SQL_SCALE_TYPE: return m_scale.get_type();
-		case P_SQL_SCALE_ROOT: return m_scale.get_root();
+		case P_SEQ_REC_ARM: return m_rec.arm;
+		case P_SEQ_REC_MODE: return m_rec.mode;
+		case P_SEQ_SCALE_TYPE: return m_scale.get_type();
+		case P_SEQ_SCALE_ROOT: return m_scale.get_root();
 		default:return 0;
 		}
 	}
@@ -146,17 +157,32 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void midi_note_on(int layer, byte flags, byte note) {
+	void midi_note_on(int layer, byte note, byte vel, byte is_clear) {
 		m_rec_layer = layer;
-		m_rec_note = note;
-		m_rec_flags &= ~CSequenceLayer::REC_IS_TIE; // tie flag is preserved (legato shift btw notes)
-		m_rec_flags |= flags;
+		m_rec.note = note;
+		m_rec.is_clear = is_clear;
+		m_rec.gate_state = vel? CSequenceLayer::REC_GATE_STATE::REC_GATE_TRIG: CSequenceLayer::REC_GATE_STATE::REC_GATE_ON;
+
+		if(m_rec_layer >= 0 && m_rec.mode == V_SEQ_REC_MODE_TRANSPOSE) {
+			if(note>=MIDI_TRANSPOSE_MIN && note<=MIDI_TRANSPOSE_MAX) {
+				m_layers[layer]->set(P_SQL_CV_TRANSPOSE, (int)note-MIDI_TRANSPOSE_ZERO);
+				fire_event(EV_REPAINT_MENU,0);
+			}
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void midi_note_off() {
+		if(m_rec_layer >= 0 && m_rec.mode == V_SEQ_REC_MODE_TRANSPOSE && m_rec.arm != V_SEQ_REC_ARM_ON) {
+			m_layers[m_rec_layer]->set(P_SQL_CV_TRANSPOSE, 0);
+			fire_event(EV_REPAINT_MENU,0);
+		}
+
 		m_rec_layer = -1;
-		m_rec_flags = 0;
+		m_rec.note = 0;
+		m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
+
+
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -164,6 +190,7 @@ public:
 	void run() {
 
 		// ensure the sequencer is running
+		byte played_step = 0;
 		if(m_is_running) {
 
 			// get a random dice roll for any random triggers
@@ -176,43 +203,42 @@ public:
 
 			// call the play method for each layer to run
 			// the scheduling of that layer's playback
-			byte played_step = 0;
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
 				if(m_rec_layer == i) {
-					if(layer->play(ticks, dice_roll, &m_rec_flags, m_rec_note)) {
+					if(layer->play(ticks, dice_roll, &m_rec)) {
 						played_step = 1;
 					}
 				}
 				else {
-					if(layer->play(ticks, dice_roll, NULL, 0)) {
+					if(layer->play(ticks, dice_roll, NULL)) {
 						played_step = 1;
 					}
 				}
 			}
+		}
 
-			// did any new step start playing?
-			if(played_step) {
+		// did any new step start playing?
+		if(played_step) {
 
-				// update each layer
-				CV_TYPE prev_output = 0;
-				for(int i=0; i<NUM_LAYERS; ++i) {
-					CSequenceLayer *layer = m_layers[i];
+			// update each layer
+			CV_TYPE prev_output = 0;
+			for(int i=0; i<NUM_LAYERS; ++i) {
+				CSequenceLayer *layer = m_layers[i];
 
-					// update the voltage output of layer
-					prev_output = layer->process_cv(prev_output);
+				// update the voltage output of layer
+				prev_output = layer->process_cv(prev_output);
 
-					// if the layer has stepped, may need to trigger the gate
-					if(layer->is_played_step()) {
-						layer->process_gate();
-						switch(layer->get_midi_out_mode()) {
-						case V_SQL_MIDI_OUT_NOTE:
-							layer->process_midi_note();
-							break;
-						case V_SQL_MIDI_OUT_CC:
-							layer->process_midi_cc();
-							break;
-						}
+				// if the layer has stepped, may need to trigger the gate
+				if(layer->is_played_step()) {
+					layer->process_gate();
+					switch(layer->get_midi_out_mode()) {
+					case V_SQL_MIDI_OUT_NOTE:
+						layer->process_midi_note();
+						break;
+					case V_SQL_MIDI_OUT_CC:
+						layer->process_midi_cc();
+						break;
 					}
 				}
 			}
