@@ -142,12 +142,15 @@ public:
 			}
 	    }
 	    if(flags & kUART_TxDataRegEmptyFlag) {
-	    	if(flags & kUART_TxDataRegEmptyFlag) {
-	    		UART_DisableInterrupts(UART0, kUART_TxDataRegEmptyInterruptEnable);
-	    	}
+	    	//if(flags & kUART_TxDataRegEmptyFlag) {
+	    		//UART_DisableInterrupts(UART0, kUART_TxDataRegEmptyInterruptEnable);
+	    	//}
 	    	if(m_tx_head != m_tx_tail) {
 		        UART_WriteByte(UART0, m_txbuf[m_tx_tail]);
 	    		m_tx_tail = (m_tx_tail+1)%TXBUF_SIZE_MASK;
+	    	}
+	    	else {
+	    		UART_DisableInterrupts(UART0, kUART_TxDataRegEmptyInterruptEnable);
 	    	}
 	    }
 	}

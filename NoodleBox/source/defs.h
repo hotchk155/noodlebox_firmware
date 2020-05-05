@@ -17,7 +17,9 @@
 #ifndef DEFS_H_
 #define DEFS_H_
 
-#define NB_PROTOTYPE 1
+//#define NB_PROTOTYPE 1	// define this for prototype hardware. Also need to use NoodleboxProto.mex
+#define MIDDLE_C_OCTAVE 4 // should middle C (note 60) be C3 or C4 as displayed in editor
+
 
 #if DEBUG
 	#define ASSERT(e) {if(!(e)) for(;;) {}}

@@ -24,8 +24,9 @@
 class CScale {
 	enum {
 		DEFAULT_NOTE = 36,
-		MAX_NOTE = 128,
-		MAX_INDEX = ((7*MAX_NOTE)/12)
+		SZ_NOTE_TO_INDEX = 128,
+		SZ_INDEX_TO_NOTE = ((7*SZ_NOTE_TO_INDEX)/12)+1
+
 	};
 	typedef struct {
 		V_SQL_SCALE_TYPE m_type;
@@ -33,8 +34,8 @@ class CScale {
 	} CONFIG;
 
 	CONFIG m_cfg;
-	byte m_index_to_note[MAX_INDEX];
-	byte m_note_to_index[MAX_NOTE];
+	byte m_index_to_note[SZ_INDEX_TO_NOTE];
+	byte m_note_to_index[SZ_NOTE_TO_INDEX];
 	byte m_max_index;
 
 	static CScale *m_instance;
@@ -49,7 +50,7 @@ class CScale {
 		byte note_number = m_cfg.m_root;
 		byte n2i_index = 0;
 		m_max_index = 0;
-		while(note_number < MAX_NOTE && m_max_index < MAX_INDEX) {
+		while(note_number < SZ_NOTE_TO_INDEX && m_max_index < SZ_INDEX_TO_NOTE) {
 			m_index_to_note[m_max_index] = note_number;
 			while(n2i_index <= note_number) {
 				m_note_to_index[n2i_index++] = m_max_index; // sharpen out of key notes to next note
@@ -101,8 +102,8 @@ public:
 
 	/////////////////////////////////////////////////////////////////
 	// return highest index in scale
-	inline byte max_index() {
-		return m_max_index;
+	inline int max_index() {
+		return m_max_index-1;
 	}
 
 	/////////////////////////////////////////////////////////////////

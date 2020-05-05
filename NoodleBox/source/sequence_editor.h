@@ -310,10 +310,9 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	void inc_step_value(CSequenceStep& step, int delta, byte fine, CSequenceLayer& layer) {
-		int value;
 		int min_value = 0;
 		int max_value = 127;
-		value = step.get_value();
+		int value = step.get_value();
 		switch(layer.get_mode()) {
 		case V_SQL_SEQ_MODE_MOD:
 			if(fine) {
@@ -327,8 +326,13 @@ class CSequenceEditor {
 			if(layer.is_scaled_view() && !fine) {
 				value = CScale::instance().note_to_index(value);
 				value += delta;
+				if(value < 0) {
+					value = 0;
+				}
+				if(value > CScale::instance().max_index()) {
+					value = CScale::instance().max_index();
+				}
 				value = CScale::instance().index_to_note(value);
-				max_value = CScale::instance().max_index();
 				break;
 			} // else fall thru
 		case V_SQL_SEQ_MODE_OFFSET:
@@ -338,7 +342,7 @@ class CSequenceEditor {
 			value += delta;
 			break;
 		}
-		if(min_value<0) {
+		if(value<min_value) {
 			value = min_value;
 		}
 		else if(value>max_value) {

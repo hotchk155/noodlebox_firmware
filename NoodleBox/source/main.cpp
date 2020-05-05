@@ -68,8 +68,13 @@ const uint32_t title_screen[] = {
 		(uint32_t)0xFFFFFFFF,
 		(uint32_t)0xFFFFFFFF,
 		(uint32_t)0xFFFFFFFF,
+#if NB_PROTOTYPE
+		(uint32_t)0xAAAAAAAA,
+		(uint32_t)0x55555555
+#else
 		(uint32_t)0xFFFFFFFF,
 		(uint32_t)0xFFFFFFFF
+#endif
 };
 
 

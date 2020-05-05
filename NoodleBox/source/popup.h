@@ -17,7 +17,6 @@
 #ifndef POPUP_H_
 #define POPUP_H_
 
-
 class CPopup {
 	void format_number(int value, int msd) {
 		if(value<0) {
@@ -150,7 +149,8 @@ public:
 		}
 
 		// octave
-		format_number(note/12-1, 1);
+		format_number((note/12)+(MIDDLE_C_OCTAVE-5), 1);
+
 		m_render = 1;
 		m_align = ALIGN_RIGHT;
 		m_timeout = DISPLAY_TIMEOUT;
