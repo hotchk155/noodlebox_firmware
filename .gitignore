@@ -222,3 +222,4 @@ pip-log.txt
 .mr.developer.cfg
 NoodleBox/SYX/NoodleBox.hex
 NoodleBox/SYX/Noodlebox.syx
+.mcuxpressoide_packages_support/
