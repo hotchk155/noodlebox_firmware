@@ -7,11 +7,11 @@
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
 !!GlobalInfo
-product: Pins v5.0
+product: Pins v7.0
 processor: MKE04Z128xxx4
 package_id: MKE04Z128VLD4
 mcu_data: ksdk2_0
-processor_version: 5.0.0
+processor_version: 7.0.1
 pin_labels:
 - {pin_num: '1', pin_signal: PTD1/KBI0_P25/FTM2_CH3/SPI1_MOSI, label: ENCODER1, identifier: ENCODER1}
 - {pin_num: '2', pin_signal: PTD0/KBI0_P24/FTM2_CH2/SPI1_SCK, label: ENCODER2, identifier: ENCODER2}
@@ -19,7 +19,6 @@ pin_labels:
 - {pin_num: '14', pin_signal: PTC3/KBI0_P19/FTM2_CH3/ADC0_SE11, label: LED2, identifier: LED2}
 - {pin_num: '15', pin_signal: PTC2/KBI0_P18/FTM2_CH2/ADC0_SE10, label: LED3, identifier: LED3}
 - {pin_num: '37', pin_signal: PTC6/KBI0_P22/UART1_RX, label: KEYSCAN1, identifier: KEYSCAN1}
-- {pin_num: '39', pin_signal: PTE1/KBI1_P1/SPI0_MOSI/I2C1_SCL, label: OFF_SWITCH, identifier: OFF_SWITCH}
 - {pin_num: '18', pin_signal: PTD5/KBI0_P29/PWT_IN0, label: P_KDAT, identifier: P_KDAT}
 - {pin_num: '19', pin_signal: PTC1/KBI0_P17/FTM2_CH1/ADC0_SE9, label: P_KDAT, identifier: P_KDAT;P_KCLK}
 - {pin_num: '20', pin_signal: PTC0/KBI0_P16/FTM2_CH0/ADC0_SE8, label: P_ARCK, identifier: P_ARCK}
@@ -33,6 +32,9 @@ pin_labels:
 - {pin_num: '38', pin_signal: PTE2/KBI1_P2/SPI0_MISO/PWT_IN0, label: POWER_CTRL, identifier: POWER_CTRL}
 - {pin_num: '41', pin_signal: PTC5/KBI0_P21/FTM1_CH1/RTCO, label: SYNCOUT, identifier: SYNCOUT}
 - {pin_num: '13', pin_signal: PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b, label: KEYSCAN2, identifier: KEYSCAN2}
+- {pin_num: '3', pin_signal: PTE7/KBI1_P7/TCLK2/FTM1_CH1, label: OFF_SWITCH, identifier: OFF_SWITCH}
+- {pin_num: '36', pin_signal: PTC7/KBI0_P23/UART1_TX, label: AUXIN, identifier: AUXIN}
+- {pin_num: '25', pin_signal: PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3, label: AUXOUT, identifier: AUXOUT}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 /* clang-format on */
@@ -50,13 +52,13 @@ pin_labels:
  * END ****************************************************************************************************************/
 void BOARD_InitBootPins(void)
 {
-    BOARD_InitPins_Proto();
+    BOARD_InitPins_Release();
 }
 
 /* clang-format off */
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
-BOARD_InitPins_Proto:
+BOARD_InitPins_Release:
 - options: {callFromInitBoot: 'true', coreID: core0, enableClock: 'true'}
 - pin_list:
   - {pin_num: '32', peripheral: I2C0, signal: SCL, pin_signal: PTA3/KBI0_P3/UART0_TX/I2C0_SCL}
@@ -78,74 +80,83 @@ BOARD_InitPins_Proto:
   - {pin_num: '30', peripheral: GPIOA, signal: 'GPIO, 27', pin_signal: PTD3/KBI0_P27/SPI1_PCS}
   - {pin_num: '29', peripheral: GPIOA, signal: 'GPIO, 28', pin_signal: PTD4/KBI0_P28}
   - {pin_num: '18', peripheral: GPIOA, signal: 'GPIO, 29', pin_signal: PTD5/KBI0_P29/PWT_IN0}
-  - {pin_num: '17', peripheral: GPIOA, signal: 'GPIO, 30', pin_signal: PTD6/KBI0_P30/UART2_RX, pullup_enable: enable}
-  - {pin_num: '16', peripheral: GPIOA, signal: 'GPIO, 31', pin_signal: PTD7/KBI0_P31/UART2_TX, pullup_enable: enable}
-  - {pin_num: '39', peripheral: GPIOB, signal: 'GPIO, 1', pin_signal: PTE1/KBI1_P1/SPI0_MOSI/I2C1_SCL, direction: INPUT, pullup_enable: enable}
-  - {pin_num: '38', peripheral: GPIOB, signal: 'GPIO, 2', pin_signal: PTE2/KBI1_P2/SPI0_MISO/PWT_IN0, direction: OUTPUT}
   - {pin_num: '35', peripheral: KBI0, signal: 'P, 0', pin_signal: PTA0/KBI0_P0/FTM0_CH0/I2C0_4WSCLOUT/ACMP0_IN0/ADC0_SE0}
   - {pin_num: '9', peripheral: OSC, signal: EXTAL, pin_signal: PTB7/KBI0_P15/I2C0_SCL/EXTAL}
   - {pin_num: '10', peripheral: OSC, signal: XTAL, pin_signal: PTB6/KBI0_P14/I2C0_SDA/XTAL}
   - {pin_num: '24', peripheral: UART0, signal: RX, pin_signal: PTB0/KBI0_P8/UART0_RX/PWT_IN1/ADC0_SE4}
   - {pin_num: '23', peripheral: UART0, signal: TX, pin_signal: PTB1/KBI0_P9/UART0_TX/ADC0_SE5}
   - {pin_num: '13', peripheral: GPIOA, signal: 'GPIO, 12', pin_signal: PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b, direction: INPUT, pullup_enable: enable}
+  - {pin_num: '39', peripheral: I2C1, signal: SCL, pin_signal: PTE1/KBI1_P1/SPI0_MOSI/I2C1_SCL}
+  - {pin_num: '3', peripheral: GPIOB, signal: 'GPIO, 7', pin_signal: PTE7/KBI1_P7/TCLK2/FTM1_CH1, direction: INPUT, pullup_enable: enable}
+  - {pin_num: '36', peripheral: GPIOA, signal: 'GPIO, 23', pin_signal: PTC7/KBI0_P23/UART1_TX, direction: INPUT, pullup_enable: enable}
+  - {pin_num: '25', peripheral: GPIOA, signal: 'GPIO, 7', pin_signal: PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3, direction: OUTPUT}
+  - {pin_num: '38', peripheral: GPIOB, signal: 'GPIO, 2', pin_signal: PTE2/KBI1_P2/SPI0_MISO/PWT_IN0}
+  - {pin_num: '40', peripheral: I2C1, signal: SDA, pin_signal: PTE0/KBI1_P0/SPI0_SCK/TCLK1/I2C1_SDA}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 /* clang-format on */
 
 /* FUNCTION ************************************************************************************************************
  *
- * Function Name : BOARD_InitPins_Proto
+ * Function Name : BOARD_InitPins_Release
  * Description   : Configures pin routing and optionally pin electrical features.
  *
  * END ****************************************************************************************************************/
-void BOARD_InitPins_Proto(void)
+void BOARD_InitPins_Release(void)
 {
+
+    gpio_pin_config_t AUXOUT_config = {
+        .pinDirection = kGPIO_DigitalOutput,
+        .outputLogic = 0U
+    };
+    /* Initialize GPIO functionality on pin PTA7 (pin 25) */
+    GPIO_PinInit(BOARD_INITPINS_RELEASE_AUXOUT_GPIO_PORT, BOARD_INITPINS_RELEASE_AUXOUT_PIN, &AUXOUT_config);
 
     gpio_pin_config_t KEYSCAN2_config = {
         .pinDirection = kGPIO_DigitalInput,
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTA12 (pin 13) */
-    GPIO_PinInit(BOARD_INITPINS_PROTO_KEYSCAN2_GPIO_PORT, BOARD_INITPINS_PROTO_KEYSCAN2_PIN, &KEYSCAN2_config);
+    GPIO_PinInit(BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO_PORT, BOARD_INITPINS_RELEASE_KEYSCAN2_PIN, &KEYSCAN2_config);
 
     gpio_pin_config_t KEYSCAN1_config = {
         .pinDirection = kGPIO_DigitalInput,
         .outputLogic = 0U
     };
     /* Initialize GPIO functionality on pin PTA22 (pin 37) */
-    GPIO_PinInit(BOARD_INITPINS_PROTO_KEYSCAN1_GPIO_PORT, BOARD_INITPINS_PROTO_KEYSCAN1_PIN, &KEYSCAN1_config);
+    GPIO_PinInit(BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO_PORT, BOARD_INITPINS_RELEASE_KEYSCAN1_PIN, &KEYSCAN1_config);
+
+    gpio_pin_config_t AUXIN_config = {
+        .pinDirection = kGPIO_DigitalInput,
+        .outputLogic = 0U
+    };
+    /* Initialize GPIO functionality on pin PTA23 (pin 36) */
+    GPIO_PinInit(BOARD_INITPINS_RELEASE_AUXIN_GPIO_PORT, BOARD_INITPINS_RELEASE_AUXIN_PIN, &AUXIN_config);
 
     gpio_pin_config_t OFF_SWITCH_config = {
         .pinDirection = kGPIO_DigitalInput,
         .outputLogic = 0U
     };
-    /* Initialize GPIO functionality on pin PTB1 (pin 39) */
-    GPIO_PinInit(BOARD_INITPINS_PROTO_OFF_SWITCH_GPIO_PORT, BOARD_INITPINS_PROTO_OFF_SWITCH_PIN, &OFF_SWITCH_config);
-
-    gpio_pin_config_t POWER_CTRL_config = {
-        .pinDirection = kGPIO_DigitalOutput,
-        .outputLogic = 0U
-    };
-    /* Initialize GPIO functionality on pin PTB2 (pin 38) */
-    GPIO_PinInit(BOARD_INITPINS_PROTO_POWER_CTRL_GPIO_PORT, BOARD_INITPINS_PROTO_POWER_CTRL_PIN, &POWER_CTRL_config);
+    /* Initialize GPIO functionality on pin PTB7 (pin 3) */
+    GPIO_PinInit(BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO_PORT, BOARD_INITPINS_RELEASE_OFF_SWITCH_PIN, &OFF_SWITCH_config);
     /* Pull Enable for Port B Bit 4: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTB, BOARD_INITPINS_PROTO_KEYSCAN2_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTB, BOARD_INITPINS_RELEASE_KEYSCAN2_PIN, true);
     /* Pull Enable for Port C Bit 6: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTC, BOARD_INITPINS_PROTO_KEYSCAN1_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTC, BOARD_INITPINS_RELEASE_KEYSCAN1_PIN, true);
+    /* Pull Enable for Port C Bit 7: 0x01u */
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTC, BOARD_INITPINS_RELEASE_AUXIN_PIN, true);
     /* Pull Enable for Port D Bit 0: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_PROTO_ENCODER2_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_RELEASE_ENCODER2_PIN, true);
     /* Pull Enable for Port D Bit 1: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_PROTO_ENCODER1_PIN, true);
-    /* Pull Enable for Port D Bit 6: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, 6U, true);
-    /* Pull Enable for Port D Bit 7: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, 7U, true);
-    /* Pull Enable for Port E Bit 1: 0x01u */
-    PORT_SetPinPullUpEnable(PORT, kPORT_PTE, BOARD_INITPINS_PROTO_OFF_SWITCH_PIN, true);
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTD, BOARD_INITPINS_RELEASE_ENCODER1_PIN, true);
+    /* Pull Enable for Port E Bit 7: 0x01u */
+    PORT_SetPinPullUpEnable(PORT, kPORT_PTE, BOARD_INITPINS_RELEASE_OFF_SWITCH_PIN, true);
     /* pin 32,33 is configured as I2C0_SCL, I2C0_SDA */
     PORT_SetPinSelect(kPORT_I2C0, kPORT_I2C0_SCLPTA3_SDAPTA2);
     /* pin 24,23 is configured as UART0_RX, UART0_TX */
     PORT_SetPinSelect(kPORT_UART0, kPORT_UART0_RXPTB0_TXPTB1);
+    /* pin 39,40 is configured as I2C1_SCL, I2C1_SDA */
+    PORT_SetPinSelect(kPORT_I2C1, kPORT_I2C1_SCLPTE1_SDAPTE0);
     /* disable NMI function on pin 13 */
     PORT_SetPinSelect(kPORT_NMI, kPORT_NMI_OTHERS);
 
