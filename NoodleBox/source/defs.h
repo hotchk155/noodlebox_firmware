@@ -63,6 +63,9 @@ enum {
 	EV_SAVE_FAIL,
 
 	EV_REAPPLY_CONFIG,
+
+	EV_AUX_IN
+
 };
 
 #define I2C_ADDR_DAC 	0b1100000

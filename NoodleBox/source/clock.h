@@ -21,13 +21,13 @@
 
 // define the GPIO pins used for clock (will initialise the port)
 #ifdef NB_PROTOTYPE
-CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
-CDigitalOut<kGPIO_PORTC, 5> g_clock_out;
+CDigitalIn g_clock_in(kGPIO_PORTA, 0);
+CDigitalOut g_clock_out(kGPIO_PORTC, 5);
 #else
-CDigitalIn<kGPIO_PORTA, 0> g_clock_in;
-CDigitalOut<kGPIO_PORTD, 3> g_clock_out;
-CDigitalIn<kGPIO_PORTC, 7> g_aux_in;
-CDigitalOut<kGPIO_PORTC, 5> g_aux_out;
+CDigitalIn g_clock_in(kGPIO_PORTA, 0);
+CDigitalOut g_clock_out(kGPIO_PORTD, 3);
+CDigitalIn g_aux_in(kGPIO_PORTC, 7);
+CDigitalOut g_aux_out(kGPIO_PORTC, 5);
 #endif
 
 // This namespace wraps up various clock based utilities
@@ -506,7 +506,6 @@ public:
 };
 CPulseClockOut g_pulse_clock_out;
 
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // This class is used for managing the MIDI clock output
@@ -633,6 +632,7 @@ class CClock {
 	volatile uint32_t m_ms;					// ms counter
 	volatile TICKS_TYPE m_ticks;
 	volatile double m_ticks_remainder;
+	volatile int m_aux_in_count;
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -695,6 +695,7 @@ public:
 		m_ms_tick = 0;
 		m_ticks = 0;
 		m_ticks_remainder = 0;
+		m_aux_in_count = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -828,6 +829,10 @@ public:
 	void run() {
 		g_pulse_clock_in.run(m_ms);
 		g_pulse_clock_out.run();
+		if(m_aux_in_count)  {
+			fire_event(EV_AUX_IN,0);
+			--m_aux_in_count;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -876,11 +881,9 @@ public:
 		g_pulse_clock_in.on_pulse(m_ms);
 	}
 
-#ifndef NB_PROTOTYPE
 	inline void aux_in_isr() {
-//TODO
+		++m_aux_in_count;
 	}
-#endif
 
 	static int get_cfg_size() {
 		return sizeof(m_cfg) +

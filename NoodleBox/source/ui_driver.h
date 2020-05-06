@@ -156,21 +156,20 @@
 //////////////////////////////////////////////////////////////////////////////
 
 // define the output pins used to drive the screen (also initialise the ports)
-CDigitalOut<kGPIO_PORTD, 5> g_pin_kdat;
-CDigitalOut<kGPIO_PORTC, 1> g_pin_kclk;
-CDigitalOut<kGPIO_PORTC, 0> g_pin_arck;
-CDigitalOut<kGPIO_PORTB, 3> g_pin_adat;
-CDigitalOut<kGPIO_PORTB, 2> g_pin_asck;
-CDigitalOut<kGPIO_PORTA, 1> g_pin_enable;
+CDigitalOut g_pin_kdat(kGPIO_PORTD, 5);
+CDigitalOut g_pin_kclk(kGPIO_PORTC, 1);
+CDigitalOut g_pin_arck(kGPIO_PORTC, 0);
+CDigitalOut g_pin_adat(kGPIO_PORTB, 3);
+CDigitalOut g_pin_asck(kGPIO_PORTB, 2);
+CDigitalOut g_pin_enable(kGPIO_PORTA, 1);
 
 // define the input pins used to read from keyboard scan (also initialise the ports)
-CDigitalIn<kGPIO_PORTC, 6> g_pin_keyscan1;
-CDigitalIn<kGPIO_PORTB, 4> g_pin_keyscan2;
-//CDigitalIn<kGPIO_PORTD, 6> g_pin_keyscan3;
+CDigitalIn g_pin_keyscan1(kGPIO_PORTC, 6);
+CDigitalIn g_pin_keyscan2(kGPIO_PORTB, 4);
 
 // define the input pins used to read from encode (also initialise the ports)
-CDigitalIn<kGPIO_PORTD, 0> g_pin_encoder1;
-CDigitalIn<kGPIO_PORTD, 1> g_pin_encoder2;
+CDigitalIn g_pin_encoder1(kGPIO_PORTD, 0);
+CDigitalIn g_pin_encoder2(kGPIO_PORTD, 1);
 
 extern uint32_t g_render_buf[DISPLAY_BUF_SIZE];
 extern volatile byte g_disp_update;

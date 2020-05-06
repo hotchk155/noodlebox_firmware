@@ -25,19 +25,19 @@
 	#define BIT_GATE2		MK_GPIOA_BIT(PORTD_BASE, 3)	// gate 2 on different pin
 	#define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, 2)
 	#define BIT_GATE4		MK_GPIOA_BIT(PORTD_BASE, 4)
-	CDigitalOut<kGPIO_PORTA, 6> g_gate_1;
-	CDigitalOut<kGPIO_PORTD, 3> g_gate_2;
-	CDigitalOut<kGPIO_PORTD, 2> g_gate_3;
-	CDigitalOut<kGPIO_PORTD, 4> g_gate_4;
+	CDigitalOut g_gate_1(kGPIO_PORTA, 6);
+	CDigitalOut g_gate_2(kGPIO_PORTD, 3);
+	CDigitalOut g_gate_3(kGPIO_PORTD, 2);
+	CDigitalOut g_gate_4(kGPIO_PORTD, 4);
 #else
 	#define BIT_GATE1		MK_GPIOA_BIT(PORTA_BASE, 6)
 	#define BIT_GATE2		MK_GPIOA_BIT(PORTA_BASE, 7)
 	#define BIT_GATE3		MK_GPIOA_BIT(PORTD_BASE, 2)
 	#define BIT_GATE4		MK_GPIOA_BIT(PORTD_BASE, 4)
-	CDigitalOut<kGPIO_PORTA, 6> g_gate_1;
-	CDigitalOut<kGPIO_PORTD, 7> g_gate_2;
-	CDigitalOut<kGPIO_PORTD, 2> g_gate_3;
-	CDigitalOut<kGPIO_PORTD, 4> g_gate_4;
+	CDigitalOut g_gate_1(kGPIO_PORTA, 6);
+	CDigitalOut g_gate_2(kGPIO_PORTD, 7);
+	CDigitalOut g_gate_3(kGPIO_PORTD, 2);
+	CDigitalOut g_gate_4(kGPIO_PORTD, 4);
 #endif
 
 

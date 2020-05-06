@@ -79,11 +79,11 @@ const uint32_t title_screen[] = {
 
 
 #if NB_PROTOTYPE
- CDigitalOut<kGPIO_PORTE, 2> PowerControl;
- CDigitalIn<kGPIO_PORTE, 1> OffSwitch;
+ CDigitalOut PowerControl(kGPIO_PORTE, 2);
+ CDigitalIn OffSwitch(kGPIO_PORTE, 1);
 #else
- CDigitalOut<kGPIO_PORTE, 2> PowerControl;
- CDigitalIn<kGPIO_PORTE, 7> OffSwitch;
+ CDigitalOut PowerControl(kGPIO_PORTE, 2);
+ CDigitalIn OffSwitch(kGPIO_PORTE, 7);
 #endif
 
 
