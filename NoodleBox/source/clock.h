@@ -382,7 +382,7 @@ CFixedClockSource g_fixed_clock;
 class CPulseClockOut {
 	friend class CClock;
 	typedef struct {
-		V_PULSE_OUT_MODE m_clock_out_mode;
+		V_CLOCK_OUT_MODE m_clock_out_mode;
 		V_CLOCK_OUT_RATE m_clock_out_rate;
 	} CONFIG;
 	CONFIG m_cfg;
@@ -408,20 +408,20 @@ public:
 		set_rate(V_CLOCK_OUT_RATE_16);
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void set_mode(V_PULSE_OUT_MODE clock_out_mode) {
-		if(V_PULSE_OUT_MODE_RUNNING == clock_out_mode) {
+	void set_mode(V_CLOCK_OUT_MODE clock_out_mode) {
+		if(V_CLOCK_OUT_MODE_RUNNING == clock_out_mode) {
 			m_out.set(m_running);
 			m_state = ST_IDLE;
 			m_timeout = 0;
 			m_pulses = 0;
 		}
-		else if(V_PULSE_OUT_MODE_RUNNING == m_cfg.m_clock_out_mode) {
+		else if(V_CLOCK_OUT_MODE_RUNNING == m_cfg.m_clock_out_mode) {
 			m_out.set(0);
 		}
 		m_cfg.m_clock_out_mode = clock_out_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	V_PULSE_OUT_MODE get_mode() {
+	V_CLOCK_OUT_MODE get_mode() {
 		return m_cfg.m_clock_out_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
@@ -456,7 +456,7 @@ public:
 		///////////////////////////////////////
 		case EV_CLOCK_RESET:
 			switch(m_cfg.m_clock_out_mode) {
-			case V_PULSE_OUT_MODE_RUNNING:
+			case V_CLOCK_OUT_MODE_RUNNING:
 				break;
 			default:
 				m_out.set(0);
@@ -469,12 +469,12 @@ public:
 			///////////////////////////////////////
 		case EV_SEQ_RESTART:
 			switch(m_cfg.m_clock_out_mode) {
-			case V_PULSE_OUT_MODE_START:
-			case V_PULSE_OUT_MODE_RESTART:
-			case V_PULSE_OUT_MODE_START_STOP:
+			case V_CLOCK_OUT_MODE_START:
+			case V_CLOCK_OUT_MODE_RESTART:
+			case V_CLOCK_OUT_MODE_START_STOP:
 				pulse();
 				break;
-			case V_PULSE_OUT_MODE_RUNNING:
+			case V_CLOCK_OUT_MODE_RUNNING:
 				m_out.set(1);
 				break;
 			}
@@ -483,11 +483,11 @@ public:
 			///////////////////////////////////////
 		case EV_SEQ_STOP:
 			switch(m_cfg.m_clock_out_mode) {
-			case V_PULSE_OUT_MODE_STOP:
-			case V_PULSE_OUT_MODE_START_STOP:
+			case V_CLOCK_OUT_MODE_STOP:
+			case V_CLOCK_OUT_MODE_START_STOP:
 				pulse();
 				break;
-			case V_PULSE_OUT_MODE_RUNNING:
+			case V_CLOCK_OUT_MODE_RUNNING:
 				m_out.set(0);
 				break;
 			}
@@ -496,11 +496,11 @@ public:
 			///////////////////////////////////////
 		case EV_SEQ_CONTINUE:
 			switch(m_cfg.m_clock_out_mode) {
-			case V_PULSE_OUT_MODE_START:
-			case V_PULSE_OUT_MODE_START_STOP:
+			case V_CLOCK_OUT_MODE_START:
+			case V_CLOCK_OUT_MODE_START_STOP:
 				pulse();
 				break;
-			case V_PULSE_OUT_MODE_RUNNING:
+			case V_CLOCK_OUT_MODE_RUNNING:
 				m_out.set(1);
 				break;
 			}
@@ -517,8 +517,8 @@ public:
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
 		ASSERT(m_period);
-		if(m_cfg.m_clock_out_mode == V_PULSE_OUT_MODE_CLOCK ||
-			(m_cfg.m_clock_out_mode == V_PULSE_OUT_MODE_GATED_CLOCK && m_running))	{
+		if(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_CLOCK ||
+			(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_GATED_CLOCK && m_running))	{
 			if(!(pp24%m_period)) {
 				pulse();
 			}
@@ -776,7 +776,7 @@ public:
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_OUT_MODE:
-				g_pulse_clock_out.set_mode((V_PULSE_OUT_MODE)value);
+				g_pulse_clock_out.set_mode((V_CLOCK_OUT_MODE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_OUT_RATE:
@@ -784,7 +784,7 @@ public:
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_AUX_OUT_MODE:
-				g_pulse_aux_out.set_mode((V_PULSE_OUT_MODE)value);
+				g_pulse_aux_out.set_mode((V_CLOCK_OUT_MODE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_AUX_OUT_RATE:
@@ -819,8 +819,8 @@ public:
 		switch(param) {
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
 		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
-		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_PULSE_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_PULSE_OUT_MODE_GATED_CLOCK);
-		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_PULSE_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_PULSE_OUT_MODE_GATED_CLOCK);
+		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
+		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 		default: return 1;
 		}
 	}
@@ -902,7 +902,7 @@ public:
 		g_pulse_clock_out.run();
 		g_pulse_aux_out.run();
 		if(m_aux_in_count)  {
-			fire_event(EV_AUX_IN,0);
+			//fire_event(EV_AUX_IN,0);
 			--m_aux_in_count;
 		}
 	}
