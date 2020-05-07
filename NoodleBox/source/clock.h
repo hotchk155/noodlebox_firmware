@@ -382,7 +382,7 @@ CFixedClockSource g_fixed_clock;
 class CPulseClockOut {
 	friend class CClock;
 	typedef struct {
-		V_CLOCK_OUT_MODE m_clock_out_mode;
+		V_PULSE_OUT_MODE m_clock_out_mode;
 		V_CLOCK_OUT_RATE m_clock_out_rate;
 	} CONFIG;
 	CONFIG m_cfg;
@@ -395,19 +395,33 @@ class CPulseClockOut {
 	int m_timeout;				// time to remain in state
 	int m_pulses;				// number of pulses remaining to send
 	int m_period;
-	byte m_running;
+	int m_running:1;
+	CDigitalOut& m_out;
+
 public:
 	///////////////////////////////////////////////////////////////////////////////
-	CPulseClockOut() {
-		set_rate(V_CLOCK_OUT_RATE_16);
+	CPulseClockOut(CDigitalOut& out) : m_out(out) {
+		m_timeout = 0;
+		m_pulses = 0;
+		m_period = 0;
 		m_running = 0;
+		set_rate(V_CLOCK_OUT_RATE_16);
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void set_mode(V_CLOCK_OUT_MODE clock_out_mode) {
+	void set_mode(V_PULSE_OUT_MODE clock_out_mode) {
+		if(V_PULSE_OUT_MODE_RUNNING == clock_out_mode) {
+			m_out.set(m_running);
+			m_state = ST_IDLE;
+			m_timeout = 0;
+			m_pulses = 0;
+		}
+		else if(V_PULSE_OUT_MODE_RUNNING == m_cfg.m_clock_out_mode) {
+			m_out.set(0);
+		}
 		m_cfg.m_clock_out_mode = clock_out_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	V_CLOCK_OUT_MODE get_mode() {
+	V_PULSE_OUT_MODE get_mode() {
 		return m_cfg.m_clock_out_mode;
 	}
 	///////////////////////////////////////////////////////////////////////////////
@@ -421,47 +435,92 @@ public:
 		return m_cfg.m_clock_out_rate;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	void event(int event, uint32_t param) {
-		switch(event) {
-		case EV_CLOCK_RESET:
-			m_state = ST_IDLE;
-			m_timeout = 0;
-			m_pulses = 0;
-			m_running = 0;
-			break;
-		case EV_SEQ_RESTART:
-			m_running = 1;
-			break;
-		case EV_SEQ_STOP:
-			m_running = 0;
-			break;
-		case EV_SEQ_CONTINUE:
-			m_running = 1;
-			break;
-		case EV_REAPPLY_CONFIG:
-			set_rate(m_cfg.m_clock_out_rate);
-			break;
+	inline void pulse() {
+		// can we do it immediately?
+		if(ST_IDLE == m_state) {
+			m_out.set(1);
+			m_state = ST_HIGH;
+			m_timeout =
+				(m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PP)?
+				HIGH_MS_24PPQN : HIGH_MS;
+		}
+		else {
+			// queue it up
+			++m_pulses;
 		}
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void event(int event, uint32_t param) {
+		switch(event) {
+		///////////////////////////////////////
+		case EV_CLOCK_RESET:
+			switch(m_cfg.m_clock_out_mode) {
+			case V_PULSE_OUT_MODE_RUNNING:
+				break;
+			default:
+				m_out.set(0);
+				m_state = ST_IDLE;
+				m_timeout = 0;
+				m_pulses = 0;
+				break;
+			}
+			break;
+			///////////////////////////////////////
+		case EV_SEQ_RESTART:
+			switch(m_cfg.m_clock_out_mode) {
+			case V_PULSE_OUT_MODE_START:
+			case V_PULSE_OUT_MODE_RESTART:
+			case V_PULSE_OUT_MODE_START_STOP:
+				pulse();
+				break;
+			case V_PULSE_OUT_MODE_RUNNING:
+				m_out.set(1);
+				break;
+			}
+			m_running = 1;
+			break;
+			///////////////////////////////////////
+		case EV_SEQ_STOP:
+			switch(m_cfg.m_clock_out_mode) {
+			case V_PULSE_OUT_MODE_STOP:
+			case V_PULSE_OUT_MODE_START_STOP:
+				pulse();
+				break;
+			case V_PULSE_OUT_MODE_RUNNING:
+				m_out.set(0);
+				break;
+			}
+			m_running = 0;
+			break;
+			///////////////////////////////////////
+		case EV_SEQ_CONTINUE:
+			switch(m_cfg.m_clock_out_mode) {
+			case V_PULSE_OUT_MODE_START:
+			case V_PULSE_OUT_MODE_START_STOP:
+				pulse();
+				break;
+			case V_PULSE_OUT_MODE_RUNNING:
+				m_out.set(1);
+				break;
+			}
+			m_running = 1;
+			break;
+			///////////////////////////////////////
+		case EV_REAPPLY_CONFIG:
+			set_rate(m_cfg.m_clock_out_rate);
+			set_mode(m_cfg.m_clock_out_mode);
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	inline void on_pp24(int pp24) {
 		// check if we need to send a clock out pulse
 		ASSERT(m_period);
-		if(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_ON ||
-			(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_GATE && m_running))	{
+		if(m_cfg.m_clock_out_mode == V_PULSE_OUT_MODE_CLOCK ||
+			(m_cfg.m_clock_out_mode == V_PULSE_OUT_MODE_GATED_CLOCK && m_running))	{
 			if(!(pp24%m_period)) {
-				// can we do it immediately?
-				if(ST_IDLE == m_state) {
-					g_clock_out.set(1);
-					m_state = ST_HIGH;
-					m_timeout =
-						(m_cfg.m_clock_out_rate == V_CLOCK_OUT_RATE_24PP)?
-						HIGH_MS_24PPQN : HIGH_MS;
-				}
-				else {
-					// queue it up
-					++m_pulses;
-				}
+				pulse();
 			}
 		}
 	}
@@ -472,7 +531,7 @@ public:
 		case ST_LOW:	// forced low state after a pulse
 			if(!--m_timeout) { // see if end of low phase
 				if(m_pulses) { // do we need another pulse?
-					g_clock_out.set(1);
+					m_out.set(1);
 					--m_pulses;
 					m_state = ST_HIGH;
 					m_timeout = HIGH_MS;
@@ -484,13 +543,12 @@ public:
 			break;
 		case ST_HIGH:
 			if(!--m_timeout) {
-				g_clock_out.set(0);
+				m_out.set(0);
 				m_state = ST_LOW;
 				m_timeout = LOW_MS;
 			}
 			break;
 		}
-
 	}
 	static int get_cfg_size() {
 		return sizeof(m_cfg);
@@ -504,7 +562,8 @@ public:
 		(*src)+=get_cfg_size();
 	}
 };
-CPulseClockOut g_pulse_clock_out;
+CPulseClockOut g_pulse_clock_out(g_clock_out);
+CPulseClockOut g_pulse_aux_out(g_aux_out);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -717,11 +776,19 @@ public:
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_OUT_MODE:
-				g_pulse_clock_out.set_mode((V_CLOCK_OUT_MODE)value);
+				g_pulse_clock_out.set_mode((V_PULSE_OUT_MODE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_CLOCK_OUT_RATE:
 				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);
+				fire_event(EV_CLOCK_RESET, 0);
+				break;
+			case P_AUX_OUT_MODE:
+				g_pulse_aux_out.set_mode((V_PULSE_OUT_MODE)value);
+				fire_event(EV_CLOCK_RESET, 0);
+				break;
+			case P_AUX_OUT_RATE:
+				g_pulse_aux_out.set_rate((V_CLOCK_OUT_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
 			case P_MIDI_CLOCK_OUT:
@@ -740,6 +807,8 @@ public:
 		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
 		case P_CLOCK_OUT_MODE: return g_pulse_clock_out.get_mode();
 		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
+		case P_AUX_OUT_MODE: return g_pulse_aux_out.get_mode();
+		case P_AUX_OUT_RATE: return g_pulse_aux_out.get_rate();
 		case P_MIDI_CLOCK_OUT: return g_midi_clock_out.get_mode();
 		default: return 0;
 		}
@@ -750,7 +819,8 @@ public:
 		switch(param) {
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
 		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
-		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() != V_CLOCK_OUT_MODE_NONE);
+		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_PULSE_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_PULSE_OUT_MODE_GATED_CLOCK);
+		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_PULSE_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_PULSE_OUT_MODE_GATED_CLOCK);
 		default: return 1;
 		}
 	}
@@ -775,6 +845,7 @@ public:
 		g_fixed_clock.event(event, param);
 		g_pulse_clock_in.event(event, param);
 		g_pulse_clock_out.event(event, param);
+		g_pulse_aux_out.event(event, param);
 		g_midi_clock_in.event(event, param);
 		g_midi_clock_out.event(event, param);
 
@@ -829,6 +900,7 @@ public:
 	void run() {
 		g_pulse_clock_in.run(m_ms);
 		g_pulse_clock_out.run();
+		g_pulse_aux_out.run();
 		if(m_aux_in_count)  {
 			fire_event(EV_AUX_IN,0);
 			--m_aux_in_count;
@@ -872,6 +944,7 @@ public:
 		if((m_ticks ^ prev_ticks)&~0xFF) {
 			int pp24 = m_ticks>>8;
 			g_pulse_clock_out.on_pp24(pp24);
+			g_pulse_aux_out.on_pp24(pp24);
 			g_midi_clock_out.on_pp24();
 			g_beat_led_out.on_pp24(pp24);
 		}
@@ -890,6 +963,7 @@ public:
 			CFixedClockSource::get_cfg_size() +
 			CPulseClockSource::get_cfg_size() +
 			CPulseClockOut::get_cfg_size() +
+			CPulseClockOut::get_cfg_size() +
 			CMidiClockOut::get_cfg_size();
 	}
 	void get_cfg(byte **dest) {
@@ -898,6 +972,7 @@ public:
 		g_fixed_clock.get_cfg(dest);
 		g_pulse_clock_in.get_cfg(dest);
 		g_pulse_clock_out.get_cfg(dest);
+		g_pulse_aux_out.get_cfg(dest);
 		g_midi_clock_out.get_cfg(dest);
 	}
 	void set_cfg(byte **src) {
@@ -906,6 +981,7 @@ public:
 		g_fixed_clock.set_cfg(src);
 		g_pulse_clock_in.set_cfg(src);
 		g_pulse_clock_out.set_cfg(src);
+		g_pulse_aux_out.set_cfg(src);
 		g_midi_clock_out.set_cfg(src);
 	}
 
