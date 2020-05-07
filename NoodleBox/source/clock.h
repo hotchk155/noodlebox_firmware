@@ -683,6 +683,7 @@ CBeatLedOut g_beat_led_out;
 class CClock {
 	typedef struct {
 		V_CLOCK_SRC m_source_mode;
+		V_AUX_IN_MODE m_aux_in_mode;
 	} CONFIG;
 	CONFIG m_cfg;
 
@@ -771,6 +772,9 @@ public:
 				set_source_mode((V_CLOCK_SRC)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
+			case P_AUX_IN_MODE:
+				m_cfg.m_aux_in_mode = (V_AUX_IN_MODE)value;
+				break;
 			case P_CLOCK_IN_RATE:
 				g_pulse_clock_in.set_rate((V_CLOCK_IN_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
@@ -804,6 +808,7 @@ public:
 		switch(param) {
 		case P_CLOCK_BPM: return g_fixed_clock.get_bpm();
 		case P_CLOCK_SRC: return m_cfg.m_source_mode;
+		case P_AUX_IN_MODE: return m_cfg.m_aux_in_mode;
 		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
 		case P_CLOCK_OUT_MODE: return g_pulse_clock_out.get_mode();
 		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
@@ -902,7 +907,23 @@ public:
 		g_pulse_clock_out.run();
 		g_pulse_aux_out.run();
 		if(m_aux_in_count)  {
-			//fire_event(EV_AUX_IN,0);
+			switch(m_cfg.m_aux_in_mode) {
+			case V_AUX_IN_MODE_RUN_STOP:
+				fire_event(EV_SEQ_RUN_STOP, 0);
+				break;
+			case V_AUX_IN_MODE_CONT:
+				fire_event(EV_SEQ_CONTINUE, 0);
+				break;
+			case V_AUX_IN_MODE_RESTART:
+				fire_event(EV_SEQ_RESTART, 0);
+				break;
+			//case V_AUX_IN_MODE_RESET_X:
+				//fire_event(EV_SEQ_RESTART_X, 0);
+				//break;
+			case V_AUX_IN_MODE_MUTE_X:
+				fire_event(EV_SEQ_MUTE_UNMUTE_X, 0);
+				break;
+			}
 			--m_aux_in_count;
 		}
 	}

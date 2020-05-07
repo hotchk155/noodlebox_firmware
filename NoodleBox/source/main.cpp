@@ -164,7 +164,7 @@ void fire_event(int event, uint32_t param) {
 	case EV_KEY_PRESS:
 		switch(param) {
 			case KEY_RUN:
-				fire_event(g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_CONTINUE, 0);
+				fire_event(EV_SEQ_RUN_STOP, 0);
 				break;
 			case KEY_CV|KEY_RUN:
 				fire_event(EV_SEQ_RESTART, 0);
@@ -223,6 +223,9 @@ void fire_event(int event, uint32_t param) {
 	case EV_LOAD_FAIL:
 		g_popup.text("M.ERR");
 		break;
+	case EV_SEQ_RUN_STOP:
+		event = g_sequence.is_running()? EV_SEQ_STOP : EV_SEQ_CONTINUE;
+		// fall thru
 	case EV_SEQ_STOP:
 	case EV_SEQ_RESTART:
 	case EV_SEQ_CONTINUE:
@@ -235,6 +238,11 @@ void fire_event(int event, uint32_t param) {
 		g_sequence.event(event, param);
 		g_sequence_editor.event(event, param);
 		break;
+	//case EV_SEQ_RESTART_X:
+	case EV_SEQ_MUTE_UNMUTE_X:
+		g_sequence.event(event, param);
+		break;
+
 	///////////////////////////////////
 	default:
 		dispatch_event(event, param);
@@ -303,7 +311,7 @@ void load_config() {
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 int main(void) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            BOARD_InitBootPins();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       BOARD_InitBootPins();
     BOARD_InitBootClocks();
     BOARD_InitBootPeripherals();
 
