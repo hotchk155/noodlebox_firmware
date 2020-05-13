@@ -105,7 +105,8 @@ private:
 		V_SQL_CVGLIDE	m_cv_glide;
 		V_SQL_COMBINE	m_combine_prev;
 		byte 			m_midi_vel;
-		byte 			m_midi_bend;
+		byte 			m_midi_acc_vel;
+//		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
 		byte 			m_scroll_ofs;					// lowest step value shown on grid
@@ -322,7 +323,8 @@ public:
 		m_cfg.m_cv_transpose = 0;
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
-		m_cfg.m_midi_bend = 0;
+		m_cfg.m_midi_acc_vel = 127;
+//		m_cfg.m_midi_bend = 0;
 		m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
@@ -439,7 +441,8 @@ public:
 		case P_SQL_CVSCALE: m_cfg.m_cv_scale = (V_SQL_CVSCALE)value; break;
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
-		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
+		case P_SQL_MIDI_ACC_VEL: m_cfg.m_midi_acc_vel = value; break;
+//		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
 		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
 		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
@@ -477,7 +480,8 @@ public:
 		case P_SQL_CVSCALE: return m_cfg.m_cv_scale;
 		case P_SQL_CVGLIDE: return m_cfg.m_cv_glide;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
-		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
+		case P_SQL_MIDI_ACC_VEL: return m_cfg.m_midi_acc_vel;
+//		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
 		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
 //		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
 //		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
@@ -506,7 +510,7 @@ public:
 		case P_SQL_MIDI_OUT_CHAN:
 			return (m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE);
 		case P_SQL_MIDI_VEL:
-		case P_SQL_MIDI_BEND:
+		case P_SQL_MIDI_ACC_VEL:
 			return (m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE);
 		case P_SQL_MIDI_CC:
 		case P_SQL_MIDI_CC_SMOOTH:
@@ -1367,6 +1371,7 @@ public:
 			// round the output pitch to the closest MIDI note
 			byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
 
+			/*
 			// work out pitch bend
 			int bend = 0;
 			if(m_cfg.m_midi_bend) {
@@ -1376,48 +1381,42 @@ public:
 				bend = (bend * 8192)/m_cfg.m_midi_bend;
 				bend = bend / COuts::SCALING;
 			}
+*/
 
 			// work out the velocity
-			int vel = m_cfg.m_midi_vel;
-			switch(m_state.m_step_value.get_accent()) {
-			case 1:
-				vel = vel * 1.25;
-				break;
-			case 2:
-				vel = vel * 1.5;
-				break;
-			case 3:
-				vel = vel * 2;
-				break;
-			}
-			if(vel > 127) {
-				m_state.m_midi_vel = 127;
+			int vel;
+			if(m_state.m_step_value.is(CSequenceStep::ACCENT_POINT)) {
+				vel = m_cfg.m_midi_acc_vel;
 			}
 			else {
-				m_state.m_midi_vel = vel;
+				vel = m_cfg.m_midi_vel;
 			}
 
 			// check if we need to ties notes together
 			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && m_state.m_midi_note != NO_MIDI_NOTE) {
 				// check that we're not simply extending the same note
 				if(m_state.m_midi_note != note) {
-					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, m_state.m_midi_vel);
+					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, vel);
 					g_midi.stop_note(m_cfg.m_midi_out_chan, note);
 				}
+				/*
 				// check if any change to pitch bend needed
 				if(m_state.m_midi_bend != bend) {
 					g_midi.bend(m_cfg.m_midi_out_chan, bend);
 					m_state.m_midi_bend = bend;
 				}
+				*/
 			}
 			else {
 				// not tying notes
 				g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
+				/*
 				if(m_state.m_midi_bend != bend) {
 					g_midi.bend(m_cfg.m_midi_out_chan, bend);
 					m_state.m_midi_bend = bend;
 				}
-				g_midi.start_note(m_cfg.m_midi_out_chan, note, m_state.m_midi_vel);
+				*/
+				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel);
 			}
 			m_state.m_midi_note = note;
 		}

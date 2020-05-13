@@ -29,9 +29,9 @@ class CSequenceStep {
 	typedef struct {
 		byte m_trig:1;
 		byte m_tie:1;
+		byte m_accent:1;
 		byte m_prob:4;
 		byte m_retrig:4;
-		byte m_accent:4;
 	} GATE_TYPE;
 
 	typedef struct {
@@ -46,7 +46,6 @@ public:
 		VALUE_MAX = 127,
 		PROB_MAX = 15,
 		RETRIG_MAX = 15,
-		ACCENT_MAX = 3
 	};
 
 	typedef enum: byte {
@@ -58,7 +57,8 @@ public:
 	typedef enum: byte {
 		DATA_POINT,
 		TRIG_POINT,
-		TIE_POINT
+		TIE_POINT,
+		ACCENT_POINT
 	} POINT_TYPE;
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +86,8 @@ public:
 			return !!m_gate.m_trig;
 		case TIE_POINT:
 			return !!m_gate.m_tie;
+		case ACCENT_POINT:
+			return !!m_gate.m_accent;
 		}
 		return 0;
 	}
@@ -101,6 +103,8 @@ public:
 			break;
 		case TIE_POINT:
 			return m_gate.m_tie = !!value;
+		case ACCENT_POINT:
+			return m_gate.m_accent = !!value;
 		}
 		return 0;
 	}
@@ -125,17 +129,6 @@ public:
 	void set_retrig(byte retrig) {
 		ASSERT(retrig<=RETRIG_MAX);
 		m_gate.m_retrig = retrig;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	inline byte get_accent() {
-		return m_gate.m_accent;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	void set_accent(byte acc) {
-		ASSERT(acc<=ACCENT_MAX);
-		m_gate.m_accent = acc;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////

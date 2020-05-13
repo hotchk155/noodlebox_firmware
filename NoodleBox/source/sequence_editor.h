@@ -56,7 +56,7 @@ class CSequenceEditor {
 
 	enum {
 		GATE_VIEW_GATE_TIE,
-		GATE_VIEW_VELOCITY,
+		GATE_VIEW_ACCENT,
 		GATE_VIEW_PROB,
 		GATE_VIEW_RETRIG,
 		GATE_VIEW_MAX = GATE_VIEW_RETRIG
@@ -166,8 +166,7 @@ class CSequenceEditor {
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_accent(CSequenceStep& step) {
-		g_popup.text("ACC.");
-		g_popup.text_value("--|LO|ME|HI", step.get_accent(), 1);
+		g_popup.text(step.is(CSequenceStep::ACCENT_POINT) ? "ACC:ON" : "ACC:OFF");
 		g_popup.avoid(m_cursor);
 	}
 
@@ -733,7 +732,7 @@ class CSequenceEditor {
 				show_gate_retrig(step);
 				break;
 			case KEY_GATE|KEY2_GATE_VEL:
-				m_gate_view = GATE_VIEW_VELOCITY;
+				m_gate_view = GATE_VIEW_ACCENT;
 				show_gate_accent(step);
 				break;
 			case KEY_GATE|KEY2_GATE_REPLACE:
@@ -763,10 +762,10 @@ class CSequenceEditor {
 				m_gate_view = GATE_VIEW_RETRIG;
 				break;
 			case KEY_GATE|KEY2_GATE_VEL:
-				step.set_accent(inc_value(what, step.get_accent(), 0, CSequenceStep::ACCENT_MAX, 0));
+				step.set(CSequenceStep::ACCENT_POINT, (what == ACTION_ENC_RIGHT));
 				layer.set_step(m_cur_page, m_cursor, step);
 				show_gate_accent(step);
-				m_gate_view = GATE_VIEW_VELOCITY;
+				m_gate_view = GATE_VIEW_ACCENT;
 				break;
 			case KEY_GATE|KEY2_GATE_REPLACE:
 				loop_span = layer.get_loop_span(m_cur_page, &loop_min, &loop_max);
@@ -1711,8 +1710,8 @@ public:
 						bri = BRIGHT_LOW;
 					}
 					break;
-				case GATE_VIEW_VELOCITY:
-					if(!!step.get_accent()) {
+				case GATE_VIEW_ACCENT:
+					if(step.is(CSequenceStep::ACCENT_POINT)) {
 						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
 					else if(trig_or_tie){
