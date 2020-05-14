@@ -201,10 +201,13 @@ public:
 			// get the current clock tick count
 			clock::TICKS_TYPE ticks = g_clock.get_ticks();
 
+			int is_accented_step = 0;
+
 			// call the play method for each layer to run
 			// the scheduling of that layer's playback
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				CSequenceLayer *layer = m_layers[i];
+				is_accented_step |= layer->is_accented_step();
 				if(m_rec_layer == i) {
 					if(layer->play(ticks, dice_roll, &m_rec)) {
 						played_step = 1;
@@ -216,6 +219,8 @@ public:
 					}
 				}
 			}
+
+			clock::g_pulse_aux_out.set_accent(is_accented_step);
 		}
 
 		// did any new step start playing?

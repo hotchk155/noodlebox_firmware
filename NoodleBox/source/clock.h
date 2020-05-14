@@ -477,6 +477,9 @@ public:
 			case V_CLOCK_OUT_MODE_RUNNING:
 				m_out.set(1);
 				break;
+			case V_CLOCK_OUT_MODE_ACCENT:
+				m_out.set(0);
+				break;
 			}
 			m_running = 1;
 			break;
@@ -488,6 +491,7 @@ public:
 				pulse();
 				break;
 			case V_CLOCK_OUT_MODE_RUNNING:
+			case V_CLOCK_OUT_MODE_ACCENT:
 				m_out.set(0);
 				break;
 			}
@@ -510,6 +514,13 @@ public:
 		case EV_REAPPLY_CONFIG:
 			set_rate(m_cfg.m_clock_out_rate);
 			set_mode(m_cfg.m_clock_out_mode);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_accent(int value) {
+		if(m_cfg.m_clock_out_mode == V_CLOCK_OUT_MODE_ACCENT) {
+			m_out.set(value);
 		}
 	}
 
@@ -833,7 +844,6 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// handle sequencer events
 	void event(int event, uint32_t param) {
-
 		switch(event) {
 		case EV_SEQ_STOP:
 		case EV_SEQ_CONTINUE:
@@ -853,7 +863,6 @@ public:
 		g_pulse_aux_out.event(event, param);
 		g_midi_clock_in.event(event, param);
 		g_midi_clock_out.event(event, param);
-
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
