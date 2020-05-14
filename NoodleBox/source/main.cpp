@@ -333,9 +333,9 @@ int main(void) {
     g_midi.init();
     g_sequence.init();
     load_config();
-    if(!g_ui.is_key_down(KEY_CV)) {
-        g_sequence.load_patch(SLOT_AUTOSAVE);
-    }
+    //if(!g_ui.is_key_down(KEY_CV)) {
+    //    g_sequence.load_patch(SLOT_AUTOSAVE);
+    //}
     g_i2c_bus.wait_for_idle();
 
     g_sequence_editor.activate();
@@ -379,7 +379,7 @@ int main(void) {
     	g_i2c_bus.run();
     }
     save_config();
-    g_sequence.save_patch(SLOT_AUTOSAVE);
+    //g_sequence.save_patch(SLOT_AUTOSAVE);
     g_i2c_bus.wait_for_idle();
 	PowerControl.set(0);
 	for(;;);
