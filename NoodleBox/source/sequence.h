@@ -220,7 +220,7 @@ public:
 				}
 			}
 
-			clock::g_pulse_aux_out.set_accent(is_accented_step);
+			g_clock.set_accent(is_accented_step);
 		}
 
 		// did any new step start playing?

@@ -54,7 +54,7 @@ enum {
 	EV_SEQ_CONTINUE,		// sequencer playback resumes from current position
 	EV_SEQ_RUN_STOP,		// send STOP or CONTINUE depending on run state
 	//EV_SEQ_RESTART_X,
-	EV_SEQ_MUTE_UNMUTE_X,	// toggle mute on participating layers
+	//EV_SEQ_MUTE_UNMUTE_X,	// toggle mute on participating layers
 	EV_CLOCK_RESET,			// reset clock timing info
 	EV_CHANGE_LAYER,		// change the current editor layer
 	EV_REPAINT_MENU,
@@ -137,7 +137,7 @@ typedef enum:byte {
 	P_SQL_OUT_CAL,
 	P_SQL_OUT_CAL_SCALE,
 	P_SQL_OUT_CAL_OFFSET,
-	P_SQL_AUX_IN_ENABLE,
+	//P_SQL_AUX_IN_ENABLE,
 	P_SQL_MAX,
 
 	P_SEQ_REC_MODE,
@@ -354,8 +354,8 @@ typedef enum:byte {
 typedef enum:byte {
 	V_MIDI_CLOCK_OUT_NONE,
 	V_MIDI_CLOCK_OUT_ON,
-	V_MIDI_CLOCK_OUT_GATE,
 	V_MIDI_CLOCK_OUT_ON_TRAN,
+	V_MIDI_CLOCK_OUT_GATE,
 	V_MIDI_CLOCK_OUT_GATE_TRAN,
 	V_MIDI_CLOCK_OUT_MAX
 } V_MIDI_CLOCK_OUT;
@@ -365,17 +365,14 @@ typedef enum:byte {
 	V_AUX_IN_MODE_RUN_STOP,
 	V_AUX_IN_MODE_CONT,
 	V_AUX_IN_MODE_RESTART,
-	//V_AUX_IN_MODE_RESET_X,
-	V_AUX_IN_MODE_MUTE_X,
-	V_AUX_IN_MODE_MAX,
-	V_AUX_IN_MODE_X_BASE = V_AUX_IN_MODE_MUTE_X
+	V_AUX_IN_MODE_MAX
 } V_AUX_IN_MODE;
 
-typedef enum:byte {
-	V_SQL_AUX_IN_ENABLE_OFF,
-	V_SQL_AUX_IN_ENABLE_ON,
-	V_SQL_AUX_IN_ENABLE_MAX,
-} V_SQL_AUX_IN_ENABLE;
+//typedef enum:byte {
+//	V_SQL_AUX_IN_ENABLE_OFF,
+//	V_SQL_AUX_IN_ENABLE_ON,
+//	V_SQL_AUX_IN_ENABLE_MAX,
+//} V_SQL_AUX_IN_ENABLE;
 
 typedef enum:byte {
 	V_SQL_CV_ALIAS_NONE,

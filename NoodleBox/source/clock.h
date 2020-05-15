@@ -835,7 +835,7 @@ public:
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
-		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
+		//case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
 		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 		default: return 1;
@@ -864,6 +864,13 @@ public:
 		g_pulse_aux_out.event(event, param);
 		g_midi_clock_in.event(event, param);
 		g_midi_clock_out.event(event, param);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Set accent gates if according to mode
+	void set_accent(int value) {
+		g_pulse_clock_out.set_accent(value);
+		g_pulse_aux_out.set_accent(value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -930,9 +937,9 @@ public:
 			//case V_AUX_IN_MODE_RESET_X:
 				//fire_event(EV_SEQ_RESTART_X, 0);
 				//break;
-			case V_AUX_IN_MODE_MUTE_X:
-				fire_event(EV_SEQ_MUTE_UNMUTE_X, 0);
-				break;
+			//case V_AUX_IN_MODE_MUTE_X:
+				//fire_event(EV_SEQ_MUTE_UNMUTE_X, 0);
+				//break;
 			}
 			--m_aux_in_count;
 		}

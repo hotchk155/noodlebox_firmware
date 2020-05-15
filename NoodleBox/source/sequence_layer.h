@@ -26,7 +26,7 @@ public:
 	enum {
 		NUM_PAGES = 4,					// number of pages
 		MAX_PLAYING_NOTES = 8,
-		DEFAULT_SCROLL_OFS = 31,
+		//DEFAULT_SCROLL_OFS = 31,
 		SCROLL_MARGIN = 3,
 		MAX_CUE_LIST = 16,
 	};
@@ -116,7 +116,7 @@ private:
 		int 			m_enabled:1;
 		V_SQL_CV_ALIAS 	m_cv_alias;
 		V_SQL_GATE_ALIAS m_gate_alias;
-		V_SQL_AUX_IN_ENABLE m_aux_in_enable;
+		//V_SQL_AUX_IN_ENABLE m_aux_in_enable;
 		//V_SQL_MIDI_IN_MODE m_midi_in_mode;
 		//V_SQL_MIDI_IN_CHAN m_midi_in_chan;
 
@@ -330,7 +330,7 @@ public:
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scaled_view = 1;
-		m_cfg.m_aux_in_enable = V_SQL_AUX_IN_ENABLE_OFF;
+//		m_cfg.m_aux_in_enable = V_SQL_AUX_IN_ENABLE_OFF;
 //		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
 //		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		set_cv_alias(V_SQL_CV_ALIAS_NONE);
@@ -348,7 +348,8 @@ public:
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_cue_list_count = 0;
 		m_cfg.m_cue_mode = CUE_NONE;
-		m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
+		set_scroll_for(get_default_value(),1);
+		//m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -410,16 +411,16 @@ public:
 			init_state();
 			break;
 		//case EV_SEQ_RESTART_X:
-		case EV_SEQ_MUTE_UNMUTE_X:
-			if(m_cfg.m_aux_in_enable == V_SQL_AUX_IN_ENABLE_ON) {
+		//case EV_SEQ_MUTE_UNMUTE_X:
+			//if(m_cfg.m_aux_in_enable == V_SQL_AUX_IN_ENABLE_ON) {
 				//if(event == EV_SEQ_RESTART_X) {
 				//	reset();
 				//}
 				//else if(event == EV_SEQ_MUTE_UNMUTE_X) {
 					set_enabled(!is_enabled());
 				//}
-			}
-			break;
+			//}
+			//break;
 		}
 	}
 
@@ -459,7 +460,7 @@ public:
 		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
 		//case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
-		case P_SQL_AUX_IN_ENABLE: m_cfg.m_aux_in_enable = (V_SQL_AUX_IN_ENABLE)value; break;
+		//case P_SQL_AUX_IN_ENABLE: m_cfg.m_aux_in_enable = (V_SQL_AUX_IN_ENABLE)value; break;
 		default: break;
 		}
 	}
@@ -500,7 +501,7 @@ public:
 		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
 		//case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
 		//case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
-		case P_SQL_AUX_IN_ENABLE: return m_cfg.m_aux_in_enable;
+		//case P_SQL_AUX_IN_ENABLE: return m_cfg.m_aux_in_enable;
 		default:return 0;
 		}
 	}
@@ -521,8 +522,8 @@ public:
 		case P_SQL_OUT_CAL_OFFSET:
 			return !!m_state.m_cal_mode;
 		//case P_SQL_MIDI_IN_CHAN: return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
-		case P_SQL_AUX_IN_ENABLE:
-			return !!(g_clock.get(P_AUX_IN_MODE) >= V_AUX_IN_MODE_X_BASE);
+		//case P_SQL_AUX_IN_ENABLE:
+		//	return !!(g_clock.get(P_AUX_IN_MODE) >= V_AUX_IN_MODE_X_BASE);
 		}
 		return 1;
 	}
