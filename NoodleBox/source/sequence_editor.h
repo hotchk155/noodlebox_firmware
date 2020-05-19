@@ -1241,7 +1241,7 @@ class CSequenceEditor {
 				toggle(P_SQL_SCALED_VIEW, "ROWS:", "CHR|SCA");
 				break;
 			case KEY_FUNC|KEY2_FUNC_AUTO_GATE:
-				toggle(P_SQL_AUTO_GATE_INSERT, "TRIG:", "MAN|AUT");
+				toggle(P_SQL_AUTO_GATE_INSERT, "GATE:", "MAN|AUT");
 				break;
 			case KEY_FUNC|KEY2_FUNC_INTERPOLATE:
 				toggle(P_SQL_FILL_MODE, "FILL:", "OFF|PAD|INT",3);

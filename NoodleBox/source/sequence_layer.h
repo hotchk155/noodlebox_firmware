@@ -32,7 +32,7 @@ public:
 	};
 
 	enum {
-		OFFSET_ZERO = 60,
+		OFFSET_ZERO = 64,
 		OFFSET_MIN = 0,
 		OFFSET_MAX = 127,
 		MOD_AMOUNT_DEFAULT = 50,
