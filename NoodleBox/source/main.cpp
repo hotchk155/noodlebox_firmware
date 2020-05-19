@@ -154,6 +154,30 @@ void dispatch_event(int event, uint32_t param) {
 	}
 }
 
+void switch_to_view(VIEW_TYPE view) {
+	switch(g_view) {
+	case VIEW_SEQUENCER:
+		g_sequence_editor.deactivate();
+		break;
+	case VIEW_MENU_A:
+	case VIEW_MENU_B:
+		g_menu.deactivate();
+		break;
+	}
+	g_view = view;
+	switch(g_view) {
+	case VIEW_SEQUENCER:
+		g_sequence_editor.activate();
+		break;
+	case VIEW_MENU_A:
+		g_menu.activate(CMenu::MENU_A);
+		break;
+	case VIEW_MENU_B:
+		g_menu.activate(CMenu::MENU_B);
+		break;
+	}
+}
+
 void fire_event(int event, uint32_t param) {
 
 	switch(event) {
@@ -178,27 +202,25 @@ void fire_event(int event, uint32_t param) {
 			switch(g_view) {
 			case VIEW_MENU_A:
 			case VIEW_MENU_B:
-				g_view = VIEW_SEQUENCER;
-				g_sequence_editor.activate();
+				switch_to_view(VIEW_SEQUENCER);
 				break;
 			case VIEW_SEQUENCER:
 			default:
-				g_view = VIEW_MENU_A;
-				g_menu.activate(CMenu::MENU_A);
+				switch_to_view(VIEW_MENU_A);
 				break;
 			}
 			break;
 		case KEY_LAYER|KEY_FUNC:
 			switch(g_view) {
-			case VIEW_MENU_B:
-				g_view = VIEW_MENU_A;
-				g_menu.activate(CMenu::MENU_A);
-				break;
 			case VIEW_MENU_A:
+				switch_to_view(VIEW_MENU_B);
+				break;
+			case VIEW_MENU_B:
+				switch_to_view(VIEW_MENU_A);
+				break;
 			case VIEW_SEQUENCER:
 			default:
-				g_view = VIEW_MENU_B;
-				g_menu.activate(CMenu::MENU_B);
+				switch_to_view(VIEW_MENU_B);
 				break;
 			}
 			break;

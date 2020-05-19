@@ -616,10 +616,13 @@ class CSequenceEditor {
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
+			if(layer.get_mode() != V_SQL_SEQ_MODE_PITCH
+				|| layer.any_data_points(m_cur_page)) {
+				layer.set_scroll_for(step.get_value());
+				show_step_value(layer, step.get_value());
+			}
 			// when button first pressed, current step
 			// scrolled into view and described
-			//layer.set_scroll_for(step.get_value());
-			show_step_value(layer, step.get_value());
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
@@ -1449,6 +1452,14 @@ public:
 		m_cmd_values = NULL;
 		m_num_values = 0;
 		m_edit_param = P_NONE;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////
+	void deactivate() {
+		if(m_cmd_prompt) {
+			m_cmd_prompt = NULL;
+			g_popup.hide();
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////

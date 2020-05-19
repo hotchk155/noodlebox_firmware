@@ -63,7 +63,7 @@ public:
 	};
 
 
-	static const int NUM_MENU_B_OPTS = 22;
+	static const int NUM_MENU_B_OPTS = 20;
 	const OPTION m_menu_b[NUM_MENU_B_OPTS] = {
 			{"SCA", P_SEQ_SCALE_TYPE, PT_ENUMERATED, "IONI|DORI|PHRY|LYDI|MIXO|AEOL|LOCR"},
 			{"ROO", P_SEQ_SCALE_ROOT, PT_ENUMERATED, "C|C#|D|D#|E|F|F#|G|G#|A|A#|B"},
@@ -100,6 +100,7 @@ public:
 		activate(MENU_A);
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////
 	void activate(byte which) {
 		if(which == MENU_B) {
 			m_opts = m_menu_b;
@@ -113,6 +114,10 @@ public:
 		m_item = 0;
 		m_value = 0;
 		m_repaint = 1;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////
+	void deactivate() {
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
