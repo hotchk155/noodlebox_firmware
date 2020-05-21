@@ -70,9 +70,9 @@ class CSequenceEditor {
 	};
 
 	enum {
-		CLONE_NONE,
-		CLONE_MARKED,
-		CLONE_ACTIONED
+		CLONE_MARKED	= 0x01,				// a clone point has been marked
+		CLONE_ACTIONED  = 0x02,				// data has been cloned from clone point
+		CLONE_RETAIN	= 0x04				// the clone point can be retained when current action ends
 	};
 
 	typedef struct {
@@ -82,6 +82,12 @@ class CSequenceEditor {
 		int m_auto_gate:1;
 	} CONFIG;
 	CONFIG m_cfg;
+
+	typedef struct {
+		int m_layer;
+		int m_page;
+		int m_step;
+	} LOCATION;
 
 	//
 	// MEMBER VARIABLES
@@ -103,8 +109,8 @@ class CSequenceEditor {
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
 	int m_gate_view;			// which gate layer is being viewed
-	int m_clone_source;			// column from which to clone data
-	byte m_clone_status;
+	LOCATION m_clone_source;	// where data is being cloned from
+	byte m_clone_flags;
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
 	byte m_memo_slot;
@@ -131,8 +137,7 @@ class CSequenceEditor {
 		m_sel_from = -1;
 		m_sel_to = -1;
 		m_gate_view = GATE_VIEW_GATE_TIE;
-		m_clone_source = 0;
-		m_clone_status = CLONE_NONE;
+		m_clone_flags = 0;
 		m_cur_layer = 0;
 		m_cur_page = 0;
 		m_memo_slot = 0;
@@ -835,12 +840,16 @@ class CSequenceEditor {
 			break;
 		////////////////////////////////////////////////
 		case ACTION_CLICK:
-			if(m_clone_status == CLONE_NONE) {
-				m_clone_source = m_cursor;
-				m_clone_status = CLONE_MARKED;
+			if(!(m_clone_flags & CLONE_MARKED)) {
+				// turn on marking of the clone point
+				m_clone_source.m_layer = m_cur_layer;
+				m_clone_source.m_page = m_cur_page;
+				m_clone_source.m_step = m_cursor;
+				m_clone_flags = CLONE_MARKED|CLONE_RETAIN;
 			}
 			else {
-				m_clone_status = CLONE_NONE;
+				// turn off clone point marking
+				m_clone_flags = 0;
 			}
 			break;
 		case ACTION_KEY_COMBO:
@@ -867,21 +876,24 @@ class CSequenceEditor {
 				data_type = CSequenceStep::ALL_DATA;
 				break;
 			}
-			if(m_clone_status == CLONE_NONE) {
+			if(!(m_clone_flags & CLONE_MARKED)) {
+				// the clone point has not been marked
 				cursor_action(what, 1);
 				layer.set_step(m_cur_page, m_cursor, m_clone_step, data_type, 1);
 			}
 			else {
-				CSequenceStep source = layer.get_step(m_cur_page, m_clone_source);
+				CSequenceStep source = g_sequence.get_layer(m_clone_source.m_layer).get_step(m_clone_source.m_page, m_clone_source.m_step);
 				layer.set_step(m_cur_page, m_cursor, source, data_type, 1);
 				cursor_action(what, 1);
-				encoder_action(what, m_clone_source, 0, GRID_WIDTH-1, 1);
-				m_clone_status = CLONE_ACTIONED;
+				encoder_action(what, m_clone_source.m_step, 0, GRID_WIDTH-1, 1);
+				m_clone_flags |= CLONE_ACTIONED;
 			}
 			break;
 		case ACTION_END:
-			if(m_clone_status == CLONE_ACTIONED) {
-				m_clone_status = CLONE_NONE;
+			// if we have not cloned data then we can retain the clone source
+			// points, otherwise it will be cleared  (at the end of the clone)
+			if(!(m_clone_flags & CLONE_ACTIONED)) {
+				m_clone_flags |= CLONE_RETAIN;
 			}
 			break;
 		default:
@@ -1120,7 +1132,6 @@ class CSequenceEditor {
 			show_page_list(m_edit_value);
 			break;
 		case ACTION_KEY_COMBO: {
-
 				int new_page = -1;
 				switch(m_key_combo) {
 				case KEY_PAGE|KEY2_PAGE_A:
@@ -1148,6 +1159,7 @@ class CSequenceEditor {
 					}
 					show_layer_page();
 				}
+				m_clone_flags |= CLONE_RETAIN;
 			}
 			break;
 		case ACTION_END:
@@ -1204,6 +1216,7 @@ class CSequenceEditor {
 				break;
 			}
 			else {
+				m_clone_flags |= CLONE_RETAIN;
 				switch(m_key_combo) {
 					case KEY_LAYER|KEY2_LAYER_1:
 						fire_event(EV_CHANGE_LAYER, 0);
@@ -1218,6 +1231,7 @@ class CSequenceEditor {
 						fire_event(EV_CHANGE_LAYER, 3);
 						break;
 					case KEY_LAYER|KEY2_LAYER_MUTE:
+						m_clone_flags &= ~CLONE_RETAIN;
 						m_edit_mutes = 1;
 						show_layer_mutes();
 						break;
@@ -1298,6 +1312,11 @@ class CSequenceEditor {
 	// function to dispatch an action to the correct handler based on which
 	// key has been pressed
 	void action(CSequenceLayer& layer, ACTION what) {
+
+		if(what == ACTION_BEGIN) {
+			m_clone_flags &= ~CLONE_RETAIN;
+		}
+
 		if(m_command) { // a command is in progress, so until
 			command_action(layer, what);
 		}
@@ -1334,6 +1353,11 @@ class CSequenceEditor {
 				memo_action(layer, what);
 				break;
 			}
+		}
+
+		// cancel clone status
+		if(what == ACTION_END && !(m_clone_flags & CLONE_RETAIN)) {
+			m_clone_flags = 0;
 		}
 	}
 
@@ -1600,8 +1624,10 @@ public:
 		}
 
 		// decide if clone source will be shown on row 13
-		if(m_clone_status != CLONE_NONE) {
-			mask = g_ui.bit(m_clone_source);
+		if(!!(m_clone_flags & CLONE_MARKED) &&
+				m_clone_source.m_layer == m_cur_layer &&
+				m_clone_source.m_page == m_cur_page) {
+			mask = g_ui.bit(m_clone_source.m_step);
 			g_ui.raster(13) |= mask;
 			g_ui.hilite(13) |= mask;
 		}
