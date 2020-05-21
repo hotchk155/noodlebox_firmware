@@ -109,8 +109,9 @@ class CSequenceEditor {
 	int m_sel_from;				// start of selection range
 	int m_sel_to;				// end of selection range
 	int m_gate_view;			// which gate layer is being viewed
-	LOCATION m_clone_source;	// where data is being cloned from
-	byte m_clone_flags;
+	int m_gate_edit_step;		// the starting column for GATE+encoder operation
+	LOCATION m_clone_source;	// the clone source point
+	byte m_clone_flags;			// flags controlling state of clone source point
 	byte m_cur_layer;			// the layer number that is being viewed
 	byte m_cur_page;			// the page within the layer that is being viewed
 	byte m_memo_slot;
@@ -725,6 +726,7 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
 			m_edit_value = 0;
+			m_gate_edit_step = m_cursor;
 			break;
 		case ACTION_END:
 			m_gate_view = GATE_VIEW_GATE_TIE;
@@ -790,25 +792,44 @@ class CSequenceEditor {
 				break;
 			default:
 				if(what == ACTION_ENC_RIGHT) {
-					// extend gate tie from current position
-					byte pos = m_cursor+m_edit_value;
-					if(pos < CSequencePage::MAX_STEPS-1) {
-						step = layer.get_step(m_cur_page, pos);
-						step.set(CSequenceStep::TIE_POINT, 1);
-						layer.set_step(m_cur_page, pos, step);
+					if(m_edit_value > 0) {
+						if(m_cursor < GRID_WIDTH-1) {
+							++m_cursor;
+							step = layer.get_step(m_cur_page, m_cursor);
+							step.set(CSequenceStep::TIE_POINT, 1);
+							layer.set_step(m_cur_page, m_cursor, step);
+						}
 					}
-					++m_edit_value;
+					else if(m_cursor == m_gate_edit_step) {
+						step = layer.get_step(m_cur_page, m_cursor);
+						step.set(CSequenceStep::TIE_POINT, 1);
+						layer.set_step(m_cur_page, m_cursor, step);
+						m_edit_value = 1; // working to right of start position
+					}
+					else {
+						++m_cursor;
+					}
 				}
 				else {
-					// remove gate ties
-					if(m_edit_value>=0) {
-						byte pos = m_cursor+m_edit_value;
-						step = layer.get_step(m_cur_page, pos);
-						step.set(CSequenceStep::TIE_POINT, 0);
-						layer.set_step(m_cur_page, pos, step);
-						if(m_edit_value>0) {
-							--m_edit_value;
+					if(m_edit_value < 0) {
+						if(m_cursor > 0) {
+							step = layer.get_step(m_cur_page, m_cursor);
+							step.set(CSequenceStep::TIE_POINT, 0);
+							layer.set_step(m_cur_page, m_cursor, step);
+							--m_cursor;
 						}
+					}
+					else if(m_cursor == m_gate_edit_step) {
+						step = layer.get_step(m_cur_page, m_cursor);
+						step.set(CSequenceStep::TIE_POINT, 0);
+						layer.set_step(m_cur_page, m_cursor, step);
+						m_edit_value = -1;
+					}
+					else {
+						step = layer.get_step(m_cur_page, m_cursor);
+						step.set(CSequenceStep::TIE_POINT, 0);
+						layer.set_step(m_cur_page, m_cursor, step);
+						--m_cursor;
 					}
 				}
 				m_gate_view = GATE_VIEW_GATE_TIE;
