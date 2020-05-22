@@ -324,6 +324,7 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void add_noise(int seed, int level, byte default_value, V_SQL_FILL_MODE fill_mode, byte zero_value) {
+		int old_seed = rand();
 		srand(seed);
 		for(int i=0; i<MAX_STEPS; ++i) {
 
@@ -342,11 +343,12 @@ public:
 			}
 		}
 		recalc(fill_mode, zero_value);
+		srand(old_seed);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void randomise(int seed, byte default_value, V_SQL_FILL_MODE fill_mode, byte zero_value) {
-
+		int old_seed = rand();
 		srand(seed);
 		for(int i=0; i<MAX_STEPS; ++i) {
 			CSequenceStep& step = m_cfg.m_step[i];
@@ -363,6 +365,7 @@ public:
 			}
 		}
 		recalc(fill_mode, zero_value);
+		srand(old_seed);
 	}
 
 	void replace_gates(int onsets, int positions) {

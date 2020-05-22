@@ -195,7 +195,6 @@ public:
 
 			// get a random dice roll for any random triggers
 			// this is a number between 1 and 16
-			srand(g_clock.get_ms());
 			int dice_roll = 1+rand()%16;
 
 			// get the current clock tick count
