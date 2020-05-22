@@ -31,14 +31,15 @@ class CSequenceEditor {
 
 	// enumeration of the "gestures" or actions that the user can perform
 	typedef enum:byte {
-		ACTION_NONE,		// no action in progress
-		ACTION_BEGIN,		// start of an action, when a button is first pressed
-		ACTION_ENC_LEFT,	// encoder is turned anticlockwise
-		ACTION_ENC_RIGHT,   // encoder is turned clockwise
-		ACTION_HOLD,		// button has been held down for a certain period with no encoder turn
-		ACTION_CLICK,		// button pressed and release without encoder turn
-		ACTION_KEY_COMBO,	// button is pressed with EDIT key used as shift
-		ACTION_END			// end of an action, when button is released
+		ACTION_NONE,			// no action in progress
+		ACTION_BEGIN,			// start of an action, when PRIMARY button is pressed
+		ACTION_ENC_LEFT,		// encoder is turned anticlockwise
+		ACTION_ENC_RIGHT,   	// encoder is turned clockwise
+		ACTION_HOLD,			// button has been held down for a certain period with no encoder turn
+		ACTION_CLICK,			// button pressed and release without encoder turn
+		ACTION_COMBO_BEGIN,		// SECONDARY button pressed while PRIMARY button held
+		ACTION_COMBO_END,		// SECONDARY button released while PRIMARY button still  held
+		ACTION_END				// end of an action, when PRIMARY button is released
 	} ACTION;
 
 	// once a command mode is entered from an action being in progress, all input is
@@ -696,7 +697,7 @@ class CSequenceEditor {
 			}
 			break;
 		////////////////////////////////////////////////
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
@@ -728,10 +729,7 @@ class CSequenceEditor {
 			m_edit_value = 0;
 			m_gate_edit_step = m_cursor;
 			break;
-		case ACTION_END:
-			m_gate_view = GATE_VIEW_GATE_TIE;
-			break;
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
 			case KEY_GATE|KEY2_GATE_PROB:
 				m_gate_view = GATE_VIEW_PROB;
@@ -755,6 +753,10 @@ class CSequenceEditor {
 				show_swing(m_edit_value);
 				break;
 			}
+			break;
+		case ACTION_END:
+		case ACTION_COMBO_END:
+			m_gate_view = GATE_VIEW_GATE_TIE;
 			break;
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
@@ -873,7 +875,7 @@ class CSequenceEditor {
 				m_clone_flags = 0;
 			}
 			break;
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
 			case KEY_CLONE|KEY2_CLONE_PAGE:
 				command_mode(CMD_CLONE_PAGE);
@@ -931,7 +933,7 @@ class CSequenceEditor {
 			layer.clear_step(m_cur_page, m_cursor);
 			break;
 			////////////////////////////////////////////////
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
 			case KEY_CLEAR|KEY2_CLEAR_PAGE:
 				command_mode(CMD_CLEAR_PAGE);
@@ -1000,7 +1002,7 @@ class CSequenceEditor {
 			}
 			break;
 			////////////////////////////////////////////////
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			{
 				int page_no = -1;
 				switch(m_key_combo) {
@@ -1073,7 +1075,7 @@ class CSequenceEditor {
 			}
 			break;
 			////////////////////////////////////////////////
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			{
 				int page = -1;
 				switch(m_key_combo) {
@@ -1152,7 +1154,7 @@ class CSequenceEditor {
 			}
 			show_page_list(m_edit_value);
 			break;
-		case ACTION_KEY_COMBO: {
+		case ACTION_COMBO_BEGIN: {
 				int new_page = -1;
 				switch(m_key_combo) {
 				case KEY_PAGE|KEY2_PAGE_A:
@@ -1209,7 +1211,7 @@ class CSequenceEditor {
 		case ACTION_ENC_RIGHT:
 			scroll(layer, +1);
 			break;
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			if(m_edit_mutes) {
 				int layer_no = -1;
 				switch(m_key_combo) {
@@ -1270,7 +1272,7 @@ class CSequenceEditor {
 		case ACTION_BEGIN:
 			toggle_init();
 			break;
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
 			case KEY_FUNC|KEY2_FUNC_SCALE_MODE:
 				toggle(P_SQL_SCALED_VIEW, "ROWS:", "CHR|SCA");
@@ -1306,7 +1308,7 @@ class CSequenceEditor {
 				g_popup.text(get_memo_slot());
 			}
 			break;
-		case ACTION_KEY_COMBO:
+		case ACTION_COMBO_BEGIN:
 			m_memo_slot = 0;
 			switch(m_key_combo) {
 			case KEY_MEMO|KEY2_MEMO_1: m_memo_slot = SLOT_PATCH1; break;
@@ -1524,11 +1526,12 @@ public:
 			else {
 				m_key_combo = param;
 				++m_combo_clicks;
-				action(layer, ACTION_KEY_COMBO);
+				action(layer, ACTION_COMBO_BEGIN);
 			}
 			break;
 		case EV_KEY_RELEASE:
 			if(param & m_key_combo) {
+				action(layer, ACTION_COMBO_END);
 				m_key_combo = 0;
 			}
 			if(param == m_action_key) {
@@ -1578,7 +1581,6 @@ public:
 		}
 	}
 
-
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void handle_midi_note(byte chan, byte note, byte vel) {
 
@@ -1593,33 +1595,6 @@ public:
 			}
 		}
 	}
-
-	/*
-
-						byte flags = CSequenceLayer::REC_IS_GATE |
-								(vel? CSequenceLayer::REC_IS_TRIG:0) |
-								(m_rec_arm? CSequenceLayer::REC_ARM:0);
-						switch(m_cfg.m_midi_in_mode) {
-							case V_SQL_MIDI_IN_MODE_TRANSPOSE:
-								g_sequence.get_layer(m_cur_layer).set(P_SQL_CV_TRANSPOSE, (int)m_midi_in_note[0]-MIDI_TRANSPOSE_ZERO);
-								fire_event(EV_REPAINT_MENU,0);
-								break;
-							case V_SQL_MIDI_IN_MODE_CV:
-								g_sequence.midi_note_on(m_cur_layer, CSequenceLayer::REC_NOTE_INFO | flags, m_midi_in_note[0]);
-								break;
-							case V_SQL_MIDI_IN_MODE_CV_GATE:
-								g_sequence.midi_note_on(m_cur_layer, CSequenceLayer::REC_NOTE_INFO | CSequenceLayer::REC_GATE_INFO | flags, m_midi_in_note[0]);
-								break;
-						}
-					}
-					else {
-						g_sequence.midi_note_off();
-					}
-				}
-			}
-		}
-	}
-		*/
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// draw the display
