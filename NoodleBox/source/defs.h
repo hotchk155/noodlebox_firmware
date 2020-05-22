@@ -259,6 +259,7 @@ typedef enum:byte {
 } V_SQL_STEP_RATE;
 
 typedef enum:byte {
+	V_SQL_NOTE_DUR_TRIG,
 	V_SQL_NOTE_DUR_1,
 	V_SQL_NOTE_DUR_2,
 	V_SQL_NOTE_DUR_3,

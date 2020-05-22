@@ -1329,11 +1329,11 @@ public:
 				case V_SQL_NOTE_DUR_16:
 					m_state.m_trig_dur = 0; // until next step
 					break;
-				case V_SQL_NOTE_DUR_1:
+				case V_SQL_NOTE_DUR_TRIG:
 					m_state.m_trig_dur = COuts::TRIG_DURATION; // just a trigger
 					break;
 				default: // other enumerations have integer values 0-15
-					m_state.m_trig_dur = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * (1+m_cfg.m_trig_dur)) / 16;
+					m_state.m_trig_dur = (g_clock.get_ms_per_measure(m_cfg.m_step_rate) * (1 + m_cfg.m_trig_dur - V_SQL_NOTE_DUR_1)) / 16;
 					break;
 				}
 			}

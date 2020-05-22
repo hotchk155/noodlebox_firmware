@@ -67,7 +67,7 @@ public:
 	enum {
 		MAX_CHAN = 4,
 		I2C_BUF_SIZE = 100,
-		TRIG_DURATION = 15,
+		TRIG_DURATION = 5,
 		TRIG_DELAY_MS = 2
 	};
 	enum : long {
