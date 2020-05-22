@@ -780,7 +780,7 @@ class CSequenceEditor {
 			case KEY_GATE|KEY2_GATE_REPLACE:
 				loop_span = layer.get_loop_span(m_cur_page, &loop_min, &loop_max);
 				if(encoder_action(what, m_edit_value, 0, loop_span, 0)) {
-					layer.replace_gates(m_cur_page, m_edit_value, loop_span);
+					layer.replace_gates(m_cur_page, m_edit_value, loop_span, loop_min);
 					show_trig_density(m_edit_value, loop_span);
 				}
 				break;

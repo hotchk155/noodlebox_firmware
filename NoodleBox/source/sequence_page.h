@@ -313,7 +313,7 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	int count_of(CSequenceStep::POINT_TYPE type, int from=0, int to=MAX_STEPS-1) {
 		int count = 0;
-		while(from<to && from < MAX_STEPS) {
+		while(from<=to && from < MAX_STEPS) {
 			if(m_cfg.m_step[from].is(type)) {
 				++count;
 			}
@@ -368,18 +368,38 @@ public:
 		srand(old_seed);
 	}
 
-	void replace_gates(int onsets, int positions) {
-		for(int i=0; i<MAX_STEPS; ++i) {
-			CSequenceStep& step = m_cfg.m_step[i];
-			step.clear(CSequenceStep::GATE_DATA);
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	void replace_gates(int onsets, int positions, int column) {
+
+		if(positions<0 || onsets<0) {
+			return;
 		}
-		if(positions>0 && onsets>0) {
-			double rate = (double)positions/onsets;
-			double pos = 0.0;
-			while((int)pos < MAX_STEPS-1) {
-				CSequenceStep& step = m_cfg.m_step[(int)pos];
-				step.set(CSequenceStep::TRIG_POINT, 1);
-				pos += rate;
+
+		// generate the basic Euclidean pattern
+		byte trigs[positions] = {0};
+		int remainder = 0;
+		for(int i=0; i<positions; ++i) {
+			remainder += onsets;
+			if(remainder >= positions) {
+				remainder -= positions;
+				trigs[i] = 1;
+			}
+		}
+
+		// copy into the page, starting at the provided
+		// column position and repeating the same pattern
+		// until all columns in the page have been filled
+		int source = positions-1;
+		for(int i=0; i<MAX_STEPS; ++i) {
+			CSequenceStep& step = m_cfg.m_step[column];
+			step.clear(CSequenceStep::GATE_DATA);
+			step.set(CSequenceStep::TRIG_POINT, trigs[source]);
+			if(++column >= MAX_STEPS) {
+				column = 0;
+			}
+			if(++source >= positions) {
+				source = 0;
 			}
 		}
 	}

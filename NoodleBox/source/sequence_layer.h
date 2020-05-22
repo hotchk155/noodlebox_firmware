@@ -632,9 +632,9 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void replace_gates(byte page_no, int onsets, int positions) {
+	void replace_gates(byte page_no, int onsets, int positions, int start_column) {
 		CSequencePage& page = get_page(page_no);
-		page.replace_gates(onsets, positions);
+		page.replace_gates(onsets, positions, start_column);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
