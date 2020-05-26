@@ -92,8 +92,8 @@ private:
 		V_SQL_SEQ_MODE 	m_mode;				// the mode for this layer (note, mod etc)
 		V_SQL_QUANTIZE 	m_quantize;	// force to scale
 		V_SQL_STEP_RATE m_step_rate;		// step rate setting
-		V_SQL_STEP_TIMING 	m_step_mod;
-		byte			m_step_mod_amount;
+		V_SQL_OFF_GRID_MODE 	m_off_grid_mode;
+		byte			m_off_grid_amount;
 		char			m_transpose;		// manual transpose amount for the layer
 		V_SQL_TRIG_DUR	m_trig_dur;
 		V_SQL_MIDI_OUT  m_midi_out;
@@ -310,8 +310,8 @@ public:
 		m_cfg.m_mode 		= V_SQL_SEQ_MODE_PITCH;
 		m_cfg.m_quantize 	= V_SQL_SEQ_QUANTIZE_CHROMATIC;
 		m_cfg.m_step_rate	= V_SQL_STEP_RATE_16;
-		m_cfg.m_step_mod 	= V_SQL_STEP_TIMING_SWING;
-		m_cfg.m_step_mod_amount = MOD_AMOUNT_DEFAULT;
+		m_cfg.m_off_grid_mode 	= V_SQL_OFF_GRID_MODE_NONE;
+		m_cfg.m_off_grid_amount = MOD_AMOUNT_DEFAULT;
 		m_cfg.m_trig_dur	= V_SQL_NOTE_DUR_8;
 		m_cfg.m_combine_prev= V_SQL_COMBINE_OFF;
 		m_cfg.m_transpose	= 0;
@@ -434,8 +434,8 @@ public:
 		case P_SQL_SEQ_MODE: set_mode((V_SQL_SEQ_MODE)value); break;
 		case P_SQL_QUANTIZE: m_cfg.m_quantize = (V_SQL_QUANTIZE)value; break;
 		case P_SQL_STEP_RATE: m_cfg.m_step_rate = (V_SQL_STEP_RATE)value; break;
-		case P_SQL_STEP_TIMING: m_cfg.m_step_mod = (V_SQL_STEP_TIMING)value; m_cfg.m_step_mod_amount = MOD_AMOUNT_DEFAULT; break;
-		case P_SQL_STEP_MOD_AMOUNT: m_cfg.m_step_mod_amount = value; break;
+		case P_SQL_OFF_GRID_MODE: m_cfg.m_off_grid_mode = (V_SQL_OFF_GRID_MODE)value; break;
+		case P_SQL_OFF_GRID_AMOUNT: m_cfg.m_off_grid_amount = value; break;
 		case P_SQL_TRIG_DUR: m_cfg.m_trig_dur = (V_SQL_TRIG_DUR)value; break;
 		case P_SQL_MIDI_OUT_CHAN: m_cfg.m_midi_out_chan = value; break;
 		case P_SQL_MIDI_CC: m_cfg.m_midi_cc = value; break;
@@ -473,8 +473,8 @@ public:
 		case P_SQL_SEQ_MODE: return m_cfg.m_mode;
 		case P_SQL_QUANTIZE: return m_cfg.m_quantize;
 		case P_SQL_STEP_RATE: return m_cfg.m_step_rate;
-		case P_SQL_STEP_TIMING: return m_cfg.m_step_mod;
-		case P_SQL_STEP_MOD_AMOUNT: return m_cfg.m_step_mod_amount;
+		case P_SQL_OFF_GRID_MODE: return m_cfg.m_off_grid_mode;
+		case P_SQL_OFF_GRID_AMOUNT: return m_cfg.m_off_grid_amount;
 		case P_SQL_TRIG_DUR: return m_cfg.m_trig_dur;
 		case P_SQL_MIDI_OUT_CHAN: return m_cfg.m_midi_out_chan;
 		case P_SQL_MIDI_CC: return m_cfg.m_midi_cc;
@@ -970,10 +970,10 @@ public:
 		int offset = 0;
 
 		// mod amount has  a range 25 thru 75.. map this to between -1 and +1 with 50=0
-		float amp = (m_cfg.m_step_mod_amount-50.0)/26.0; // -1.0 >> 1.0
-		switch(m_cfg.m_step_mod) {
-			case V_SQL_STEP_TIMING_SWING:
-			case V_SQL_STEP_TIMING_SWING_RANDOM: {
+		float amp = (m_cfg.m_off_grid_amount-50.0)/26.0; // -1.0 >> 1.0
+		switch(m_cfg.m_off_grid_mode) {
+			case V_SQL_OFF_GRID_MODE_SWING:
+			case V_SQL_OFF_GRID_MODE_SWING_RANDOM: {
 					// work out the 'equivalent step' (i.e. step number withing
 					// the selected loop points)
 					int equiv_step = (int)step_no - get_loop_from(m_state.m_play_page_no);
@@ -981,7 +981,7 @@ public:
 						equiv_step += 4;
 					}
 					if(equiv_step&1) {
-						if(V_SQL_STEP_TIMING_SWING_RANDOM == m_cfg.m_step_mod) {
+						if(V_SQL_OFF_GRID_MODE_SWING_RANDOM == m_cfg.m_off_grid_mode) {
 							offset = amp*(random()%max_offset);
 						}
 						else {
@@ -990,10 +990,10 @@ public:
 					}
 				}
 				break;
-			case V_SQL_STEP_TIMING_SLIDE:
+			case V_SQL_OFF_GRID_MODE_SLIDE:
 				offset = max_offset*amp;
 				break;
-			case V_SQL_STEP_TIMING_SLIDE_RANDOM:
+			case V_SQL_OFF_GRID_MODE_SLIDE_RANDOM:
 				offset = amp*(random()%max_offset);
 				break;
 		}

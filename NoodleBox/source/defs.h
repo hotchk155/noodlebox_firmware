@@ -53,8 +53,6 @@ enum {
 	EV_SEQ_STOP,			// sequencer playback stopped
 	EV_SEQ_CONTINUE,		// sequencer playback resumes from current position
 	EV_SEQ_RUN_STOP,		// send STOP or CONTINUE depending on run state
-	//EV_SEQ_RESTART_X,
-	//EV_SEQ_MUTE_UNMUTE_X,	// toggle mute on participating layers
 	EV_CLOCK_RESET,			// reset clock timing info
 	EV_CHANGE_LAYER,		// change the current editor layer
 	EV_REPAINT_MENU,
@@ -117,8 +115,8 @@ typedef enum:byte {
 	P_SQL_LOOP_PER_PAGE,
 	P_SQL_SCALED_VIEW,
 	P_SQL_STEP_RATE,
-	P_SQL_STEP_TIMING,
-	P_SQL_STEP_MOD_AMOUNT,
+	P_SQL_OFF_GRID_MODE,
+	P_SQL_OFF_GRID_AMOUNT,
 	P_SQL_TRIG_DUR,
 	P_SQL_MIDI_OUT_CHAN,
 	P_SQL_MIDI_CC,
@@ -127,7 +125,6 @@ typedef enum:byte {
 	P_SQL_MIDI_OUT,
 	P_SQL_MIDI_VEL,
 	P_SQL_MIDI_ACC_VEL,
-	//P_SQL_MIDI_BEND,
 	P_SQL_CVSCALE,
 	P_SQL_CV_OCTAVE,
 	P_SQL_CV_TRANSPOSE,
@@ -137,7 +134,6 @@ typedef enum:byte {
 	P_SQL_OUT_CAL,
 	P_SQL_OUT_CAL_SCALE,
 	P_SQL_OUT_CAL_OFFSET,
-	//P_SQL_AUX_IN_ENABLE,
 	P_SQL_MAX,
 
 	P_SEQ_REC_MODE,
@@ -233,12 +229,13 @@ typedef enum:byte {
 } V_SQL_MIDI_OUT;
 
 typedef enum:byte {
-	V_SQL_STEP_TIMING_SWING,
-	V_SQL_STEP_TIMING_SLIDE,
-	V_SQL_STEP_TIMING_SWING_RANDOM,
-	V_SQL_STEP_TIMING_SLIDE_RANDOM,
+	V_SQL_OFF_GRID_MODE_NONE,
+	V_SQL_OFF_GRID_MODE_SWING,
+	V_SQL_OFF_GRID_MODE_SLIDE,
+	V_SQL_OFF_GRID_MODE_SWING_RANDOM,
+	V_SQL_OFF_GRID_MODE_SLIDE_RANDOM,
 	V_SQL_STEP_MOD_MAX
-} V_SQL_STEP_TIMING;
+} V_SQL_OFF_GRID_MODE;
 
 typedef enum:byte {
 	V_SQL_STEP_RATE_1 = 0,
@@ -368,12 +365,6 @@ typedef enum:byte {
 	V_AUX_IN_MODE_RESTART,
 	V_AUX_IN_MODE_MAX
 } V_AUX_IN_MODE;
-
-//typedef enum:byte {
-//	V_SQL_AUX_IN_ENABLE_OFF,
-//	V_SQL_AUX_IN_ENABLE_ON,
-//	V_SQL_AUX_IN_ENABLE_MAX,
-//} V_SQL_AUX_IN_ENABLE;
 
 typedef enum:byte {
 	V_SQL_CV_ALIAS_NONE,

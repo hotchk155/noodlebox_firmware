@@ -749,7 +749,7 @@ class CSequenceEditor {
 				show_trig_density(m_edit_value, loop_span);
 				break;
 			case KEY_GATE|KEY2_GATE_SWING:
-				m_edit_value = layer.get(P_SQL_STEP_MOD_AMOUNT);
+				m_edit_value = layer.get(P_SQL_OFF_GRID_AMOUNT);
 				show_swing(m_edit_value);
 				break;
 			}
@@ -788,7 +788,7 @@ class CSequenceEditor {
 				break;
 			case KEY_GATE|KEY2_GATE_SWING:
 				if(encoder_action(what, m_edit_value, CSequenceLayer::MOD_AMOUNT_MIN, CSequenceLayer::MOD_AMOUNT_MAX, 0)) {
-					layer.set(P_SQL_STEP_MOD_AMOUNT, m_edit_value);
+					layer.set(P_SQL_OFF_GRID_AMOUNT, m_edit_value);
 					show_swing(m_edit_value);
 				}
 				break;
