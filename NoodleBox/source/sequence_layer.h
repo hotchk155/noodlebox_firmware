@@ -446,7 +446,7 @@ public:
 		case P_SQL_MIDI_ACC_VEL: m_cfg.m_midi_acc_vel = value; break;
 //		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
-		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; break;
+		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; init_loop_per_page(); break;
 		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CV_OCTAVE: m_cfg.m_cv_octave = (V_SQL_CVSHIFT)value; break;
@@ -770,6 +770,18 @@ public:
 	void set_scroll_ofs(int scroll_ofs) {
 		m_cfg.m_scroll_ofs = scroll_ofs;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void init_loop_per_page() {
+		int from = get_page(0).get_loop_from();
+		int to = get_page(0).get_loop_to();
+		for(int i=1; i<NUM_PAGES; ++i) {
+			get_page(i).set_loop_from(from);
+			get_page(i).set_loop_to(to);
+		}
+
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_from(byte page_no, int from) {
 		if(m_cfg.m_loop_per_page) {
@@ -972,32 +984,31 @@ public:
 		// mod amount has  a range 25 thru 75.. map this to between -1 and +1 with 50=0
 		float amp = (m_cfg.m_off_grid_amount-50.0)/26.0; // -1.0 >> 1.0
 		switch(m_cfg.m_off_grid_mode) {
-			case V_SQL_OFF_GRID_MODE_SWING:
-			case V_SQL_OFF_GRID_MODE_SWING_RANDOM: {
-					// work out the 'equivalent step' (i.e. step number withing
-					// the selected loop points)
-					int equiv_step = (int)step_no - get_loop_from(m_state.m_play_page_no);
-					while(equiv_step<0) {
-						equiv_step += 4;
-					}
-					if(equiv_step&1) {
-						if(V_SQL_OFF_GRID_MODE_SWING_RANDOM == m_cfg.m_off_grid_mode) {
-							offset = amp*(random()%max_offset);
-						}
-						else {
-							offset = max_offset*amp;
-						}
-					}
+			case V_SQL_OFF_GRID_MODE_SWING: {
+				// work out the 'equivalent step' (i.e. step number withing
+				// the selected loop points)
+				int equiv_step = (int)step_no - get_loop_from(m_state.m_play_page_no);
+				while(equiv_step<0) {
+					equiv_step += 4;
 				}
-				break;
+				if(equiv_step&1) {
+					offset = max_offset*amp;
+				}
+				return offset;
+			}
 			case V_SQL_OFF_GRID_MODE_SLIDE:
-				offset = max_offset*amp;
-				break;
-			case V_SQL_OFF_GRID_MODE_SLIDE_RANDOM:
-				offset = amp*(random()%max_offset);
-				break;
+				return max_offset*amp;
+			case V_SQL_OFF_GRID_MODE_RANDOM:
+				offset = -amp*(random()%max_offset);
+				if(random()&1) {
+					return -offset;
+				}
+				else {
+					return offset;
+				}
+			default:
+				return 0;
 		}
-		return offset;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
