@@ -36,7 +36,7 @@ public:
 		MENU_B
 	};
 
-	static const int NUM_MENU_A_OPTS = 21;
+	static const int NUM_MENU_A_OPTS = 20;
 	const OPTION m_menu_a[NUM_MENU_A_OPTS] = {
 			{"TYP", P_SQL_SEQ_MODE, PT_ENUMERATED, "PTCH|MOD|OFFS"},
 			{"MIX", P_SQL_MIX, PT_ENUMERATED, "OFF|ADD|MASK|BOTH"},
@@ -56,17 +56,17 @@ public:
 			{"SMO",  P_SQL_MIDI_CC_SMOOTH, PT_ENUMERATED, "OFF|ON"},
 			{"VEL", P_SQL_MIDI_VEL, PT_NUMBER_7BIT},
 			{"ACC", P_SQL_MIDI_ACC_VEL, PT_NUMBER_7BIT},
-			{0},
-			{"CLK", P_CLOCK_SRC, PT_ENUMERATED, "INT|MCLK|MTRN|PCLK"},
+			{0,P_CLOCK_BPM},
 			{"BPM", P_CLOCK_BPM, PT_BPM},
 	};
 
 
-	static const int NUM_MENU_B_OPTS = 20;
+	static const int NUM_MENU_B_OPTS = 21;
 	const OPTION m_menu_b[NUM_MENU_B_OPTS] = {
 			{"SCA", P_SEQ_SCALE_TYPE, PT_ENUMERATED, "IONI|DORI|PHRY|LYDI|MIXO|AEOL|LOCR"},
 			{"ROO", P_SEQ_SCALE_ROOT, PT_ENUMERATED, "C|C#|D|D#|E|F|F#|G|G#|A|A#|B"},
 			{0},
+			{"CLK", P_CLOCK_SRC, PT_ENUMERATED, "INT|MCLK|MTRN|PCLK"},
 			{"SYI",  P_CLOCK_IN_RATE, PT_ENUMERATED, "8|16|24PP"},
 			{"SYO", P_CLOCK_OUT_MODE, PT_ENUMERATED, "OFF|ON|RUN|STAR|STOP|STST|RES|RNNG|ACC"},
 			{"SCK", P_CLOCK_OUT_RATE, PT_ENUMERATED, "8|16|24PP"},
@@ -271,7 +271,7 @@ public:
 			int opt = m_item - 1;
 			int row = 5;
 			while(opt >= 0 && visible) {
-				if(!m_opts[opt].prompt || ::is_valid_for_menu(m_opts[opt].param)) {
+				if(::is_valid_for_menu(m_opts[opt].param)) {
 					row -= (m_opts[opt].prompt)? 6:2;
 					visible = draw_menu_option(opt,row);
 				}
@@ -282,7 +282,7 @@ public:
 			opt = m_item;
 			row = 5;
 			while(opt < m_num_opts && visible) {
-				if(!m_opts[opt].prompt || ::is_valid_for_menu(m_opts[opt].param)) {
+				if(::is_valid_for_menu(m_opts[opt].param)) {
 					visible = draw_menu_option(opt,row);
 					row += (m_opts[opt].prompt)? 6:2;
 				}

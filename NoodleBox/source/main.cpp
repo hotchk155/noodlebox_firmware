@@ -130,7 +130,10 @@ int get(PARAM_ID param) {
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int is_valid_for_menu(PARAM_ID param) {
-	if(param < P_SQL_MAX) {
+	if(!param) {
+		return 1;
+	}
+	else if(param < P_SQL_MAX) {
 		return g_sequence_editor.is_valid_param(param);
 	}
 	else if(param < P_SEQ_MAX) {

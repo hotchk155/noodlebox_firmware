@@ -835,7 +835,7 @@ public:
 	int is_valid_param(PARAM_ID param) {
 		switch(param) {
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
-		//case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
+		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
 		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 		default: return 1;
