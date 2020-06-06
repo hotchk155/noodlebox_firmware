@@ -1289,6 +1289,9 @@ class CSequenceEditor {
 			case KEY_FUNC|KEY2_FUNC_REC_MODE:
 				toggle(P_SEQ_REC_MODE, "REC:", "NONE|CV|CVGT|TRAN|PLAY",5);
 				break;
+			case KEY_FUNC|KEY2_FUNC_LOOP_POINTS:
+				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG",2);
+				break;
 			case KEY_FUNC|KEY2_FUNC_REC_ARM:
 				toggle(P_SEQ_REC_ARM, "ARM:", "OFF|ON");
 				break;
