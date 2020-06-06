@@ -1096,9 +1096,15 @@ class CSequenceEditor {
 					g_popup.text("=RND");
 					break;
 				case KEY_LOOP|KEY2_LOOP_CUE_FOREGROUND:
-					layer.cue_cancel();
-					layer.set_play_page(m_cur_page);
-					g_popup.text("=OFF");
+					if(layer.is_cue_mode()) {
+						layer.cue_cancel();
+						layer.set_play_page(m_cur_page);
+						g_popup.text("=OFF");
+					}
+					else {
+						layer.cue_first(m_cur_page);
+						g_popup.text("=BKG");
+					}
 					break;
 				case KEY_LOOP|KEY2_LOOP_CUE_ALL:
 					layer.cue_all();
