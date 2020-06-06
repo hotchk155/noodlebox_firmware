@@ -446,7 +446,7 @@ public:
 		case P_SQL_MIDI_ACC_VEL: m_cfg.m_midi_acc_vel = value; break;
 //		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
-		case P_SQL_LOOP_PER_PAGE: m_cfg.m_loop_per_page = value; init_loop_per_page(); break;
+		case P_SQL_LOOP_PER_PAGE: set_loop_per_page(value); break;
 		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CV_OCTAVE: m_cfg.m_cv_octave = (V_SQL_CVSHIFT)value; break;
@@ -772,14 +772,16 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void init_loop_per_page() {
-		int from = get_page(0).get_loop_from();
-		int to = get_page(0).get_loop_to();
-		for(int i=1; i<NUM_PAGES; ++i) {
-			get_page(i).set_loop_from(from);
-			get_page(i).set_loop_to(to);
+	void set_loop_per_page(int value) {
+		if(value) { // going to loop per page mode
+			int from = get_page(0).get_loop_from();
+			int to = get_page(0).get_loop_to();
+			for(int i=1; i<NUM_PAGES; ++i) {
+				get_page(i).set_loop_from(from);
+				get_page(i).set_loop_to(to);
+			}
 		}
-
+		m_cfg.m_loop_per_page = value;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
