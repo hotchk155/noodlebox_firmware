@@ -230,7 +230,7 @@ class CMidiClockSource 	: public IClockSource {
 	double m_ticks_per_ms;  // calculated tick rate from ext clock
 	uint32_t m_last_ms;		// used to time between incoming pulses
 	int m_transport:1;		// whether we should act on MIDI transport messages
-	enum : byte { PENDING_NONE, PENDING_START, PENDING_CONTINUE } m_pending_event;
+	enum : byte { PENDING_NONE, PENDING_RESTART, PENDING_CONTINUE } m_pending_event;
 	const TICKS_TYPE MIDI_CLOCK_RATE_TICKS = (1<<8);
 public:
 	///////////////////////////////////////////////////////////////////////////////
@@ -273,40 +273,34 @@ public:
 	void on_midi_realtime(byte ch, uint32_t ms) {
 		switch(ch) {
 		case midi::MIDI_TICK:
-			m_ticks += MIDI_CLOCK_RATE_TICKS;
-			// per MIDI spec, we only act on START or CONTINUE message
-			// at the time we receive the next tick
-			if(m_pending_event != PENDING_NONE) {
-				switch(m_pending_event) {
-					case PENDING_START:
-						fire_event(EV_SEQ_RESTART,0);
-						break;
-					case PENDING_CONTINUE:
-						fire_event(EV_SEQ_CONTINUE,0);
-						break;
+			if(PENDING_RESTART != m_pending_event) { // the first tick after a MIDI restart is ignored
+				m_ticks += MIDI_CLOCK_RATE_TICKS;
+				if(PENDING_CONTINUE != m_pending_event) {
+					if(ms > m_last_ms) {
+						uint32_t elapsed_ms = (ms - m_last_ms);
+						m_ticks_per_ms = (double)MIDI_CLOCK_RATE_TICKS / elapsed_ms;
+					}
 				}
-				m_pending_event = PENDING_NONE;
+				m_last_ms = ms;
 			}
-			if(ms > m_last_ms) {
-				uint32_t elapsed_ms = (ms - m_last_ms);
-				m_ticks_per_ms = (double)MIDI_CLOCK_RATE_TICKS / elapsed_ms;
-			}
-			m_last_ms = ms;
+			m_pending_event = PENDING_NONE;
 			break;
 		case midi::MIDI_START:
 			if(m_transport) {
-				m_pending_event = PENDING_START;
+				fire_event(EV_SEQ_RESTART,0);
+				m_pending_event = PENDING_RESTART;
 			}
 			break;
 		case midi::MIDI_CONTINUE:
 			if(m_transport) {
+				fire_event(EV_SEQ_CONTINUE,0);
 				m_pending_event = PENDING_CONTINUE;
 			}
 			break;
 		case midi::MIDI_STOP:
 			if(m_transport) {
-				m_pending_event = PENDING_NONE;
 				fire_event(EV_SEQ_STOP,0);
+				m_pending_event = PENDING_NONE;
 			}
 			break;
 		}

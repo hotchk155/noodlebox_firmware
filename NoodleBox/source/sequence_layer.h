@@ -955,7 +955,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
-		if(m_cfg.m_midi_out == V_SQL_MIDI_OUT_NOTE && m_state.m_midi_note != NO_MIDI_NOTE) {
+		if(m_state.m_midi_note != NO_MIDI_NOTE) {
 			g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
 			m_state.m_midi_note = NO_MIDI_NOTE;
 		}
@@ -1375,70 +1375,36 @@ public:
 
 
 	///////////////////////////////////////////////////////////////////////////////
+	// This function does the extra work following process_gate() call in order
+	// to send out any required MIDI notes
 	void process_midi_note() {
-
-		// is this a nonplaying step?
-		if(!(m_state.m_step_value.is(CSequenceStep::TRIG_POINT)||m_state.m_step_value.is(CSequenceStep::TIE_POINT)) || m_state.m_suppress_step) {
-
-			if(!m_state.m_gate_timeout && m_state.m_midi_note != NO_MIDI_NOTE) {
-				g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
-				m_state.m_midi_note = NO_MIDI_NOTE;
-			}
-		}
-		else { // step should play
+		// is there a trig or tie to action at at this step?
+		if(!m_state.m_suppress_step &&
+			(m_state.m_step_value.is(CSequenceStep::TRIG_POINT) ||
+			 m_state.m_step_value.is(CSequenceStep::TIE_POINT))) {
 
 			// round the output pitch to the closest MIDI note
 			byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
 
-			/*
-			// work out pitch bend
-			int bend = 0;
-			if(m_cfg.m_midi_bend) {
-				// if a pitch bend range is specified, then work out how many pitch bend units
-				// are needed to get the note to bend to the appropriate pitch
-				bend = m_state.m_output - (note * COuts::SCALING); // required pitch bend in scaled MIDI notes
-				bend = (bend * 8192)/m_cfg.m_midi_bend;
-				bend = bend / COuts::SCALING;
-			}
-*/
-
 			// work out the velocity
-			int vel;
-			if(m_state.m_step_value.is(CSequenceStep::ACCENT_POINT)) {
-				vel = m_cfg.m_midi_acc_vel;
-			}
-			else {
-				vel = m_cfg.m_midi_vel;
-			}
+			int vel = (m_state.m_step_value.is(CSequenceStep::ACCENT_POINT))?
+				m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
 
-			// check if we need to ties notes together
-			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && m_state.m_midi_note != NO_MIDI_NOTE) {
-				// check that we're not simply extending the same note
-				if(m_state.m_midi_note != note) {
-					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, vel);
-					g_midi.stop_note(m_cfg.m_midi_out_chan, note);
-				}
-				/*
-				// check if any change to pitch bend needed
-				if(m_state.m_midi_bend != bend) {
-					g_midi.bend(m_cfg.m_midi_out_chan, bend);
-					m_state.m_midi_bend = bend;
-				}
-				*/
+			if(m_state.m_step_value.is(CSequenceStep::TRIG_POINT)) { // need a retrig?
+				stop_midi_note(); // stop old note
+				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel); // start the new note
 			}
-			else {
-				// not tying notes
-				g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
-				/*
-				if(m_state.m_midi_bend != bend) {
-					g_midi.bend(m_cfg.m_midi_out_chan, bend);
-					m_state.m_midi_bend = bend;
-				}
-				*/
-				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel);
+			else if(m_state.m_midi_note != note) { // extend note with a tie, but first make sure its not just the same note
+				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel); // start the new note
+				stop_midi_note(); // before stopping the old one
 			}
-			m_state.m_midi_note = note;
+			m_state.m_midi_note = note;	// remember which note is playing
 		}
+		else if(!m_state.m_gate_timeout) {
+			// stop a note that was left playing until the next step
+			stop_midi_note();
+		}
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

@@ -260,10 +260,6 @@ void fire_event(int event, uint32_t param) {
 		g_sequence.event(event, param);
 		g_sequence_editor.event(event, param);
 		break;
-	//case EV_SEQ_RESTART_X:
-	//case EV_SEQ_MUTE_UNMUTE_X:
-	//	g_sequence.event(event, param);
-	//	break;
 
 	///////////////////////////////////
 	default:
