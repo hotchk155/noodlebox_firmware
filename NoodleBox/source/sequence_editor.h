@@ -570,7 +570,7 @@ class CSequenceEditor {
 			break;
 		case CMD_CLEAR_LAYER:
 			if(value) {
-				layer.clear();
+				layer.init();
 				m_cur_page = 0;
 				return 1;
 			}
@@ -604,6 +604,7 @@ class CSequenceEditor {
  					return 1;
 				}
 			}
+			break;
 		case CMD_MEMORY:
 			if(m_memo_slot) {
 				if(value == 1) {
@@ -613,6 +614,7 @@ class CSequenceEditor {
 					g_sequence.save_patch(m_memo_slot);
 				}
 			}
+			break;
 		}
 		return 0;
 	}

@@ -324,6 +324,10 @@ public:
 			case SLOT_CONFIG:
 			//case SLOT_AUTOSAVE:
 				break;
+			case SLOT_TEMPLATE:
+				init();
+				g_popup.text("INIT");
+				break;
 			default:
 				g_popup.text("EMPTY");
 				break;
