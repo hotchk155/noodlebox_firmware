@@ -309,13 +309,14 @@ void save_config() {
 	g_sequence_editor.get_cfg(&ptr);
 	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
 	*ptr++ = checksum;
+	g_i2c_bus.wait_for_idle();
 	g_i2c_eeprom.write(SLOT_CONFIG, len + 3);
 	g_i2c_bus.wait_for_idle();
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 void load_config() {
 	byte *buf = g_i2c_eeprom.buf();
-	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size();
+	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
 	g_i2c_eeprom.read(SLOT_CONFIG, len + 3);
 	g_i2c_bus.wait_for_idle();
 	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
@@ -325,6 +326,9 @@ void load_config() {
 		g_clock.set_cfg(&buf);
 		g_sequence_editor.set_cfg(&buf);
 		fire_event(EV_REAPPLY_CONFIG, 0);
+	}
+	else {
+		g_popup.text("CFG ERR");
 	}
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -354,9 +358,6 @@ int main(void) {
     g_midi.init();
     g_sequence.init();
     load_config();
-    //if(!g_ui.is_key_down(KEY_CV)) {
-    //    g_sequence.load_patch(SLOT_AUTOSAVE);
-    //}
     g_i2c_bus.wait_for_idle();
 
     g_sequence_editor.activate();
