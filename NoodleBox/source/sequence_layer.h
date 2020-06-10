@@ -137,14 +137,17 @@ private:
 
 
 
-		byte m_midi_note; 					// last midi note played on channel
-		int m_midi_bend;
-		byte m_midi_vel;
+		//int m_midi_bend;
+		//byte m_midi_vel;
 		long m_midi_cc_value;
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
 		CV_TYPE m_step_output;					// output from the current sequencer step
 		CV_TYPE m_output;						// current output value when layer mix taken into account
+		byte m_step_midi_note; 					// midi note for the step
+		byte m_step_midi_vel;
+		byte m_playing_midi_note; 					// midi note currently playing on on channel
+
 		//uint32_t m_next_tick;
 		//byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
@@ -357,9 +360,10 @@ public:
 	// has been loaded from EEPROM)
 	void init_state() {
 		//m_state.m_last_tick_lsb = 0;
-		m_state.m_midi_note = NO_MIDI_NOTE;
-		m_state.m_midi_bend = 0;
-		m_state.m_midi_vel = 0;
+		m_state.m_playing_midi_note = NO_MIDI_NOTE;
+		m_state.m_step_midi_note = NO_MIDI_NOTE;
+		//m_state.m_midi_bend = 0;
+		//m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_cue_list_next = 0;
 		//m_state.m_input_note = 0;
@@ -955,12 +959,24 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
-		if(m_state.m_midi_note != NO_MIDI_NOTE) {
-			g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_midi_note);
-			m_state.m_midi_note = NO_MIDI_NOTE;
+		if(m_state.m_playing_midi_note != NO_MIDI_NOTE) {
+			g_midi.stop_note(m_cfg.m_midi_out_chan, m_state.m_playing_midi_note);
+			m_state.m_playing_midi_note = NO_MIDI_NOTE;
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void start_midi_note(byte tie) {
+		if(tie) {
+			g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_step_midi_note, m_state.m_step_midi_vel);
+			stop_midi_note();
+		}
+		else {
+			stop_midi_note();
+			g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_step_midi_note, m_state.m_step_midi_vel);
+		}
+		m_state.m_playing_midi_note = m_state.m_step_midi_note;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void silence() {
@@ -1203,8 +1219,8 @@ public:
 				m_state.m_gate_timeout = m_state.m_trig_dur;
 
 				// retrigger the MIDI note
-				if(m_cfg.m_midi_out != V_SQL_MIDI_OUT_NONE && m_state.m_midi_note != NO_MIDI_NOTE && m_state.m_midi_vel) {
-					g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_midi_note, m_state.m_midi_vel);
+				if(m_state.m_step_midi_note != NO_MIDI_NOTE) {
+					start_midi_note(0);
 				}
 
 				// schedule the next retrigger
@@ -1384,21 +1400,9 @@ public:
 			 m_state.m_step_value.is(CSequenceStep::TIE_POINT))) {
 
 			// round the output pitch to the closest MIDI note
-			byte note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
-
-			// work out the velocity
-			int vel = (m_state.m_step_value.is(CSequenceStep::ACCENT_POINT))?
-				m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
-
-			if(m_state.m_step_value.is(CSequenceStep::TRIG_POINT)) { // need a retrig?
-				stop_midi_note(); // stop old note
-				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel); // start the new note
-			}
-			else if(m_state.m_midi_note != note) { // extend note with a tie, but first make sure its not just the same note
-				g_midi.start_note(m_cfg.m_midi_out_chan, note, vel); // start the new note
-				stop_midi_note(); // before stopping the old one
-			}
-			m_state.m_midi_note = note;	// remember which note is playing
+			m_state.m_step_midi_note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
+			m_state.m_step_midi_vel = m_state.m_step_value.is(CSequenceStep::ACCENT_POINT) ? m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
+			start_midi_note(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && !m_state.m_step_value.is(CSequenceStep::TRIG_POINT));
 		}
 		else if(!m_state.m_gate_timeout) {
 			// stop a note that was left playing until the next step
