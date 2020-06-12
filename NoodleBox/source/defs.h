@@ -87,7 +87,7 @@ enum {
 #define PATCH_DATA_COOKIE1	0x12
 #define PATCH_DATA_COOKIE2	0x40
 #define CONFIG_DATA_COOKIE1	0xAA
-#define CONFIG_DATA_COOKIE2	0x03
+#define CONFIG_DATA_COOKIE2	0x04
 
 typedef unsigned char byte;
 

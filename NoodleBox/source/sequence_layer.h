@@ -129,9 +129,9 @@ private:
 		int m_play_page_no;				// the page number being played
 		int m_play_pos;
 		int m_cue_list_next;				// position of the next cued page within cued pages list
-		CSequenceStep m_step_value;			// the last value output by sequencer
-		int m_played_step:1;				// stepped flag
-		int m_suppress_step:1;
+		CSequenceStep xm_step_value;			// the last value output by sequencer
+		//int m_played_step:1;				// stepped flag
+		//int m_suppress_step:1;
 		int m_page_advanced:1;
 		int m_first_step:1;				// flag says if we have not played any steps since reset
 
@@ -142,8 +142,8 @@ private:
 		long m_midi_cc_value;
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
-		CV_TYPE m_step_output;					// output from the current sequencer step
-		CV_TYPE m_output;						// current output value when layer mix taken into account
+		//CV_TYPE m_step_output;					// output from the current sequencer step
+		//CV_TYPE m_output;						// current output value when layer mix taken into account
 		byte m_step_midi_note; 					// midi note for the step
 		byte m_step_midi_vel;
 		byte m_playing_midi_note; 					// midi note currently playing on on channel
@@ -270,6 +270,7 @@ private:
 		}
 	}
 
+	/*
 	///////////////////////////////////////////////////////////////////////////////
 	void set_cv_alias(V_SQL_CV_ALIAS value) {
 		m_cfg.m_cv_alias = value;
@@ -291,6 +292,7 @@ private:
 			g_outs.set_gate_alias(m_id, value - V_SQL_GATE_ALIAS_FROM_L1);
 		}
 	}
+	*/
 
 public:
 
@@ -336,8 +338,8 @@ public:
 //		m_cfg.m_aux_in_enable = V_SQL_AUX_IN_ENABLE_OFF;
 //		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
 //		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
-		set_cv_alias(V_SQL_CV_ALIAS_NONE);
-		set_gate_alias(V_SQL_GATE_ALIAS_NONE);
+		m_cfg.m_cv_alias = V_SQL_CV_ALIAS_NONE;
+		m_cfg.m_gate_alias = V_SQL_GATE_ALIAS_NONE;
 		set_mode(m_cfg.m_mode);
 		clear();
 	}
@@ -373,17 +375,17 @@ public:
 		}
 		reset();
 
-		set_cv_alias(m_cfg.m_cv_alias);
-		set_gate_alias(m_cfg.m_gate_alias);
+		//set_cv_alias(m_cfg.m_cv_alias);
+		//set_gate_alias(m_cfg.m_gate_alias);
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Reset the playback state of the layer
 	void reset() {
-		m_state.m_step_value.clear(CSequenceStep::ALL_DATA);
-		m_state.m_played_step = 0;
-		m_state.m_suppress_step = 0;
+		//m_state.m_step_value.clear(CSequenceStep::ALL_DATA);
+		//m_state.m_played_step = 0;
+		//m_state.m_suppress_step = 0;
 		m_state.m_play_pos = 0;
 		m_state.m_next_step_time = clock::TICKS_INFINITY;
 		//m_state.m_next_step_grid_time = TICKS_INFINITY;
@@ -392,8 +394,8 @@ public:
 		m_state.m_step_timeout = 0;
 		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
-		m_state.m_output = 0;
-		m_state.m_step_output = 0;
+		//m_state.m_output = 0;
+		//m_state.m_step_output = 0;
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
@@ -457,8 +459,8 @@ public:
 		case P_SQL_CV_TRANSPOSE: m_cfg.m_cv_transpose = value; break;
 		case P_SQL_MIDI_OUT: m_cfg.m_midi_out = (V_SQL_MIDI_OUT)value; break;
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
-		case P_SQL_CV_ALIAS: set_cv_alias((V_SQL_CV_ALIAS)value); break;
-		case P_SQL_GATE_ALIAS: set_gate_alias((V_SQL_GATE_ALIAS)value); break;
+		case P_SQL_CV_ALIAS: m_cfg.m_cv_alias = (V_SQL_CV_ALIAS)value; break;
+		case P_SQL_GATE_ALIAS: m_cfg.m_gate_alias = (V_SQL_GATE_ALIAS)value; break;
 		case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
 		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
@@ -564,6 +566,25 @@ public:
 		return get_page(page_no).any_of(CSequenceStep::DATA_POINT);
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	int get_gate_source_layer() {
+		if(V_SQL_GATE_ALIAS_NONE == m_cfg.m_gate_alias) {
+			return m_id;
+		}
+		else {
+			return (m_cfg.m_gate_alias - V_SQL_GATE_ALIAS_FROM_L1);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int get_cv_source_layer() {
+		if(V_SQL_CV_ALIAS_NONE == m_cfg.m_cv_alias) {
+			return m_id;
+		}
+		else {
+			return (m_cfg.m_cv_alias - V_SQL_CV_ALIAS_FROM_L1);
+		}
+	}
 	//
 	// EDIT FUNCTIONS
 	//
@@ -907,17 +928,17 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte is_played_step() {
-		return m_state.m_played_step;
-	}
+	//byte is_played_step() {
+		//return m_state.m_played_step;
+	//}
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_page_advanced() {
 		return m_state.m_page_advanced;
 	}
 	///////////////////////////////////////////////////////////////////////////////
-	CSequenceStep& get_current_step() {
-		return m_state.m_step_value;
-	}
+	//CSequenceStep& get_current_step() {
+		//return m_state.m_step_value;
+	//}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_play_page(int page_no) {
 		m_state.m_play_page_no = page_no;
@@ -953,9 +974,9 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////
-	int is_accented_step() {
-		return m_state.m_step_value.is(CSequenceStep::ACCENT_POINT);
-	}
+	//int is_accented_step() {
+		//return m_state.m_step_value.is(CSequenceStep::ACCENT_POINT);
+	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
@@ -968,8 +989,10 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void start_midi_note(byte tie) {
 		if(tie) {
-			g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_step_midi_note, m_state.m_step_midi_vel);
-			stop_midi_note();
+			if(m_state.m_step_midi_note != m_state.m_playing_midi_note) {
+				g_midi.start_note(m_cfg.m_midi_out_chan, m_state.m_step_midi_note, m_state.m_step_midi_vel);
+				stop_midi_note();
+			}
 		}
 		else {
 			stop_midi_note();
@@ -1044,13 +1067,10 @@ public:
 	// The maximum offset from grid is +/- half of a grid step, so it is never
 	// possible for steps to be scheduled out of order
 	//
-	byte play(clock::TICKS_TYPE ticks, int dice_roll, REC_SESSION *rec) {
+	byte play(clock::TICKS_TYPE ticks, int dice_roll, REC_SESSION *rec, CSequenceStep& step_value) {
 
-		m_state.m_played_step = 0;
-
-		// Decide what we're gonna do at this step
-		byte do_advance = 0;
-		byte do_play = 0;
+		auto do_advance = 0; 	// flag says if the play position moved at this call
+		auto do_play = 0; 		// flag says if we started playing a step at this call
 		if(m_state.m_first_step) {
 			// the very first step.. we'll play it now and schedule the next
 			do_play = 1;
@@ -1064,29 +1084,6 @@ public:
 		// move to the next step, unless this is the very first step following
 		// a restart, in which case we are already pointing at step zero
 		if(do_advance) {
-
-			/*
-			switch(rec.mode) {
-			case V_SQL_MIDI_IN_MODE_NONE:
-			case V_SQL_MIDI_IN_MODE_CV:
-			case V_SQL_MIDI_IN_MODE_CV_GATE:
-			case V_SQL_MIDI_IN_MODE_TRANSPOSE:
-			case V_SQL_MIDI_IN_MODE_PLAY:
-			}
-			*/
-
-			if(rec && rec->mode == V_SEQ_REC_MODE_CV_GATE && rec->arm == V_SEQ_REC_ARM_ON) {
-				switch(rec->gate_state) {
-				case REC_GATE_ON:
-					rec->gate_state = REC_GATE_TIE;
-					break;
-				case REC_GATE_TIE:
-					m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
-					set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::GATE_DATA, 0);
-					break;
-				}
-			}
-
 			m_state.m_page_advanced = 0;
 			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
 				if(m_cfg.m_cue_mode != CUE_NONE) {
@@ -1098,57 +1095,24 @@ public:
 		}
 
 		if(do_play) {
-			if(m_cfg.m_enabled) { // is the layer enabled?
-
-				if(rec && rec->is_clear && rec->note) {
-					clear_step(m_state.m_play_page_no, m_state.m_play_pos);
-				}
-				m_state.m_step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
-
-				/*
-				switch(rec.mode) {
-				case V_SQL_MIDI_IN_MODE_NONE:
-				case V_SQL_MIDI_IN_MODE_CV:
-				case V_SQL_MIDI_IN_MODE_CV_GATE:
-				case V_SQL_MIDI_IN_MODE_TRANSPOSE:
-				case V_SQL_MIDI_IN_MODE_PLAY:
-				}
-				*/
-
-
-				if(rec && (rec->mode == V_SEQ_REC_MODE_CV || rec->mode == V_SEQ_REC_MODE_CV_GATE)) {
-					m_state.m_step_value.set_value(rec->note);
-					if(rec->mode == V_SEQ_REC_MODE_CV_GATE) {
-						switch(rec->gate_state) {
-							case REC_GATE_TRIG:
-								m_state.m_step_value.set(CSequenceStep::TRIG_POINT, 1);
-								rec->gate_state = REC_GATE_ON;
-								break;
-							case REC_GATE_TIE:
-								m_state.m_step_value.set(CSequenceStep::TIE_POINT, 1);
-								break;
-						}
-					}
-					if(rec->arm == V_SEQ_REC_ARM_ON) {
-						set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
-					}
-				}
-
-				m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
-				m_state.m_played_step = 1;
-				m_state.m_suppress_step = 0;
-				if(m_state.m_step_value.get_prob()) { // nonzero probability?
-					if(dice_roll>m_state.m_step_value.get_prob()) {
-						// dice roll is between 1 and 16, if this number is greater
-						// than the step probability (1-15) then the step will
-						// be suppressed
-						m_state.m_suppress_step = 1;
-					}
+			step_value = get_step(m_state.m_play_page_no, m_state.m_play_pos);
+			if(rec && rec->mode == V_SEQ_REC_MODE_CV) {
+				step_value.set_value(rec->note);
+				if(rec->arm == V_SEQ_REC_ARM_ON) {
+					set_step(m_state.m_play_page_no, m_state.m_play_pos, step_value, CSequenceStep::ALL_DATA, 1);
 				}
 			}
-			else {
-				// layer is disabled so no steps play
-				m_state.m_suppress_step = 1;
+
+			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+			//m_state.m_suppress_step = 0;
+			if(step_value.get_prob()) { // nonzero probability?
+				if(dice_roll>step_value.get_prob()) {
+					// dice roll is between 1 and 16, if this number is greater
+					// than the step probability (1-15) then the step will
+					// be suppressed
+					step_value.clear(CSequenceStep::ALL_DATA);
+					step_value.set(CSequenceStep::IGNORE_POINT,1);
+				}
 			}
 
 			// after we play a step, we need to schedule the next one...
@@ -1170,8 +1134,7 @@ public:
 				m_state.m_next_step_time = next_step_time;
 			}
 		}
-
-		return m_state.m_played_step;
+		return do_play;
 	}
 
 
@@ -1255,8 +1218,84 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
-	CV_TYPE process_cv(CV_TYPE this_input) {
+	CV_TYPE calculate_output(CV_TYPE this_input, CSequenceStep& step_value) {
 
+		CV_TYPE this_output;
+		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
+			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
+			!step_value.is(CSequenceStep::DATA_POINT)) {
+			// in mask/add and mask modes we simply duplicate the previous layer output
+			this_output = this_input;
+		}
+		else
+		{
+
+			// get the scaled data point
+			int value = step_value.get_value() + (int)m_cfg.m_cv_transpose;;
+			if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
+				this_output = COuts::SCALING*(value - OFFSET_ZERO);
+			}
+			else {
+				this_output = COuts::SCALING*value;
+			}
+
+			// check if we have an absolute volts range (1V - 8V). If so scale the output
+			// accordingly (each volt will be 12 scale points)
+			if(m_cfg.m_cv_scale < V_SQL_CVSCALE_1VOCT) {
+				this_output = (this_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
+			}
+
+			// perform any addition of previous layer output
+			if(m_cfg.m_combine_prev == V_SQL_COMBINE_ADD ||
+				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) {
+				this_output += this_input;
+			}
+		}
+
+		// apply transposition
+		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
+			this_output += 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
+		}
+
+		// quantize the output to scale if needed
+		switch(m_cfg.m_quantize) {
+		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
+			if(this_output < 0) {
+				this_output = 0;
+			}
+			this_output = COuts::SCALING * (this_output/COuts::SCALING);
+			break;
+		case V_SQL_SEQ_QUANTIZE_SCALE:
+			if(this_output < 0) {
+				this_output = 0;
+			}
+			this_output = COuts::SCALING * CScale::instance().force_to_scale(this_output/COuts::SCALING);
+			break;
+		}
+		return this_output;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void apply_output(CV_TYPE output, CSequenceStep& step_value) {
+
+		int glide_time;
+		switch(m_cfg.m_cv_glide) {
+		case V_SQL_CVGLIDE_ON:
+			glide_time = m_state.m_step_timeout;
+			break;
+		case V_SQL_CVGLIDE_TIE:
+			glide_time = (step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
+			break;
+		case V_SQL_CVGLIDE_OFF:
+		default:
+			glide_time = 0;
+		}
+
+		g_outs.cv(m_id, output, m_cfg.m_cv_scale, glide_time);
+	}
+
+
+/*
 		// if the output is in calibration mode then we will not
 		// send any note information it it
 		if(m_state.m_cal_mode != V_SQL_OUT_CAL_NONE) {
@@ -1265,15 +1304,15 @@ public:
 
 		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
 			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
-			!m_state.m_step_value.is(CSequenceStep::DATA_POINT)) {
+			!step_value.is(CSequenceStep::DATA_POINT)) {
 			// in mask/add and mask modes we simply duplciate the previous layer output
 			m_state.m_output = this_input;
 		}
 		else
 		{
-			if(!m_state.m_suppress_step) {
+			if(!step_value.is(CSequenceStep::IGNORE_POINT)) {
 
-				int value = m_state.m_step_value.get_value() + (int)m_cfg.m_cv_transpose;;
+				int value = step_value.get_value() + (int)m_cfg.m_cv_transpose;;
 
 				// get the scaled data point
 				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
@@ -1326,7 +1365,7 @@ public:
 			glide_time = m_state.m_step_timeout;
 			break;
 		case V_SQL_CVGLIDE_TIE:
-			glide_time = (m_state.m_step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
+			glide_time = (step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
 			break;
 		case V_SQL_CVGLIDE_OFF:
 		default:
@@ -1336,20 +1375,20 @@ public:
 		g_outs.cv(m_id, m_state.m_output, m_cfg.m_cv_scale, glide_time);
 		return m_state.m_output;
 	}
-
+*/
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step. This is usually done after CV so that we have
 	// already set the appropriate pitch before trigging a VCA etc
-	void process_gate() {
+	void process_gate(CSequenceStep& step_value) {
 		m_state.m_retrig_ms = 0;
-		if(m_state.m_suppress_step) {
+		if(step_value.is(CSequenceStep::IGNORE_POINT)) {
 			if(!m_state.m_gate_timeout) {
 				g_outs.gate(m_id, COuts::GATE_CLOSED);
 			}
 		}
-		else if(m_state.m_step_value.is(CSequenceStep::TRIG_POINT) || m_state.m_step_value.get_retrig()>0) {
-			if(m_state.m_step_value.is(CSequenceStep::TIE_POINT)) {
+		else if(step_value.is(CSequenceStep::TRIG_POINT) || step_value.get_retrig()>0) {
+			if(step_value.is(CSequenceStep::TIE_POINT)) {
 				m_state.m_trig_dur = 0; // until next step
 			}
 			else {
@@ -1368,8 +1407,8 @@ public:
 			}
 			m_state.m_gate_timeout = m_state.m_trig_dur;
 
-			if(m_state.m_step_value.get_retrig()) {
-				m_state.m_retrig_ms = ((16-(int)m_state.m_step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
+			if(step_value.get_retrig()) {
+				m_state.m_retrig_ms = ((16-(int)step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
 			}
 			else {
 				m_state.m_retrig_ms = 0;
@@ -1377,7 +1416,7 @@ public:
 			m_state.m_retrig_timeout = m_state.m_retrig_ms;
 			g_outs.gate(m_id, COuts::GATE_TRIG);
 		}
-		else if(m_state.m_step_value.is(CSequenceStep::TIE_POINT)) {
+		else if(step_value.is(CSequenceStep::TIE_POINT)) {
 			m_state.m_gate_timeout = 0;
 			g_outs.gate(m_id, COuts::GATE_OPEN);
 		}
@@ -1393,16 +1432,13 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// This function does the extra work following process_gate() call in order
 	// to send out any required MIDI notes
-	void process_midi_note() {
+	void process_midi_note(CV_TYPE output, CSequenceStep& step_value) {
 		// is there a trig or tie to action at at this step?
-		if(!m_state.m_suppress_step &&
-			(m_state.m_step_value.is(CSequenceStep::TRIG_POINT) ||
-			 m_state.m_step_value.is(CSequenceStep::TIE_POINT))) {
-
+		if(step_value.is(CSequenceStep::TRIG_POINT) || step_value.is(CSequenceStep::TIE_POINT)) {
 			// round the output pitch to the closest MIDI note
-			m_state.m_step_midi_note = ((m_state.m_output+COuts::SCALING/2)/COuts::SCALING);
-			m_state.m_step_midi_vel = m_state.m_step_value.is(CSequenceStep::ACCENT_POINT) ? m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
-			start_midi_note(m_state.m_step_value.is(CSequenceStep::TIE_POINT) && !m_state.m_step_value.is(CSequenceStep::TRIG_POINT));
+			m_state.m_step_midi_note = ((output+COuts::SCALING/2)/COuts::SCALING);
+			m_state.m_step_midi_vel = step_value.is(CSequenceStep::ACCENT_POINT) ? m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
+			start_midi_note(step_value.is(CSequenceStep::TIE_POINT) && !step_value.is(CSequenceStep::TRIG_POINT));
 		}
 		else if(!m_state.m_gate_timeout) {
 			// stop a note that was left playing until the next step
@@ -1412,8 +1448,8 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void process_midi_cc() {
-		byte value = clamp7bit(((m_state.m_output+COuts::SCALING/2)/COuts::SCALING));
+	void process_midi_cc(CV_TYPE output) {
+		byte value = clamp7bit(((output+COuts::SCALING/2)/COuts::SCALING));
 
 		m_state.m_midi_cc_target = value * COuts::SCALING;
 		if(m_cfg.m_midi_cc_smooth) {

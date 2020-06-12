@@ -353,6 +353,7 @@ int main(void) {
         g_ui.unlock_for_update();
         g_clock.wait_ms(50);
     }
+
     PowerControl.set(1);
     g_i2c_bus.init();
     g_midi.init();

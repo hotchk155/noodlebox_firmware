@@ -32,6 +32,7 @@ class CSequenceStep {
 		byte m_accent:1;
 		byte m_prob:4;
 		byte m_retrig:4;
+		byte m_ignore:1;
 	} GATE_TYPE;
 
 	typedef struct {
@@ -58,7 +59,8 @@ public:
 		DATA_POINT,
 		TRIG_POINT,
 		TIE_POINT,
-		ACCENT_POINT
+		ACCENT_POINT,
+		IGNORE_POINT
 	} POINT_TYPE;
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -88,6 +90,8 @@ public:
 			return !!m_gate.m_tie;
 		case ACCENT_POINT:
 			return !!m_gate.m_accent;
+		case IGNORE_POINT:
+			return !!m_gate.m_ignore;
 		}
 		return 0;
 	}
@@ -105,6 +109,8 @@ public:
 			return m_gate.m_tie = !!value;
 		case ACCENT_POINT:
 			return m_gate.m_accent = !!value;
+		case IGNORE_POINT:
+			return m_gate.m_ignore = !!value;
 		}
 		return 0;
 	}

@@ -87,61 +87,59 @@ public:
 		int pitch;					// 32-bit current pitch value (dac << 16)
 		int target;  				// 32-bit current target value (dac << 16)
 		int glide_rate;  			// glide rate applied per ms to the pitch
-		byte cv_src;
-		byte gate_src;
+		//byte cv_src;
+		//byte gate_src;
 	} CHAN_STATE;
 	CHAN_STATE m_chan[MAX_CHAN];
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void impl_set_gate(byte which, byte state) {
-		if(m_chan[0].gate_src == which) {
+		switch(which) {
+		case 0:
 			if(state) {
 				SET_GPIOA(BIT_GATE1);
 			}
 			else {
 				CLR_GPIOA(BIT_GATE1);
 			}
-		}
-		if(m_chan[1].gate_src == which) {
+			break;
+		case 1:
 			if(state) {
 				SET_GPIOA(BIT_GATE2);
 			}
 			else {
 				CLR_GPIOA(BIT_GATE2);
 			}
-		}
-		if(m_chan[2].gate_src == which) {
+			break;
+		case 2:
 			if(state) {
 				SET_GPIOA(BIT_GATE3);
 			}
 			else {
 				CLR_GPIOA(BIT_GATE3);
 			}
-		}
-		if(m_chan[3].gate_src == which) {
+			break;
+		case 3:
 			if(state) {
 				SET_GPIOA(BIT_GATE4);
 			}
 			else {
 				CLR_GPIOA(BIT_GATE4);
 			}
+			break;
 		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
 	void impl_set_cv(byte which, int dac) {
-		for(int i=0; i<MAX_CHAN; ++i) {
-			if(m_chan[i].cv_src == which) {
-				int this_dac = (dac * (4096 + m_cfg.scale[i]))/4096 + m_cfg.offset[i];
-				if(this_dac < 0) {
-					this_dac = 0;
-				}
-				if(this_dac > 4095) {
-					this_dac = 4095;
-				}
-				g_i2c_dac.set(i, this_dac);
-			}
+		int this_dac = (dac * (4096 + m_cfg.scale[which]))/4096 + m_cfg.offset[which];
+		if(this_dac < 0) {
+			this_dac = 0;
 		}
+		if(this_dac > 4095) {
+			this_dac = 4095;
+		}
+		g_i2c_dac.set(which, this_dac);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -206,10 +204,10 @@ public:
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
 		memset((byte*)&m_cfg,0,sizeof m_cfg);
-		for(int i=0; i<MAX_CHAN; ++i) {
-			m_chan[i].cv_src = i;
-			m_chan[i].gate_src = i;
-		}
+		//for(int i=0; i<MAX_CHAN; ++i) {
+			//m_chan[i].cv_src = i;
+			//m_chan[i].gate_src = i;
+		//}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -353,6 +351,7 @@ public:
 		}
 	}
 
+/*
 	///////////////////////////////////////////////////
 	void set_cv_alias(byte which, byte src) {
 		ASSERT(which<MAX_CHAN);
@@ -365,6 +364,8 @@ public:
 		ASSERT(src<MAX_CHAN);
 		m_chan[which].gate_src = src;
 	}
+*/
+
 	///////////////////////////////////////////////////
 	void set_cal_scale(byte which, int value) {
 		m_cfg.scale[which] = value;

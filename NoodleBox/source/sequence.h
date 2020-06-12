@@ -35,6 +35,12 @@ private:
 	CSequenceLayer m_layer_content[NUM_LAYERS];
 	CSequenceLayer *m_layers[NUM_LAYERS];
 
+	// this array will receive the current step value from each of the
+	// four layers, regardless of whether the layer has advanced to a
+	// new step or whether the layer is muted
+	CSequenceStep m_step_value[NUM_LAYERS];
+	CV_TYPE m_output_value[NUM_LAYERS];
+
 	byte m_is_running;		// whether the sequencer is running
 
 	int m_rec_layer;
@@ -186,63 +192,100 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	// called once per ms
+	// Called once each millisecond, this is the entry point of the sequencing engine
 	void run() {
 
 		// ensure the sequencer is running
-		byte played_step = 0;
 		if(m_is_running) {
 
-			// get a random dice roll for any random triggers
-			// this is a number between 1 and 16
-			int dice_roll = 1+rand()%16;
+			///////////////////////////////////////////////////////////////////////////////
+			// 1 - CHECK THE SCHEDULING OF EACH LAYER TO SEE IF ANY LAYER HAS
+			// MOVED TO A NEW STEP
+			///////////////////////////////////////////////////////////////////////////////
 
-			// get the current clock tick count
-			clock::TICKS_TYPE ticks = g_clock.get_ticks();
-
-			int is_accented_step = 0;
-
-			// call the play method for each layer to run
-			// the scheduling of that layer's playback
+			byte layer_update[NUM_LAYERS] = {0}; 			// whether individual layer has updated
+			int any_layer_updated = 0;						// whether any layer has updated
+			int dice_roll = 1+rand()%16;		 			// random value for gate probability
+			clock::TICKS_TYPE ticks = g_clock.get_ticks(); 	// get the current clock tick count
 			for(int i=0; i<NUM_LAYERS; ++i) {
-				CSequenceLayer *layer = m_layers[i];
-				is_accented_step |= layer->is_accented_step();
+				int update;
+				CSequenceStep step_value;
+				CSequenceLayer& layer = *m_layers[i];
 				if(m_rec_layer == i) {
-					if(layer->play(ticks, dice_roll, &m_rec)) {
-						played_step = 1;
-					}
+					update = layer.play(ticks, dice_roll, &m_rec, step_value);
 				}
 				else {
-					if(layer->play(ticks, dice_roll, NULL)) {
-						played_step = 1;
-					}
+					update = layer.play(ticks, dice_roll, NULL, step_value);
+				}
+				// If this is an ignore point (due to probability) then we
+				// keep the same step value as before
+				if(update && !step_value.is(CSequenceStep::IGNORE_POINT)) {
+					m_step_value[i] = step_value;
+					layer_update[i] = 1;
+					any_layer_updated = 1;
 				}
 			}
 
-			g_clock.set_accent(is_accented_step);
-		}
+			// is there anything to update?
+			if(any_layer_updated) {
 
-		// did any new step start playing?
-		if(played_step) {
+				///////////////////////////////////////////////////////////////////////////////
+				// 2 - RECALCULATE THE CV OUTPUT VALUES FOR EACH LAYER EACH TIME ANY
+				// LAYER IS UPDATED
+				///////////////////////////////////////////////////////////////////////////////
 
-			// update each layer
-			CV_TYPE prev_output = 0;
-			for(int i=0; i<NUM_LAYERS; ++i) {
-				CSequenceLayer *layer = m_layers[i];
+				int any_accented_step = 0;	// we will track if any accent gate is active
+				CV_TYPE output_value = 0; 	// used to pass output from one layer as input to the next
+				for(int i=0; i<NUM_LAYERS; ++i) {
+					CSequenceLayer& layer = *m_layers[i];
 
-				// update the voltage output of layer
-				prev_output = layer->process_cv(prev_output);
+					// update output values based on current step vaues
+					m_output_value[i] = layer.calculate_output(output_value, m_step_value[i]);
+					output_value = m_output_value[i];
 
-				// if the layer has stepped, may need to trigger the gate
-				if(layer->is_played_step()) {
-					layer->process_gate();
-					switch(layer->get_midi_out_mode()) {
-					case V_SQL_MIDI_OUT_NOTE:
-						layer->process_midi_note();
-						break;
-					case V_SQL_MIDI_OUT_CC:
-						layer->process_midi_cc();
-						break;
+					// check if any mapped layer has an accent point (NB: need to establish this before any layer gates are
+					// triggered, since accent triggers first)
+					if(layer.is_enabled() && m_step_value[layer.get_gate_source_layer()].is(CSequenceStep::ACCENT_POINT)) {
+						any_accented_step = 1;
+					}
+				}
+
+				// set accent gate if required
+				g_clock.set_accent(any_accented_step);
+
+				///////////////////////////////////////////////////////////////////////////////
+				// 3 - UPDATE THE OUTPUTS ANALOG OUTPUTS AND MIDI OUTPUTS FOR EACH LAYER.
+				// THESE MIGHT ACTUALLY BE BE TAKING INPUT FROM OTHER LAYERS
+				///////////////////////////////////////////////////////////////////////////////
+				for(int i=0; i<NUM_LAYERS; ++i) {
+
+					// we only need to do this for layers that are not muted
+					CSequenceLayer& layer = *m_layers[i];
+					if(layer.is_enabled()) {
+
+						// Lookup the CV and gate value that should be output from this layer
+						CV_TYPE output_value = m_output_value[layer.get_cv_source_layer()];
+						CSequenceStep& step_value = m_step_value[layer.get_gate_source_layer()];
+
+						// Update the analog CV output
+						layer.apply_output(output_value, step_value);
+
+						// Update the MIDI CC output if needed
+						if(V_SQL_MIDI_OUT_CC == layer.get_midi_out_mode()) {
+							layer.process_midi_cc(output_value);
+						}
+
+						// Check if there is a change to the output on the gate source layer
+						if(layer_update[layer.get_gate_source_layer()]) {
+
+							// Update the analog gate output
+							layer.process_gate(step_value);
+
+							// Update MIDI note if appropriate
+							if(V_SQL_MIDI_OUT_NOTE == layer.get_midi_out_mode()) {
+								layer.process_midi_note(output_value, step_value);
+							}
+						}
 					}
 				}
 			}
