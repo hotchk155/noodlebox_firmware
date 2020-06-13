@@ -45,6 +45,9 @@ private:
 
 	int m_rec_layer;
 	CSequenceLayer::REC_SESSION m_rec;
+
+	V_SEQ_OUT_CAL m_cal_mode; // calibration voltage
+
 public:
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -58,6 +61,7 @@ public:
 			m_layers[i]->set_id(i);
 		}
 		m_is_running = 0;
+		m_cal_mode = V_SEQ_OUT_CAL_NONE;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
@@ -89,6 +93,7 @@ public:
 		case P_SEQ_REC_MODE: m_rec.mode = (V_SEQ_REC_MODE)value; break;
 		case P_SEQ_SCALE_TYPE: m_scale.set((V_SQL_SCALE_TYPE)value, m_scale.get_root()); break;
 		case P_SEQ_SCALE_ROOT: m_scale.set(m_scale.get_type(), (V_SQL_SCALE_ROOT)value); break;
+		case P_SEQ_OUT_CAL: m_cal_mode = (V_SEQ_OUT_CAL)value; set_cal_volts(); break;
 		default: break;
 		}
 	}
@@ -100,6 +105,7 @@ public:
 		case P_SEQ_REC_MODE: return m_rec.mode;
 		case P_SEQ_SCALE_TYPE: return m_scale.get_type();
 		case P_SEQ_SCALE_ROOT: return m_scale.get_root();
+		case P_SEQ_OUT_CAL: return m_cal_mode;
 		default:return 0;
 		}
 	}
@@ -134,6 +140,9 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void event(int event, uint32_t param) {
 		switch(event) {
+		case EV_REAPPLY_CAL_VOLTS:
+			set_cal_volts();
+			return;
 		case EV_SEQ_RESTART:
 		case EV_SEQ_CONTINUE:
 			m_is_running = 1;
@@ -160,6 +169,19 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	byte is_running() {
 		return m_is_running;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int is_cal_mode() {
+		return (m_cal_mode != V_SEQ_OUT_CAL_NONE);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void set_cal_volts() {
+		int volts = m_cal_mode - V_SEQ_OUT_CAL_NONE;
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->set_cal_volts(volts);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -267,8 +289,11 @@ public:
 						CV_TYPE output_value = m_output_value[layer.get_cv_source_layer()];
 						CSequenceStep& step_value = m_step_value[layer.get_gate_source_layer()];
 
-						// Update the analog CV output
-						layer.apply_output(output_value, step_value);
+						if(m_cal_mode == V_SEQ_OUT_CAL_NONE) {
+							// Update the analog CV output
+							layer.apply_output(output_value, step_value);
+
+						}
 
 						// Update the MIDI CC output if needed
 						if(V_SQL_MIDI_OUT_CC == layer.get_midi_out_mode()) {

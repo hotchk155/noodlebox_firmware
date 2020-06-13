@@ -18,8 +18,8 @@
 #define DEFS_H_
 
 //#define NB_PROTOTYPE 1	// define this for prototype hardware. Also need to use NoodleboxProto.mex
-#define MIDDLE_C_OCTAVE 4 // should middle C (note 60) be C3 or C4 as displayed in editor
-
+#define MIDDLE_C_OCTAVE 4 	// should middle C (note 60) be C3 or C4 as displayed in editor
+#define OFF_SWITCH_MS	500	// how long the power switch is held before power turns off
 
 #if DEBUG
 	#define ASSERT(e) {if(!(e)) for(;;) {}}
@@ -63,6 +63,7 @@ enum {
 	EV_SAVE_OK,
 	EV_SAVE_FAIL,
 
+	EV_REAPPLY_CAL_VOLTS,	// called in cal mode when the calibration settings on a layer change
 	EV_REAPPLY_CONFIG,		// called when configuration is loaded from EEPROM
 };
 
@@ -83,11 +84,24 @@ enum {
 	SLOT_PATCH8
 };
 
-#define PATCH_SLOT_SIZE		2560
-#define PATCH_DATA_COOKIE1	0x12
-#define PATCH_DATA_COOKIE2	0x40
-#define CONFIG_DATA_COOKIE1	0xAA
-#define CONFIG_DATA_COOKIE2	0x04
+#define PATCH_SLOT_SIZE				2560
+#define PATCH_DATA_COOKIE1			0x12
+#define PATCH_DATA_COOKIE2			0x40
+#define CONFIG_DATA_COOKIE1			0xAA
+#define CONFIG_DATA_COOKIE2			0x05
+#define CALIBRATION_DATA_COOKIE1 	0xAB
+#define CALIBRATION_DATA_COOKIE2	0xCD
+
+#define VERSION_NUMBER				"1.00"
+#ifdef NB_PROTOTYPE
+	#define VERSION_STRING VERSION_NUMBER "P"
+#else
+	#ifdef DEBUG
+		#define VERSION_STRING VERSION_NUMBER "D"
+	#else
+		#define VERSION_STRING VERSION_NUMBER
+	#endif
+#endif
 
 typedef unsigned char byte;
 
@@ -131,7 +145,6 @@ typedef enum:byte {
 	P_SQL_CVGLIDE,
 	P_SQL_CV_ALIAS,
 	P_SQL_GATE_ALIAS,
-	P_SQL_OUT_CAL,
 	P_SQL_OUT_CAL_SCALE,
 	P_SQL_OUT_CAL_OFFSET,
 	P_SQL_MAX,
@@ -140,6 +153,7 @@ typedef enum:byte {
 	P_SEQ_REC_ARM,
 	P_SEQ_SCALE_TYPE,
 	P_SEQ_SCALE_ROOT,
+	P_SEQ_OUT_CAL,
 	P_SEQ_MAX,
 
 	P_CLOCK_BPM,
@@ -384,17 +398,17 @@ typedef enum:byte {
 } V_SQL_GATE_ALIAS;
 
 typedef enum:byte {
-	V_SQL_OUT_CAL_NONE,
-	V_SQL_OUT_CAL_1V,
-	V_SQL_OUT_CAL_2V,
-	V_SQL_OUT_CAL_3V,
-	V_SQL_OUT_CAL_4V,
-	V_SQL_OUT_CAL_5V,
-	V_SQL_OUT_CAL_6V,
-	V_SQL_OUT_CAL_7V,
-	V_SQL_OUT_CAL_8V,
-	V_SQL_OUT_CAL_MAX
-} V_SQL_OUT_CAL;
+	V_SEQ_OUT_CAL_NONE,
+	V_SEQ_OUT_CAL_1V,
+	V_SEQ_OUT_CAL_2V,
+	V_SEQ_OUT_CAL_3V,
+	V_SEQ_OUT_CAL_4V,
+	V_SEQ_OUT_CAL_5V,
+	V_SEQ_OUT_CAL_6V,
+	V_SEQ_OUT_CAL_7V,
+	V_SEQ_OUT_CAL_8V,
+	V_SEQ_OUT_CAL_MAX
+} V_SEQ_OUT_CAL;
 
 
 typedef enum:byte {
@@ -439,6 +453,7 @@ extern void force_full_repaint();
 void set(PARAM_ID param, int value);
 int get(PARAM_ID param);
 int is_valid_for_menu(PARAM_ID param);
+int is_cal_mode();
 
 
 

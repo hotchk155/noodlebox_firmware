@@ -416,13 +416,13 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest) += sizeof m_cfg;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src) += sizeof m_cfg;
 	}
 

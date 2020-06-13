@@ -49,32 +49,11 @@
 #include "params.h"
 #include "menu.h"
 
+//
+// DATA
+//
 
-const uint32_t title_screen[] = {
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF,
-#if NB_PROTOTYPE
-		(uint32_t)0xAAAAAAAA,
-		(uint32_t)0x55555555
-#else
-		(uint32_t)0xFFFFFFFF,
-		(uint32_t)0xFFFFFFFF
-#endif
-};
-
-
+// Define GPIOs for power control
 #if NB_PROTOTYPE
  CDigitalOut PowerControl(kGPIO_PORTE, 2);
  CDigitalIn OffSwitch(kGPIO_PORTE, 1);
@@ -83,13 +62,12 @@ const uint32_t title_screen[] = {
  CDigitalIn OffSwitch(kGPIO_PORTE, 7);
 #endif
 
-
+// View type
 typedef enum:byte {
 	 VIEW_SEQUENCER,
 	 VIEW_MENU_A,
 	 VIEW_MENU_B
  } VIEW_TYPE;
-
 VIEW_TYPE g_view = VIEW_SEQUENCER;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +79,6 @@ void midi::handle_note(byte chan, byte note, byte vel) {
 void midi::handle_realtime(byte ch) {
 	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
 }
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void set(PARAM_ID param, int value) {
 	if(param < P_SQL_MAX) {
@@ -145,6 +121,7 @@ int is_valid_for_menu(PARAM_ID param) {
 	return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
 void dispatch_event(int event, uint32_t param) {
 	switch(g_view) {
 	case VIEW_SEQUENCER:
@@ -157,6 +134,7 @@ void dispatch_event(int event, uint32_t param) {
 	}
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
 void switch_to_view(VIEW_TYPE view) {
 	switch(g_view) {
 	case VIEW_SEQUENCER:
@@ -181,6 +159,7 @@ void switch_to_view(VIEW_TYPE view) {
 	}
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
 void fire_event(int event, uint32_t param) {
 
 	switch(event) {
@@ -260,7 +239,9 @@ void fire_event(int event, uint32_t param) {
 		g_sequence.event(event, param);
 		g_sequence_editor.event(event, param);
 		break;
-
+	case EV_REAPPLY_CAL_VOLTS:
+		g_sequence.event(event, param);
+		break;
 	///////////////////////////////////
 	default:
 		dispatch_event(event, param);
@@ -268,12 +249,13 @@ void fire_event(int event, uint32_t param) {
 	}
 }
 
-
+/////////////////////////////////////////////////////////////////////////////////////////////
 void force_full_repaint() {
 	g_popup.force_repaint();
 	g_menu.force_repaint();
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
 void test() {
 	int dac = 0;
 	int gate = 0;
@@ -299,52 +281,84 @@ void test() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
+int is_cal_mode() {
+	return g_sequence.is_cal_mode();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 void save_config() {
 	byte *ptr = g_i2c_eeprom.buf();
-	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
+	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
+
+	// first gather the calibration data
+	*ptr++ = CALIBRATION_DATA_COOKIE1;
+	*ptr++ = CALIBRATION_DATA_COOKIE2;
+	g_outs.get_cfg(&ptr);
+
+	// then the config data
 	*ptr++ = CONFIG_DATA_COOKIE1;
 	*ptr++ = CONFIG_DATA_COOKIE2;
-	g_outs.get_cfg(&ptr);
 	g_clock.get_cfg(&ptr);
 	g_sequence_editor.get_cfg(&ptr);
-	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
-	*ptr++ = checksum;
+
+	// add a checksum
+	*ptr++ = g_i2c_eeprom.buf_checksum(len);
+
+	// save all the data
 	g_i2c_bus.wait_for_idle();
-	g_i2c_eeprom.write(SLOT_CONFIG, len + 3);
+	g_i2c_eeprom.write(SLOT_CONFIG, len + 1);
 	g_i2c_bus.wait_for_idle();
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 void load_config() {
+
+	// load data from EEPROM
 	byte *buf = g_i2c_eeprom.buf();
-	int len = g_outs.get_cfg_size() + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
-	g_i2c_eeprom.read(SLOT_CONFIG, len + 3);
+	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
+
+	g_i2c_eeprom.read(SLOT_CONFIG, len + 1);
 	g_i2c_bus.wait_for_idle();
-	byte checksum = g_i2c_eeprom.buf_checksum(len + 2);
-	if(buf[0] == CONFIG_DATA_COOKIE1 && buf[1] == CONFIG_DATA_COOKIE2 && buf[len+2] == checksum) {
-		buf+=2;
-		g_outs.set_cfg(&buf);
-		g_clock.set_cfg(&buf);
-		g_sequence_editor.set_cfg(&buf);
-		fire_event(EV_REAPPLY_CONFIG, 0);
+
+	byte expected_checksum = buf[len];
+
+	// we handle the calibration data separately so that it is preserved even if we need to
+	// discard the remaining configuration data due to a change in the data structure
+	if(buf[0] != CALIBRATION_DATA_COOKIE1 && buf[1] != CALIBRATION_DATA_COOKIE2) {
+		g_outs.init_config();
+		g_popup.text("CAL ERR");
 	}
 	else {
-		g_popup.text("CFG ERR");
+
+
+		// load cal data
+		buf+=2;
+		g_outs.set_cfg(&buf);
+
+		// validate then load data
+		if(	buf[0] == CONFIG_DATA_COOKIE1 &&
+			buf[1] == CONFIG_DATA_COOKIE2 &&
+			g_i2c_eeprom.buf_checksum(len) == expected_checksum ) {
+
+			buf+=2;
+			g_clock.set_cfg(&buf);
+			g_sequence_editor.set_cfg(&buf);
+			fire_event(EV_REAPPLY_CONFIG, 0);
+		}
+		else {
+			g_popup.text("CFG ERR");
+		}
 	}
 }
-/////////////////////////////////////////////////////////////////////////////////////////////
-int main(void) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       BOARD_InitBootPins();
-    BOARD_InitBootClocks();
-    BOARD_InitBootPeripherals();
 
-    g_clock.init();
-    g_ui.init();
+/////////////////////////////////////////////////////////////////////////////////////////////
+void power_up_screen() {
     for(int i=15; i>=0; --i) {
         g_ui.lock_for_update();
         for(int j=0; j<16; ++j) {
-        	g_ui.raster(j) = title_screen[j];
+        	g_ui.raster(j) = 0xFFFFFFFF;
         	if(j>=i) {
-        		g_ui.hilite(j) = title_screen[j];
+        		g_ui.hilite(j) = 0xFFFFFFFF;
         	}
         	else {
         		g_ui.hilite(j) = 0;
@@ -353,16 +367,54 @@ int main(void) {
         g_ui.unlock_for_update();
         g_clock.wait_ms(50);
     }
+}
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+void shut_down_screen() {
+    for(int i=0; i<16; ++i) {
+        g_ui.lock_for_update();
+        g_ui.clear();
+        uint32_t mask1 = g_ui.make_mask(i, 32-i);
+		uint32_t mask2 =  mask1 ^ g_ui.make_mask(i+1, 30-i);
+        int y1 = i/2;
+        int y2 = 15-i/2;
+		g_ui.hilite(y1) = mask1;
+		g_ui.hilite(y2) = mask1;
+		while(++y1<y2) {
+			g_ui.hilite(y1) = mask2;
+		}
+        g_ui.unlock_for_update();
+        g_clock.wait_ms(20);
+    }
+}
+
+/////////////////////////////////
+//                             //
+//   APPLICATION ENTRY POINT   //
+//                             //
+/////////////////////////////////
+int main(void) {
+
+	BOARD_InitBootPins();
+    BOARD_InitBootClocks();
+    BOARD_InitBootPeripherals();
+
+    g_clock.init();
+    g_ui.init();
+    power_up_screen();
     PowerControl.set(1);
+    g_popup.text(VERSION_STRING);
+
     g_i2c_bus.init();
     g_midi.init();
     g_sequence.init();
     load_config();
     g_i2c_bus.wait_for_idle();
 
+    // prepare to display the editor
     g_sequence_editor.activate();
 
+	int off_count =  OFF_SWITCH_MS;
     while(1) {
 
     	if(g_clock.is_ms_tick()) {
@@ -390,7 +442,12 @@ int main(void) {
 			g_ui.unlock_for_update();
 
     		if(!OffSwitch.get()) {
-    			break;
+    			if(!--off_count) {
+    				break;
+    			}
+    		}
+    		else {
+    			off_count = OFF_SWITCH_MS;
     		}
 
     		g_midi_led.run();
@@ -404,6 +461,7 @@ int main(void) {
     save_config();
     //g_sequence.save_patch(SLOT_AUTOSAVE);
     g_i2c_bus.wait_for_idle();
+	shut_down_screen();
 	PowerControl.set(0);
 	for(;;);
     return 0 ;

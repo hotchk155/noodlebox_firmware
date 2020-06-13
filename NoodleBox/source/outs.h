@@ -203,11 +203,12 @@ public:
 	COuts()
 	{
 		memset((byte*)m_chan,0,sizeof m_chan);
+		init_config();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void init_config() {
 		memset((byte*)&m_cfg,0,sizeof m_cfg);
-		//for(int i=0; i<MAX_CHAN; ++i) {
-			//m_chan[i].cv_src = i;
-			//m_chan[i].gate_src = i;
-		//}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -388,12 +389,12 @@ public:
 	}
 	///////////////////////////////////////////////////
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=get_cfg_size();
 	}
 	///////////////////////////////////////////////////
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=get_cfg_size();
 	}
 };

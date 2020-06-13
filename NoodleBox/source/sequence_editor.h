@@ -146,7 +146,6 @@ class CSequenceEditor {
 		m_rand_seed = 0;
 		m_rec_arm = 0;
 		m_num_midi_in_notes = 0;
-		activate();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -1489,6 +1488,10 @@ public:
 			case P_SQL_AUTO_GATE_INSERT:
 			case P_SQL_SHOW_GRID:
 				return 1;
+			case P_SQL_OUT_CAL_SCALE:
+			case P_SQL_OUT_CAL_OFFSET:
+				return ::is_cal_mode();
+
 			//case P_SQL_MIDI_IN_CHAN:
 				//return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 			default:
@@ -1510,6 +1513,10 @@ public:
 		m_cmd_values = NULL;
 		m_num_values = 0;
 		m_edit_param = P_NONE;
+
+		// calibration is active only inside the menu
+		g_sequence.set(P_SEQ_OUT_CAL, V_SEQ_OUT_CAL_NONE);
+
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1836,12 +1843,12 @@ public:
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest) += sizeof m_cfg;
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src) += sizeof m_cfg;
 	}
 };

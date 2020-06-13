@@ -159,7 +159,7 @@ private:
 		clock::TICKS_TYPE m_next_step_time;
 		//TICKS_TYPE m_next_step_grid_time;
 
-		V_SQL_OUT_CAL m_cal_mode;
+		//V_SQL_OUT_CAL m_cal_mode;
 
 		//byte m_input_note;
 	} STATE;
@@ -400,7 +400,6 @@ public:
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
 		m_state.m_first_step = 1;
-		m_state.m_cal_mode = V_SQL_OUT_CAL_NONE;
 	}
 
 	void event(int event, uint32_t param) {
@@ -461,17 +460,15 @@ public:
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
 		case P_SQL_CV_ALIAS: m_cfg.m_cv_alias = (V_SQL_CV_ALIAS)value; break;
 		case P_SQL_GATE_ALIAS: m_cfg.m_gate_alias = (V_SQL_GATE_ALIAS)value; break;
-		case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; g_outs.test_dac(m_id, m_state.m_cal_mode); break;
-		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
-		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); g_outs.test_dac(m_id, m_state.m_cal_mode); break;
+		//case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; cal_output(); break;
+		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); fire_event(EV_REAPPLY_CAL_VOLTS,0); break;
+		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); fire_event(EV_REAPPLY_CAL_VOLTS,0); break;
 		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
 		//case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
 		//case P_SQL_AUX_IN_ENABLE: m_cfg.m_aux_in_enable = (V_SQL_AUX_IN_ENABLE)value; break;
 		default: break;
 		}
 	}
-
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get(PARAM_ID param) {
@@ -502,7 +499,7 @@ public:
 		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
 		case P_SQL_CV_ALIAS: return m_cfg.m_cv_alias;
 		case P_SQL_GATE_ALIAS: return m_cfg.m_gate_alias;
-		case P_SQL_OUT_CAL: return m_state.m_cal_mode;
+		//case P_SQL_OUT_CAL: return m_state.m_cal_mode;
 		case P_SQL_OUT_CAL_SCALE: return g_outs.get_cal_scale(m_id);
 		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
 		//case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
@@ -526,10 +523,7 @@ public:
 		case P_SQL_MIX: return (m_id!=0);
 		case P_SQL_OUT_CAL_SCALE:
 		case P_SQL_OUT_CAL_OFFSET:
-			return !!m_state.m_cal_mode;
-		//case P_SQL_MIDI_IN_CHAN: return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
-		//case P_SQL_AUX_IN_ENABLE:
-		//	return !!(g_clock.get(P_AUX_IN_MODE) >= V_AUX_IN_MODE_X_BASE);
+			return ::is_cal_mode();
 		}
 		return 1;
 	}
@@ -1009,6 +1003,10 @@ public:
 		stop_midi_note();
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void set_cal_volts(int volts) {
+		g_outs.test_dac(m_id, volts);
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Get a number of ticks, x, where
@@ -1290,7 +1288,6 @@ public:
 		default:
 			glide_time = 0;
 		}
-
 		g_outs.cv(m_id, output, m_cfg.m_cv_scale, glide_time);
 	}
 
@@ -1471,7 +1468,7 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest) += sizeof m_cfg;
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].get_cfg(dest);
@@ -1479,7 +1476,7 @@ public:
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src) += sizeof m_cfg;
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].set_cfg(src);

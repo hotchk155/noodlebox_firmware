@@ -210,11 +210,11 @@ public:
 		return sizeof(m_cfg);
 	}
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=get_cfg_size();
 	}
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=get_cfg_size();
 	}
 };
@@ -359,11 +359,11 @@ public:
 		return sizeof(m_cfg);
 	}
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=get_cfg_size();
 	}
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=get_cfg_size();
 	}
 };
@@ -560,11 +560,11 @@ public:
 		return sizeof(m_cfg);
 	}
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=get_cfg_size();
 	}
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=get_cfg_size();
 	}
 };
@@ -655,11 +655,11 @@ public:
 		return sizeof(m_cfg);
 	}
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=get_cfg_size();
 	}
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=get_cfg_size();
 	}
 };
@@ -999,7 +999,7 @@ public:
 			CMidiClockOut::get_cfg_size();
 	}
 	void get_cfg(byte **dest) {
-		*((CONFIG*)*dest) = m_cfg;
+		memcpy(*dest, &m_cfg, sizeof m_cfg);
 		(*dest)+=sizeof(m_cfg);
 		g_fixed_clock.get_cfg(dest);
 		g_pulse_clock_in.get_cfg(dest);
@@ -1008,7 +1008,7 @@ public:
 		g_midi_clock_out.get_cfg(dest);
 	}
 	void set_cfg(byte **src) {
-		m_cfg = *((CONFIG*)*src);
+		memcpy(&m_cfg, *src, sizeof m_cfg);
 		(*src)+=sizeof(m_cfg);
 		g_fixed_clock.set_cfg(src);
 		g_pulse_clock_in.set_cfg(src);
