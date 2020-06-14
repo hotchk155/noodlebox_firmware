@@ -40,12 +40,15 @@ private:
 	CSequenceStep m_step_value[NUM_LAYERS];
 	CV_TYPE m_output_value[NUM_LAYERS];
 
-	byte m_is_running;		// whether the sequencer is running
+	// whether the sequencer is running
+	byte m_is_running;
 
+	// MIDI recording info
 	int m_rec_layer;
 	CSequenceLayer::REC_SESSION m_rec;
 
-	V_SEQ_OUT_CAL m_cal_mode; // calibration voltage
+	// calibration voltage
+	V_SEQ_OUT_CAL m_cal_mode;
 
 public:
 
@@ -53,6 +56,7 @@ public:
 	CSequence() {
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
 	void init() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
 			m_layers[i] = &m_layer_content[i];
@@ -62,6 +66,7 @@ public:
 		m_is_running = 0;
 		m_cal_mode = V_SEQ_OUT_CAL_NONE;
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void clear() {
 		for(int i=0; i<NUM_LAYERS; ++i) {
@@ -79,7 +84,6 @@ public:
 		m_rec_layer = -1;
 
 		m_rec.arm = V_SEQ_REC_ARM_OFF;
-		//m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
 		m_rec.mode = V_SEQ_REC_MODE_NONE;
 		m_rec.note = 0;
 	}
@@ -186,7 +190,6 @@ public:
 	void midi_note_on(int layer, byte note, byte vel) {
 		m_rec_layer = layer;
 		m_rec.note = note;
-		//m_rec.gate_state = vel? CSequenceLayer::REC_GATE_STATE::REC_GATE_TRIG: CSequenceLayer::REC_GATE_STATE::REC_GATE_ON;
 
 		if(m_rec_layer >= 0 && m_rec.mode == V_SEQ_REC_MODE_TRANSPOSE) {
 			if(note>=MIDI_TRANSPOSE_MIN && note<=MIDI_TRANSPOSE_MAX) {
@@ -205,9 +208,6 @@ public:
 
 		m_rec_layer = -1;
 		m_rec.note = 0;
-		//m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
-
-
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +333,6 @@ public:
 		}
 	}
 
-
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void set_cfg(byte **src) {
 		m_scale.set_cfg(src);
@@ -373,7 +372,6 @@ public:
 			init_state();
 			switch(slot) {
 			case SLOT_CONFIG:
-			//case SLOT_AUTOSAVE:
 				break;
 			case SLOT_TEMPLATE:
 				clear();
@@ -387,7 +385,6 @@ public:
 		else {
 			switch(slot) {
 			case SLOT_CONFIG:
-			//case SLOT_AUTOSAVE:
 				break;
 			case SLOT_TEMPLATE:
 				init();

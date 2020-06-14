@@ -1480,8 +1480,6 @@ public:
 		switch(param) {
 		case P_SQL_AUTO_GATE_INSERT: m_cfg.m_auto_gate = !!value; break;
 		case P_SQL_SHOW_GRID: m_cfg.m_show_grid = !!value; break;
-		//case P_EDIT_REC_ARM: m_rec_arm = !!value; break;
-		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; fire_event(EV_MIDI_IN_RESET,0); break;
 		case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; fire_event(EV_MIDI_IN_RESET,0); break;
 		default:
 			g_sequence.get_layer(m_cur_layer).set(param, value);
@@ -1497,9 +1495,6 @@ public:
 			case P_SQL_OUT_CAL_SCALE:
 			case P_SQL_OUT_CAL_OFFSET:
 				return ::is_cal_mode();
-
-			//case P_SQL_MIDI_IN_CHAN:
-				//return (m_cfg.m_midi_in_mode != V_SQL_MIDI_IN_MODE_NONE);
 			default:
 				return g_sequence.get_layer(m_cur_layer).is_valid_param(param);
 		}

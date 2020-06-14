@@ -275,8 +275,6 @@ void test() {
     		}
 
     	}
-
-		//g_outs.run_i2c();
 	}
 }
 

@@ -56,12 +56,10 @@ public:
 	typedef struct {
 		V_SEQ_REC_MODE mode;
 		V_SEQ_REC_ARM arm;
-		//REC_GATE_STATE gate_state;
 		byte note;
-		//byte is_clear;
 	} REC_SESSION;
-private:
 
+private:
 
 	enum :byte {
 		NO_MIDI_NOTE = 0xff,
@@ -98,7 +96,6 @@ private:
 		V_SQL_COMBINE	m_combine_prev;
 		byte 			m_midi_vel;
 		byte 			m_midi_acc_vel;
-//		byte 			m_midi_bend;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
 		byte 			m_scroll_ofs;					// lowest step value shown on grid
@@ -107,9 +104,6 @@ private:
 		int 			m_enabled:1;
 		V_SQL_CV_ALIAS 	m_cv_alias;
 		V_SQL_GATE_ALIAS m_gate_alias;
-		//V_SQL_AUX_IN_ENABLE m_aux_in_enable;
-		//V_SQL_MIDI_IN_MODE m_midi_in_mode;
-		//V_SQL_MIDI_IN_CHAN m_midi_in_chan;
 
 	} CONFIG;
 	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
@@ -120,42 +114,21 @@ private:
 		int m_play_page_no;				// the page number being played
 		int m_play_pos;
 		int m_cue_list_next;				// position of the next cued page within cued pages list
-		CSequenceStep xm_step_value;			// the last value output by sequencer
-		//int m_played_step:1;				// stepped flag
-		//int m_suppress_step:1;
 		int m_page_advanced:1;
 		int m_first_step:1;				// flag says if we have not played any steps since reset
-
-
-
-		//int m_midi_bend;
-		//byte m_midi_vel;
 		long m_midi_cc_value;
 		long m_midi_cc_target;
 		long m_midi_cc_inc;
-		//CV_TYPE m_step_output;					// output from the current sequencer step
-		//CV_TYPE m_output;						// current output value when layer mix taken into account
 		byte m_step_midi_note; 					// midi note for the step
 		byte m_step_midi_vel;
 		byte m_playing_midi_note; 					// midi note currently playing on on channel
-
-		//uint32_t m_next_tick;
-		//byte m_last_tick_lsb;
 		uint32_t m_gate_timeout;		// this is the number of ms remaining of the current gate pulse
 		uint32_t m_step_timeout;		// this is the number of ms remaining of the current full step time
 		uint32_t m_retrig_ms;			// this is the number of ms between retriggers
 		uint32_t m_retrig_timeout;		// this is the time remaining until the next retrigger
 		uint32_t m_trig_dur;					// the duration of the current trigger
-
 		clock::TICKS_TYPE m_next_step_time;
-		//TICKS_TYPE m_next_step_grid_time;
-
-		//V_SQL_OUT_CAL m_cal_mode;
-
-		//byte m_input_note;
 	} STATE;
-
-//	const uint32_t INFINITE_GATE = (uint32_t)(-1);
 
 	CONFIG m_cfg;				// instance of config
 	STATE m_state;
@@ -177,6 +150,7 @@ private:
 			return (byte)in;
 		}
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	// accessor for a page
 	inline CSequencePage& get_page(byte page_no) {
@@ -261,32 +235,7 @@ private:
 		}
 	}
 
-	/*
-	///////////////////////////////////////////////////////////////////////////////
-	void set_cv_alias(V_SQL_CV_ALIAS value) {
-		m_cfg.m_cv_alias = value;
-		if(value == V_SQL_CV_ALIAS_NONE) {
-			g_outs.set_cv_alias(m_id, m_id);
-		}
-		else {
-			g_outs.set_cv_alias(m_id, value - V_SQL_CV_ALIAS_FROM_L1);
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void set_gate_alias(V_SQL_GATE_ALIAS value) {
-		m_cfg.m_gate_alias = value;
-		if(value == V_SQL_GATE_ALIAS_NONE) {
-			g_outs.set_gate_alias(m_id, m_id);
-		}
-		else {
-			g_outs.set_gate_alias(m_id, value - V_SQL_GATE_ALIAS_FROM_L1);
-		}
-	}
-	*/
-
 public:
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	void init() {
@@ -321,14 +270,10 @@ public:
 		m_cfg.m_cv_glide = V_SQL_CVGLIDE_OFF;
 		m_cfg.m_midi_vel = 100;
 		m_cfg.m_midi_acc_vel = 127;
-//		m_cfg.m_midi_bend = 0;
 		m_cfg.m_fill_mode = V_SQL_FILL_MODE_PAD;
 		m_cfg.m_loop_per_page = 0;
 		m_cfg.m_midi_out = V_SQL_MIDI_OUT_NONE;
 		m_cfg.m_scaled_view = 1;
-//		m_cfg.m_aux_in_enable = V_SQL_AUX_IN_ENABLE_OFF;
-//		m_cfg.m_midi_in_mode = V_SQL_MIDI_IN_MODE_NONE;
-//		m_cfg.m_midi_in_chan = V_SQL_MIDI_IN_CHAN_OMNI;
 		m_cfg.m_cv_alias = V_SQL_CV_ALIAS_NONE;
 		m_cfg.m_gate_alias = V_SQL_GATE_ALIAS_NONE;
 		set_mode(m_cfg.m_mode);
@@ -345,54 +290,40 @@ public:
 		m_cfg.m_cue_list_count = 0;
 		m_cfg.m_cue_mode = CUE_NONE;
 		set_scroll_for(get_default_value(),1);
-		//m_cfg.m_scroll_ofs = DEFAULT_SCROLL_OFS;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Initialise the state of a configured sequence layer (e.g. when the layer
 	// has been loaded from EEPROM)
 	void init_state() {
-		//m_state.m_last_tick_lsb = 0;
 		m_state.m_playing_midi_note = NO_MIDI_NOTE;
 		m_state.m_step_midi_note = NO_MIDI_NOTE;
-		//m_state.m_midi_bend = 0;
-		//m_state.m_midi_vel = 0;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
 		m_state.m_cue_list_next = 0;
-		//m_state.m_input_note = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
 		}
 		reset();
-
-		//set_cv_alias(m_cfg.m_cv_alias);
-		//set_gate_alias(m_cfg.m_gate_alias);
 	}
 
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Reset the playback state of the layer
 	void reset() {
-		//m_state.m_step_value.clear(CSequenceStep::ALL_DATA);
-		//m_state.m_played_step = 0;
-		//m_state.m_suppress_step = 0;
 		m_state.m_play_pos = 0;
 		m_state.m_next_step_time = clock::TICKS_INFINITY;
-		//m_state.m_next_step_grid_time = TICKS_INFINITY;
-		//m_state.m_next_tick = 0;
 		m_state.m_gate_timeout = 0;
 		m_state.m_step_timeout = 0;
 		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
-		//m_state.m_output = 0;
-		//m_state.m_step_output = 0;
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
 		m_state.m_first_step = 1;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
 	void event(int event, uint32_t param) {
 		switch(event) {
 		case EV_SEQ_RESTART:
@@ -406,17 +337,6 @@ public:
 		case EV_LOAD_OK:
 			init_state();
 			break;
-		//case EV_SEQ_RESTART_X:
-		//case EV_SEQ_MUTE_UNMUTE_X:
-			//if(m_cfg.m_aux_in_enable == V_SQL_AUX_IN_ENABLE_ON) {
-				//if(event == EV_SEQ_RESTART_X) {
-				//	reset();
-				//}
-				//else if(event == EV_SEQ_MUTE_UNMUTE_X) {
-					set_enabled(!is_enabled());
-				//}
-			//}
-			//break;
 		}
 	}
 
@@ -440,10 +360,8 @@ public:
 		case P_SQL_CVGLIDE: m_cfg.m_cv_glide = (V_SQL_CVGLIDE)value; break;
 		case P_SQL_MIDI_VEL: m_cfg.m_midi_vel = value; break;
 		case P_SQL_MIDI_ACC_VEL: m_cfg.m_midi_acc_vel = value; break;
-//		case P_SQL_MIDI_BEND: m_cfg.m_midi_bend = value; break;
 		case P_SQL_FILL_MODE: m_cfg.m_fill_mode = (V_SQL_FILL_MODE)value; recalc_data_points_all_pages(); break;
 		case P_SQL_LOOP_PER_PAGE: set_loop_per_page(value); break;
-		//case P_SQL_CUE_MODE: m_cfg.m_cue_mode = value; break;
 		case P_SQL_MIX: m_cfg.m_combine_prev = (V_SQL_COMBINE)value; break;
 		case P_SQL_CV_OCTAVE: m_cfg.m_cv_octave = (V_SQL_CVSHIFT)value; break;
 		case P_SQL_CV_TRANSPOSE: m_cfg.m_cv_transpose = value; break;
@@ -451,12 +369,8 @@ public:
 		case P_SQL_SCALED_VIEW: m_cfg.m_scaled_view = !!value; break;
 		case P_SQL_CV_ALIAS: m_cfg.m_cv_alias = (V_SQL_CV_ALIAS)value; break;
 		case P_SQL_GATE_ALIAS: m_cfg.m_gate_alias = (V_SQL_GATE_ALIAS)value; break;
-		//case P_SQL_OUT_CAL: m_state.m_cal_mode = (V_SQL_OUT_CAL)value; cal_output(); break;
 		case P_SQL_OUT_CAL_SCALE: g_outs.set_cal_scale(m_id, value); fire_event(EV_REAPPLY_CAL_VOLTS,0); break;
 		case P_SQL_OUT_CAL_OFFSET:g_outs.set_cal_ofs(m_id, value); fire_event(EV_REAPPLY_CAL_VOLTS,0); break;
-		//case P_SQL_MIDI_IN_MODE: m_cfg.m_midi_in_mode = (V_SQL_MIDI_IN_MODE)value; break;
-		//case P_SQL_MIDI_IN_CHAN: m_cfg.m_midi_in_chan = (V_SQL_MIDI_IN_CHAN)value; break;
-		//case P_SQL_AUX_IN_ENABLE: m_cfg.m_aux_in_enable = (V_SQL_AUX_IN_ENABLE)value; break;
 		default: break;
 		}
 	}
@@ -477,12 +391,8 @@ public:
 		case P_SQL_CVGLIDE: return m_cfg.m_cv_glide;
 		case P_SQL_MIDI_VEL: return m_cfg.m_midi_vel;
 		case P_SQL_MIDI_ACC_VEL: return m_cfg.m_midi_acc_vel;
-//		case P_SQL_MIDI_BEND: return m_cfg.m_midi_bend;
 		case P_SQL_FILL_MODE: return m_cfg.m_fill_mode;
-//		case P_SQL_SCALE_TYPE: return CScale::instance().get_type();
-//		case P_SQL_SCALE_ROOT: return CScale::instance().get_root();
 		case P_SQL_LOOP_PER_PAGE: return !!m_cfg.m_loop_per_page;
-//		case P_SQL_CUE_MODE: return !!m_cfg.m_cue_mode;
 		case P_SQL_MIX: return m_cfg.m_combine_prev;
 		case P_SQL_CV_OCTAVE: return m_cfg.m_cv_octave;
 		case P_SQL_CV_TRANSPOSE: return m_cfg.m_cv_transpose;
@@ -490,12 +400,8 @@ public:
 		case P_SQL_SCALED_VIEW: return !!m_cfg.m_scaled_view;
 		case P_SQL_CV_ALIAS: return m_cfg.m_cv_alias;
 		case P_SQL_GATE_ALIAS: return m_cfg.m_gate_alias;
-		//case P_SQL_OUT_CAL: return m_state.m_cal_mode;
 		case P_SQL_OUT_CAL_SCALE: return g_outs.get_cal_scale(m_id);
 		case P_SQL_OUT_CAL_OFFSET: return g_outs.get_cal_ofs(m_id);
-		//case P_SQL_MIDI_IN_MODE: return m_cfg.m_midi_in_mode;
-		//case P_SQL_MIDI_IN_CHAN: return m_cfg.m_midi_in_chan;
-		//case P_SQL_AUX_IN_ENABLE: return m_cfg.m_aux_in_enable;
 		default:return 0;
 		}
 	}
@@ -571,7 +477,6 @@ public:
 		}
 	}
 
-
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
@@ -581,7 +486,6 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	// change the mode
@@ -605,7 +509,6 @@ public:
 		set_scroll_for_page(0);
 	}
 
-
 	///////////////////////////////////////////////////////////////////////////////
 	inline V_SQL_MIDI_OUT get_midi_out_mode() {
 		return m_cfg.m_midi_out;
@@ -616,7 +519,6 @@ public:
 		CSequencePage& page = get_page(page_no);
 		return page.get_step(index);
 	}
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_step(byte page_no, byte index, CSequenceStep& step, CSequenceStep::DATA what = CSequenceStep::ALL_DATA, byte auto_data_point = 0) {
@@ -1189,21 +1091,6 @@ public:
 		}
 	}
 
-/*
-	///////////////////////////////////////////////////////////////////////////////
-	// Called when we are in a recording mode (armed or note). We override the
-	// current step value based on MIDI input
-	void rec(byte rec_arm, byte note, CSequenceStep::POINT_TYPE gate) {
-
-		m_state.m_step_value.set_value(note);
-		m_state.m_step_value.set(CSequenceStep::TRIG_POINT, !!(gate == CSequenceStep::TRIG_POINT));
-		m_state.m_step_value.set(CSequenceStep::TIE_POINT, !!(gate == CSequenceStep::TIE_POINT));
-		if(rec_arm) {
-			set_step(m_state.m_play_page_no, m_state.m_play_pos, m_state.m_step_value, CSequenceStep::ALL_DATA, 1);
-		}
-	}
-*/
-
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
 	CV_TYPE calculate_output(CV_TYPE this_input, CSequenceStep& step_value) {
@@ -1395,3 +1282,4 @@ public:
 };
 
 #endif /* SEQUENCE_LAYER_H_ */
+

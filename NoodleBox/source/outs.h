@@ -87,8 +87,6 @@ public:
 		int pitch;					// 32-bit current pitch value (dac << 16)
 		int target;  				// 32-bit current target value (dac << 16)
 		int glide_rate;  			// glide rate applied per ms to the pitch
-		//byte cv_src;
-		//byte gate_src;
 	} CHAN_STATE;
 	CHAN_STATE m_chan[MAX_CHAN];
 
@@ -351,21 +349,6 @@ public:
 			}
 		}
 	}
-
-/*
-	///////////////////////////////////////////////////
-	void set_cv_alias(byte which, byte src) {
-		ASSERT(which<MAX_CHAN);
-		ASSERT(src<MAX_CHAN);
-		m_chan[which].cv_src = src;
-	}
-	///////////////////////////////////////////////////
-	void set_gate_alias(byte which, byte src) {
-		ASSERT(which<MAX_CHAN);
-		ASSERT(src<MAX_CHAN);
-		m_chan[which].gate_src = src;
-	}
-*/
 
 	///////////////////////////////////////////////////
 	void set_cal_scale(byte which, int value) {

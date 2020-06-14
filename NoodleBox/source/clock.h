@@ -928,12 +928,6 @@ public:
 			case V_AUX_IN_MODE_RESTART:
 				fire_event(EV_SEQ_RESTART, 0);
 				break;
-			//case V_AUX_IN_MODE_RESET_X:
-				//fire_event(EV_SEQ_RESTART_X, 0);
-				//break;
-			//case V_AUX_IN_MODE_MUTE_X:
-				//fire_event(EV_SEQ_MUTE_UNMUTE_X, 0);
-				//break;
 			}
 			--m_aux_in_count;
 		}

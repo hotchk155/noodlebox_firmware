@@ -17,7 +17,10 @@
 #ifndef POPUP_H_
 #define POPUP_H_
 
+//////////////////////////////////////////////////////////////////////////////
 class CPopup {
+
+	/////////////////////////////////////////////////////////////////////////
 	void format_number(int value, int msd) {
 		if(value<0) {
 			m_text[m_len++] = '-';
@@ -47,6 +50,8 @@ public:
 	byte m_align;
 	byte m_render;
 	int m_timeout;
+
+	/////////////////////////////////////////////////////////////////////////
 	CPopup() {
 		m_len = 0;
 		m_align = ALIGN_RIGHT;
@@ -57,6 +62,7 @@ public:
 		m_mask = 0;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	// prepare bitmap
 	void prepare() {
 		for(int i=0; i<5; ++i) {
@@ -85,6 +91,7 @@ public:
 		}
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void align(int mode) {
 		if(mode != m_align) {
 			m_align = mode;
@@ -92,6 +99,7 @@ public:
 		}
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	// automatically set left or right alignment based
 	void avoid(int col) {
 		if(col < 16 && m_align != ALIGN_RIGHT) {
@@ -103,6 +111,8 @@ public:
 			m_render = 1;
 		}
 	}
+
+	/////////////////////////////////////////////////////////////////////////
 	// for popup showing note name
 	void note_name(byte note) {
 		m_len = 1;
@@ -156,6 +166,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void num1digit(int value, byte append=0) {
 		if(!append) {
 			m_len = 0;
@@ -166,6 +177,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void num2digits(int value, byte append=0) {
 		if(!append) {
 			m_len = 0;
@@ -176,7 +188,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
-
+	/////////////////////////////////////////////////////////////////////////
 	void num3digits(int value, byte append=0) {
 		if(!append) {
 			m_len = 0;
@@ -187,6 +199,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void show_offset(int value) {
 		m_len = 0;
 		if(value >= 0) {
@@ -203,6 +216,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void text(const char *sz, byte append = 0) {
 		if(!append) {
 			m_len = 0;
@@ -215,6 +229,7 @@ public:
 		m_timeout = DISPLAY_TIMEOUT;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void text_value(const char *values, int which, byte append = 0) {
 		const char *ch = values;
 		while(*ch) {
@@ -236,6 +251,7 @@ public:
 		}
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void repaint() {
 		if(m_render) {
 			prepare();
@@ -250,20 +266,29 @@ public:
 			++row;
 		}
 	}
+
+	/////////////////////////////////////////////////////////////////////////
 	void no_hide() {
 		m_timeout = 0;
 	}
+
+	/////////////////////////////////////////////////////////////////////////
 	void hide_after_timeout() {
 		m_timeout = DISPLAY_TIMEOUT;
 	}
+
+	/////////////////////////////////////////////////////////////////////////
 	void hide() {
 		m_len = 0;
 		force_full_repaint();
 	}
+
+	/////////////////////////////////////////////////////////////////////////
 	void force_repaint() {
 		m_render = 1;
 	}
 
+	/////////////////////////////////////////////////////////////////////////
 	void run() {
 		if(m_timeout) {
 			if(!--m_timeout) {

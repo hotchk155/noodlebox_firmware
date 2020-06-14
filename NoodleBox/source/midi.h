@@ -39,6 +39,7 @@ enum {
 	MIDI_SONG_SELECT   = 0xF3
 };
 
+//////////////////////////////////////////////////////////////////////////////
 class CMidi {
 
 	// State flags used while receiving MIDI data
@@ -59,6 +60,7 @@ public:
 	volatile byte m_tx_tail;
 
 
+	////////////////////////////////////////////////////
 	CMidi() {
 		m_rx_head = 0;
 		m_rx_tail = 0;
@@ -72,7 +74,7 @@ public:
 
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////
 	// INITIALISE MIDI
 	void init() {
 	    uart_config_t config;
@@ -82,13 +84,10 @@ public:
 	    config.enableRx = true;
 	    UART_Init(UART0, &config, CLOCK_GetFreq(kCLOCK_BusClk));
 	    UART_EnableInterrupts(UART0, kUART_RxDataRegFullInterruptEnable | kUART_RxOverrunInterruptEnable | kUART_TxDataRegEmptyInterruptEnable);
-	    //UART_EnableInterrupts(UART0, kUART_RxDataRegFullInterruptEnable | kUART_RxOverrunInterruptEnable | kUART_TransmissionCompleteInterruptEnable);
 	    EnableIRQ(UART0_IRQn);
 	}
 
-
-
-	/////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////
 	// TRANSMIT A CHARACTER (BLOCKING)
 	void send_byte(byte ch) {
 		int tx_head = (m_tx_head+1)%TXBUF_SIZE_MASK;
@@ -98,21 +97,29 @@ public:
 		}
 	    UART_EnableInterrupts(UART0, kUART_TxDataRegEmptyInterruptEnable);
 	}
+
+	////////////////////////////////////////////////////
 	void send_cc(byte chan, byte cc, byte value) {
 		send_byte(0xB0 | chan);
 		send_byte(cc & 0x7F);
 		send_byte(value & 0x7F);
 	}
+
+	////////////////////////////////////////////////////
 	void start_note(byte chan, byte note, byte velocity) {
 		send_byte(0x90 | chan);
 		send_byte(note & 0x7F);
 		send_byte(velocity & 0x7F);
 	}
+
+	////////////////////////////////////////////////////
 	void stop_note(byte chan, byte note) {
 		send_byte(0x90 | chan);
 		send_byte(note & 0x7F);
 		send_byte(0x00);
 	}
+
+	////////////////////////////////////////////////////
 	void bend(byte chan, int amount) {
 		amount += 8192;
 		if(amount<0) {
@@ -126,6 +133,7 @@ public:
 		send_byte((amount>>7)&0x7F);
 	}
 
+	////////////////////////////////////////////////////
 	inline void irq_handler() {
 
 		uint32_t flags = UART_GetStatusFlags(UART0);
@@ -141,9 +149,6 @@ public:
 			}
 	    }
 	    if(flags & kUART_TxDataRegEmptyFlag) {
-	    	//if(flags & kUART_TxDataRegEmptyFlag) {
-	    		//UART_DisableInterrupts(UART0, kUART_TxDataRegEmptyInterruptEnable);
-	    	//}
 	    	if(m_tx_head != m_tx_tail) {
 		        UART_WriteByte(UART0, m_txbuf[m_tx_tail]);
 	    		m_tx_tail = (m_tx_tail+1)%TXBUF_SIZE_MASK;
