@@ -579,10 +579,17 @@ public:
 			return (m_cfg.m_cv_alias - V_SQL_CV_ALIAS_FROM_L1);
 		}
 	}
+
+
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
 	//
 	// EDIT FUNCTIONS
 	//
-
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -862,9 +869,13 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
 	//
 	// PAGE ARRANGER
 	//
+	///////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -922,17 +933,10 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	//byte is_played_step() {
-		//return m_state.m_played_step;
-	//}
-	///////////////////////////////////////////////////////////////////////////////
 	byte is_page_advanced() {
 		return m_state.m_page_advanced;
 	}
-	///////////////////////////////////////////////////////////////////////////////
-	//CSequenceStep& get_current_step() {
-		//return m_state.m_step_value;
-	//}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void set_play_page(int page_no) {
 		m_state.m_play_page_no = page_no;
@@ -956,7 +960,6 @@ public:
 		m_state = other.m_state;
 	}
 
-
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
@@ -966,11 +969,6 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////
-
-	///////////////////////////////////////////////////////////////////////////////
-	//int is_accented_step() {
-		//return m_state.m_step_value.is(CSequenceStep::ACCENT_POINT);
-	//}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void stop_midi_note() {
@@ -1291,89 +1289,6 @@ public:
 		g_outs.cv(m_id, output, m_cfg.m_cv_scale, glide_time);
 	}
 
-
-/*
-		// if the output is in calibration mode then we will not
-		// send any note information it it
-		if(m_state.m_cal_mode != V_SQL_OUT_CAL_NONE) {
-			return this_input;
-		}
-
-		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
-			m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) &&
-			!step_value.is(CSequenceStep::DATA_POINT)) {
-			// in mask/add and mask modes we simply duplciate the previous layer output
-			m_state.m_output = this_input;
-		}
-		else
-		{
-			if(!step_value.is(CSequenceStep::IGNORE_POINT)) {
-
-				int value = step_value.get_value() + (int)m_cfg.m_cv_transpose;;
-
-				// get the scaled data point
-				if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
-					m_state.m_step_output = COuts::SCALING*(value - OFFSET_ZERO);
-				}
-				else {
-					m_state.m_step_output = COuts::SCALING*value;
-				}
-
-				// check if we have an absolute volts range (1V - 8V). If so scale the output
-				// accordingly (each volt will be 12 scale points)
-				if(m_cfg.m_cv_scale < V_SQL_CVSCALE_1VOCT) {
-					m_state.m_step_output = (m_state.m_step_output * (1 + m_cfg.m_cv_scale - V_SQL_CVSCALE_1V) * 12)/127;
-				}
-			}
-
-			// perform any addition of previous layer output
-			if(m_cfg.m_combine_prev == V_SQL_COMBINE_ADD ||
-				m_cfg.m_combine_prev == V_SQL_COMBINE_ADD_MASK) {
-				m_state.m_output = this_input + m_state.m_step_output;
-			}
-			else {
-				m_state.m_output = m_state.m_step_output;
-			}
-		}
-
-		// apply transposition
-		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
-			m_state.m_output = m_state.m_output + 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
-		}
-
-		// quantize the output to scale if needed
-		switch(m_cfg.m_quantize) {
-		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
-			if(m_state.m_output < 0) {
-				m_state.m_output = 0;
-			}
-			m_state.m_output = COuts::SCALING * (m_state.m_output/COuts::SCALING);
-			break;
-		case V_SQL_SEQ_QUANTIZE_SCALE:
-			if(m_state.m_output < 0) {
-				m_state.m_output = 0;
-			}
-			m_state.m_output = COuts::SCALING * CScale::instance().force_to_scale(m_state.m_output/COuts::SCALING);
-			break;
-		}
-		int glide_time;
-		switch(m_cfg.m_cv_glide) {
-		case V_SQL_CVGLIDE_ON:
-			glide_time = m_state.m_step_timeout;
-			break;
-		case V_SQL_CVGLIDE_TIE:
-			glide_time = (step_value.is(CSequenceStep::TIE_POINT))? m_state.m_step_timeout : 0;
-			break;
-		case V_SQL_CVGLIDE_OFF:
-		default:
-			glide_time = 0;
-		}
-
-		g_outs.cv(m_id, m_state.m_output, m_cfg.m_cv_scale, glide_time);
-		return m_state.m_output;
-	}
-*/
-
 	///////////////////////////////////////////////////////////////////////////////
 	// Play the gate for a step. This is usually done after CV so that we have
 	// already set the appropriate pitch before trigging a VCA etc
@@ -1423,8 +1338,6 @@ public:
 			}
 		}
 	}
-
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	// This function does the extra work following process_gate() call in order
@@ -1483,6 +1396,5 @@ public:
 		}
 	}
 };
-
 
 #endif /* SEQUENCE_LAYER_H_ */
