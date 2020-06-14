@@ -1146,7 +1146,7 @@ public:
 		}
 
 		if(m_state.m_midi_cc_inc) {
-			int value = m_state.m_midi_cc_value>>16;
+			int prev_value = m_state.m_midi_cc_value>>16;
 			m_state.m_midi_cc_value += m_state.m_midi_cc_inc;
 			if(m_state.m_midi_cc_inc>0) {
 				if(m_state.m_midi_cc_value > m_state.m_midi_cc_target) {
@@ -1160,8 +1160,9 @@ public:
 					m_state.m_midi_cc_inc = 0;
 				}
 			}
-			if((m_state.m_midi_cc_value>>16) != value) {
-				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, m_state.m_midi_cc_value>>16);
+			int next_value = (m_state.m_midi_cc_value>>16);
+			if(next_value != prev_value) {
+				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, next_value);
 			}
 		}
 
@@ -1227,7 +1228,7 @@ public:
 		{
 
 			// get the scaled data point
-			int value = step_value.get_value() + (int)m_cfg.m_cv_transpose;;
+			int value = step_value.get_value();
 			if(m_cfg.m_mode == V_SQL_SEQ_MODE_OFFSET) {
 				this_output = COuts::SCALING*(value - OFFSET_ZERO);
 			}
@@ -1248,32 +1249,37 @@ public:
 			}
 		}
 
-		// apply transposition
-		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
-			this_output += 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
-		}
-
-		// quantize the output to scale if needed
-		switch(m_cfg.m_quantize) {
-		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
-			if(this_output < 0) {
-				this_output = 0;
-			}
-			this_output = COuts::SCALING * (this_output/COuts::SCALING);
-			break;
-		case V_SQL_SEQ_QUANTIZE_SCALE:
-			if(this_output < 0) {
-				this_output = 0;
-			}
-			this_output = COuts::SCALING * CScale::instance().force_to_scale(this_output/COuts::SCALING);
-			break;
-		}
 		return this_output;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void apply_output(CV_TYPE output, CSequenceStep& step_value) {
 
+		// apply transposition
+		output += COuts::SCALING * (int)m_cfg.m_cv_transpose;
+
+		// quantize the output to scale if needed
+		switch(m_cfg.m_quantize) {
+		case V_SQL_SEQ_QUANTIZE_CHROMATIC:
+			if(output < 0) {
+				output = 0;
+			}
+			output = COuts::SCALING * (output/COuts::SCALING);
+			break;
+		case V_SQL_SEQ_QUANTIZE_SCALE:
+			if(output < 0) {
+				output = 0;
+			}
+			output = COuts::SCALING * CScale::instance().force_to_scale(output/COuts::SCALING);
+			break;
+		}
+
+		// apply octave shift
+		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
+			output += 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
+		}
+
+		// calculate glide time
 		int glide_time;
 		switch(m_cfg.m_cv_glide) {
 		case V_SQL_CVGLIDE_ON:

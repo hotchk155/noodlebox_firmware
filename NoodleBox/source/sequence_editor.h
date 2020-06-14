@@ -184,6 +184,7 @@ class CSequenceEditor {
 		g_popup.text(g_sequence.get_layer(2).is_enabled()? "3":"$",1);
 		g_popup.text(g_sequence.get_layer(3).is_enabled()? "4":"$",1);
 		g_popup.avoid(m_cursor);
+		g_popup.no_hide();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -1212,6 +1213,11 @@ class CSequenceEditor {
 		case ACTION_BEGIN:
 			m_edit_mutes = 0;
 			break;
+		case ACTION_END:
+			if(m_edit_mutes) {
+				g_popup.hide();
+			}
+			break;
 		case ACTION_ENC_LEFT:
 			scroll(layer, -1);
 			break;
@@ -1294,7 +1300,7 @@ class CSequenceEditor {
 				toggle(P_SQL_SHOW_GRID, "GRID:", "HID|SHO");
 				break;
 			case KEY_FUNC|KEY2_FUNC_REC_MODE:
-				toggle(P_SEQ_REC_MODE, "REC:", "NONE|CV|CVGT|TRAN|PLAY",5);
+				toggle(P_SEQ_REC_MODE, "REC:", "NONE|CV|TRAN",3);
 				break;
 			case KEY_FUNC|KEY2_FUNC_LOOP_POINTS:
 				toggle(P_SQL_LOOP_PER_PAGE, "LOOP:", "LAY|PAG",2);

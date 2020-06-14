@@ -17,9 +17,10 @@
 #ifndef DEFS_H_
 #define DEFS_H_
 
-//#define NB_PROTOTYPE 1	// define this for prototype hardware. Also need to use NoodleboxProto.mex
-#define MIDDLE_C_OCTAVE 4 	// should middle C (note 60) be C3 or C4 as displayed in editor
-#define OFF_SWITCH_MS	500	// how long the power switch is held before power turns off
+//#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex
+#define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
+#define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
+#define OFF_SWITCH_MS	500		// how long the power switch is held before power turns off
 
 #if DEBUG
 	#define ASSERT(e) {if(!(e)) for(;;) {}}
@@ -414,9 +415,7 @@ typedef enum:byte {
 typedef enum:byte {
 	V_SEQ_REC_MODE_NONE,
 	V_SEQ_REC_MODE_CV,
-	V_SEQ_REC_MODE_CV_GATE,
 	V_SEQ_REC_MODE_TRANSPOSE,
-	V_SEQ_REC_MODE_PLAY,
 	V_SEQ_REC_MODE_MAX
 } V_SEQ_REC_MODE;
 
