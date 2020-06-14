@@ -46,15 +46,6 @@ public:
 		INIT_LAST
 	};
 
-/*	enum:byte {
-		REC_ARM			= 0x01,
-		REC_GATE_INFO	= 0x02,
-		REC_NOTE_INFO	= 0x04,
-		REC_IS_GATE		= 0x08,
-		REC_IS_TRIG		= 0x10,
-		REC_IS_TIE		= 0x20
-	};*/
-
 	typedef enum:byte {
 		REC_GATE_OFF,
 		REC_GATE_TRIG,
@@ -65,9 +56,9 @@ public:
 	typedef struct {
 		V_SEQ_REC_MODE mode;
 		V_SEQ_REC_ARM arm;
-		REC_GATE_STATE gate_state;
+		//REC_GATE_STATE gate_state;
 		byte note;
-		byte is_clear;
+		//byte is_clear;
 	} REC_SESSION;
 private:
 

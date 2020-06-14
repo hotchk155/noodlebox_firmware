@@ -1611,7 +1611,7 @@ public:
 		if(chan == m_cfg.m_midi_in_chan || m_cfg.m_midi_in_chan == V_SQL_MIDI_IN_CHAN_OMNI) {
 			if(process_midi_in_note(note,vel)) { // any change to the held note?
 				if(m_num_midi_in_notes) {
-					g_sequence.midi_note_on(m_cur_layer, note, vel, g_ui.is_key_down(KEY_CLEAR));
+					g_sequence.midi_note_on(m_cur_layer, note, vel);
 				}
 				else {
 					g_sequence.midi_note_off();

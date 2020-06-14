@@ -79,9 +79,8 @@ public:
 		m_rec_layer = -1;
 
 		m_rec.arm = V_SEQ_REC_ARM_OFF;
-		m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
+		//m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
 		m_rec.mode = V_SEQ_REC_MODE_NONE;
-		m_rec.is_clear = 0;
 		m_rec.note = 0;
 	}
 
@@ -184,11 +183,10 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void midi_note_on(int layer, byte note, byte vel, byte is_clear) {
+	void midi_note_on(int layer, byte note, byte vel) {
 		m_rec_layer = layer;
 		m_rec.note = note;
-		m_rec.is_clear = is_clear;
-		m_rec.gate_state = vel? CSequenceLayer::REC_GATE_STATE::REC_GATE_TRIG: CSequenceLayer::REC_GATE_STATE::REC_GATE_ON;
+		//m_rec.gate_state = vel? CSequenceLayer::REC_GATE_STATE::REC_GATE_TRIG: CSequenceLayer::REC_GATE_STATE::REC_GATE_ON;
 
 		if(m_rec_layer >= 0 && m_rec.mode == V_SEQ_REC_MODE_TRANSPOSE) {
 			if(note>=MIDI_TRANSPOSE_MIN && note<=MIDI_TRANSPOSE_MAX) {
@@ -207,7 +205,7 @@ public:
 
 		m_rec_layer = -1;
 		m_rec.note = 0;
-		m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
+		//m_rec.gate_state = CSequenceLayer::REC_GATE_STATE::REC_GATE_OFF;
 
 
 	}
