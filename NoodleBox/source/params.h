@@ -113,7 +113,7 @@ public:
 		case PT_PATTERN:
 			return 39;
 		case PT_CALIBRATION:
-			return 99;
+			return CAL_SETTING_MAX;
 		case PT_TRANSPOSE:
 			return 24;
 		default:
@@ -126,7 +126,7 @@ public:
 		case PT_BPM:
 			return 30;
 		case PT_CALIBRATION:
-			return -99;
+			return CAL_SETTING_MIN;
 		case PT_TRANSPOSE:
 			return -24;
 		default:

@@ -21,6 +21,9 @@
 #define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
 #define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
 #define OFF_SWITCH_MS	500		// how long the power switch is held before power turns off
+#define CAL_SETTING_MIN	(-99)
+#define CAL_SETTING_MAX 99
+
 
 #if DEBUG
 	#define ASSERT(e) {if(!(e)) for(;;) {}}
@@ -453,6 +456,7 @@ void set(PARAM_ID param, int value);
 int get(PARAM_ID param);
 int is_valid_for_menu(PARAM_ID param);
 int is_cal_mode();
+void save_config();
 
 
 

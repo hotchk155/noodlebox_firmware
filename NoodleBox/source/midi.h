@@ -20,6 +20,7 @@
 namespace midi {
 extern void handle_realtime(byte ch);
 extern void handle_note(byte ch, byte note, byte vel);
+extern void handle_nrpn(byte nrpn_hi, byte nrpn_lo, byte value_hi, byte value_lo);
 enum {
 	RXBUF_SIZE = 64,
 	RXBUF_SIZE_MASK = 0x3F,
@@ -36,7 +37,12 @@ enum {
 	MIDI_SYSEX_END     = 0xF7,
 	MIDI_MTC_QTR_FRAME = 0xF1,
 	MIDI_SPP 		   = 0xF2,
-	MIDI_SONG_SELECT   = 0xF3
+	MIDI_SONG_SELECT   = 0xF3,
+
+	MIDI_CC_NRPN_HI    = 99,
+	MIDI_CC_NRPN_LO    = 98,
+	MIDI_CC_DATA_HI    = 6,
+	MIDI_CC_DATA_LO    = 38
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -47,8 +53,10 @@ class CMidi {
 	byte m_midi_num_params;		// number of parameters needed by current MIDI message
 	byte m_midi_params[2];		// parameter values of current MIDI message
 	byte m_midi_param;			// number of params currently received
-	byte m_in_sysex;				// whether in sysex
-
+	byte m_in_sysex;			// whether in sysex
+	byte m_nrpn_hi;				// track last NRPN (MSB)
+	byte m_nrpn_lo;				// track last NRPN (LSB)
+	byte m_nrpn_value_hi;		// track last NRPN value (MSB)
 public:
 
 	volatile byte m_rxbuf[RXBUF_SIZE];
@@ -71,7 +79,9 @@ public:
 		m_midi_num_params = 0;
 		m_midi_param = 0;
 		m_in_sysex = 0;
-
+		m_nrpn_hi = 0;
+		m_nrpn_lo = 0;
+		m_nrpn_value_hi = 0;
 	}
 
 	////////////////////////////////////////////////////
@@ -235,6 +245,25 @@ public:
 							break;
 						case 0x90: // note on
 							handle_note(m_midi_status&0x0F, m_midi_params[0], m_midi_params[1]);
+							break;
+						case 0xB0: // cc
+							switch(m_midi_params[0]) {
+								case MIDI_CC_NRPN_HI:
+									m_nrpn_hi = m_midi_params[1];
+									m_nrpn_lo = 0;
+									m_nrpn_value_hi = 0;
+									break;
+								case MIDI_CC_NRPN_LO:
+									m_nrpn_lo = m_midi_params[1];
+									m_nrpn_value_hi = 0;
+									break;
+								case MIDI_CC_DATA_HI:
+									m_nrpn_value_hi = m_midi_params[1];
+									break;
+								case MIDI_CC_DATA_LO:
+									handle_nrpn(m_nrpn_hi, m_nrpn_lo, m_nrpn_value_hi, m_midi_params[1]);
+									break;
+							}
 							break;
 						}
 					}

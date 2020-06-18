@@ -21,6 +21,18 @@
 // SEQUENCER CLASS
 class CSequence {
 
+	enum {
+		NRPNH_GLOBAL = 1,
+		NRPNH_LAYER1 = 21,
+		NRPNH_LAYER2 = 22,
+		NRPNH_LAYER3 = 23,
+		NRPNH_LAYER4 = 24,
+		NRPNL_VOLTS = 15,
+		NRPNL_CAL_SCALE = 98,
+		NRPNL_CAL_OFFSET = 99,
+		NRPNL_SAVE_CONFIG = 100
+	};
+
 public:
 	enum {
 		NUM_LAYERS = 4,	// number of layers in the sequence
@@ -217,6 +229,52 @@ public:
 		m_rec.note = 0;
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	void handle_nrpn(int nrpn_hi, int nrpn_lo, int value_hi, int value_lo) {
+
+		// currently only used in calibration mode
+		if(m_cal_mode != V_SEQ_OUT_CAL_NONE) {
+			int layer;
+			int value = value_hi? -value_lo : value_lo;
+			switch(nrpn_hi) {
+
+			// 1/100/x/x - SAVE CONFIG
+			case NRPNH_GLOBAL:
+				if(nrpn_lo == NRPNL_SAVE_CONFIG) {
+					save_config();
+				}
+				break;
+
+			case NRPNH_LAYER1: // 21/x/x/x - addressing layer 1
+			case NRPNH_LAYER2: // 22/x/x/x - addressing layer 2
+			case NRPNH_LAYER3: // 23/x/x/x - addressing layer 3
+			case NRPNH_LAYER4: // 24/x/x/x - addressing layer 4
+				layer = nrpn_hi - NRPNH_LAYER1;
+				switch(nrpn_lo) {
+				case NRPNL_VOLTS: // x/15/0/1 .. x/15/0/8 - set reference voltage
+					if(value > 0 && value < V_SEQ_OUT_CAL_MAX) {
+						set(P_SEQ_OUT_CAL, value);
+					}
+					break;
+				case NRPNL_CAL_SCALE: // x/98/sign/value - set the scale for the layer
+					if(value >= CAL_SETTING_MIN && value <= CAL_SETTING_MAX) {
+						m_layers[layer]->set(P_SQL_OUT_CAL_SCALE, value);
+					}
+					break;
+				case NRPNL_CAL_OFFSET: // x/99/sign/value - set the offset for the layer
+					if(value >= CAL_SETTING_MIN && value <= CAL_SETTING_MAX) {
+						m_layers[layer]->set(P_SQL_OUT_CAL_OFFSET, value);
+					}
+					break;
+				}
+
+				// ensure menu is repainted to update new values
+				// should calibration happen to be visible..
+				fire_event(EV_REPAINT_MENU,0);
+			}
+		}
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// Called once each millisecond, this is the entry point of the sequencing engine
 	void run() {
@@ -364,7 +422,7 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	void save_patch_complete(int slot) {
-		g_popup.text("SAVED");
+		g_popup.text("OK");
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	byte load_patch(int slot) {
@@ -388,7 +446,12 @@ public:
 				g_popup.text("INIT");
 				break;
 			default:
-				g_popup.text("LOADED");
+				int i;
+				for(i=0; i<NUM_LAYERS; ++i) {
+					if(m_layers[i]->is_muted())
+						break;
+				}
+				g_popup.text(i<NUM_LAYERS? "OK MUTES": "OK");
 				break;
 			}
 		}

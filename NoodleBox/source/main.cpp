@@ -81,6 +81,13 @@ void midi::handle_realtime(byte ch) {
 	g_midi_led.blink(g_midi_led.SHORT_BLINK);
 	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+void midi::handle_nrpn(byte nrpn_hi, byte nrpn_lo, byte value_hi, byte value_lo) {
+	g_midi_led.blink(g_midi_led.SHORT_BLINK);
+	g_sequence.handle_nrpn(nrpn_hi, nrpn_lo, value_hi, value_lo);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void set(PARAM_ID param, int value) {
 	if(param < P_SQL_MAX) {
@@ -308,7 +315,7 @@ void save_config() {
 	g_i2c_bus.wait_for_idle();
 	g_i2c_eeprom.write(SLOT_CONFIG, len + 1);
 	g_i2c_bus.wait_for_idle();
-
+	g_popup.text("CFG SAVE");
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 void load_config() {
@@ -460,8 +467,6 @@ int main(void) {
     }
     g_sequence.silence();
     save_config();
-    //g_sequence.save_patch(SLOT_AUTOSAVE);
-    g_i2c_bus.wait_for_idle();
 	shut_down_screen();
 	PowerControl.set(0);
 	for(;;);
