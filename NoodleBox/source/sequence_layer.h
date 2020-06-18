@@ -26,7 +26,6 @@ public:
 	enum {
 		NUM_PAGES = 4,					// number of pages
 		MAX_PLAYING_NOTES = 8,
-		//DEFAULT_SCROLL_OFS = 31,
 		SCROLL_MARGIN = 3,
 		MAX_CUE_LIST = 16,
 	};
@@ -101,7 +100,7 @@ private:
 		byte 			m_scroll_ofs;					// lowest step value shown on grid
 		int 			m_scaled_view:1;	// whether the pitch view is 7 rows/oct
 		int 			m_loop_per_page:1;
-		int 			m_enabled:1;
+		int 			m_muted:1;
 		V_SQL_CV_ALIAS 	m_cv_alias;
 		V_SQL_GATE_ALIAS m_gate_alias;
 
@@ -263,7 +262,7 @@ public:
 		m_cfg.m_midi_out_chan 	= m_id;	// default to midi chans 1-4
 		m_cfg.m_midi_cc = 1;
 		m_cfg.m_midi_cc_smooth = 0;
-		m_cfg.m_enabled = 1;
+		m_cfg.m_muted = 0;
 		m_cfg.m_cv_scale = V_SQL_CVSCALE_1VOCT;
 		m_cfg.m_cv_octave = V_SQL_CVSHIFT_NONE;
 		m_cfg.m_cv_transpose = 0;
@@ -331,6 +330,7 @@ public:
 			reset();
 			break;
 		case EV_SEQ_STOP:
+			silence();
 			break;
 		case EV_SEQ_CONTINUE:
 			break;
@@ -671,16 +671,6 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	byte is_enabled() {
-		return m_cfg.m_enabled;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	void set_enabled(byte e) {
-		m_cfg.m_enabled = e;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
 	int get_scroll_ofs() {
 		return m_cfg.m_scroll_ofs;
 	}
@@ -895,6 +885,22 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void mute() {
+		m_cfg.m_muted = 1;
+		silence();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void unmute() {
+		m_cfg.m_muted = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	int is_muted() {
+		return m_cfg.m_muted;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void set_cal_volts(int volts) {
 		g_outs.test_dac(m_id, volts);
 	}
@@ -1031,69 +1037,72 @@ public:
 	// called once per ms
 	void run() {
 
-		if(m_state.m_gate_timeout) {
-			if(!--m_state.m_gate_timeout) {
-				g_outs.gate(m_id, COuts::GATE_CLOSED);
-				stop_midi_note();
-			}
-		}
-
-		if(m_state.m_midi_cc_inc) {
-			int prev_value = m_state.m_midi_cc_value>>16;
-			m_state.m_midi_cc_value += m_state.m_midi_cc_inc;
-			if(m_state.m_midi_cc_inc>0) {
-				if(m_state.m_midi_cc_value > m_state.m_midi_cc_target) {
-					m_state.m_midi_cc_value = m_state.m_midi_cc_target;
-					m_state.m_midi_cc_inc = 0;
+		if(!m_cfg.m_muted) {
+			if(m_state.m_gate_timeout) {
+				if(!--m_state.m_gate_timeout) {
+					g_outs.gate(m_id, COuts::GATE_CLOSED);
+					stop_midi_note();
 				}
+			}
+
+			if(m_state.m_midi_cc_inc) {
+				int prev_value = m_state.m_midi_cc_value>>16;
+				m_state.m_midi_cc_value += m_state.m_midi_cc_inc;
+				if(m_state.m_midi_cc_inc>0) {
+					if(m_state.m_midi_cc_value > m_state.m_midi_cc_target) {
+						m_state.m_midi_cc_value = m_state.m_midi_cc_target;
+						m_state.m_midi_cc_inc = 0;
+					}
+				}
+				else {
+					if(m_state.m_midi_cc_value < m_state.m_midi_cc_target) {
+						m_state.m_midi_cc_value = m_state.m_midi_cc_target;
+						m_state.m_midi_cc_inc = 0;
+					}
+				}
+				int next_value = (m_state.m_midi_cc_value>>16);
+				if(next_value != prev_value) {
+					g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, next_value);
+				}
+			}
+
+
+			// is retrigger active on this step?
+			if(m_state.m_retrig_ms) {
+				if(m_state.m_retrig_timeout) {
+					// sill waiting for the next retrig to be due
+					--m_state.m_retrig_timeout;
+				}
+				else {
+					// retrigger the gate
+					g_outs.gate(m_id, COuts::GATE_TRIG);
+					m_state.m_gate_timeout = m_state.m_trig_dur;
+
+					// retrigger the MIDI note
+					if( V_SQL_MIDI_OUT_NOTE == m_cfg.m_midi_out &&
+						m_state.m_step_midi_note != NO_MIDI_NOTE) {
+						start_midi_note(0);
+					}
+
+					// schedule the next retrigger
+					m_state.m_retrig_timeout = m_state.m_retrig_ms;
+				}
+			}
+
+			// one less ms of this step
+			if(m_state.m_step_timeout) {
+				--m_state.m_step_timeout;
 			}
 			else {
-				if(m_state.m_midi_cc_value < m_state.m_midi_cc_target) {
-					m_state.m_midi_cc_value = m_state.m_midi_cc_target;
-					m_state.m_midi_cc_inc = 0;
-				}
+				// ensure retrig stops at end of stpe
+				m_state.m_retrig_ms = 0;
 			}
-			int next_value = (m_state.m_midi_cc_value>>16);
-			if(next_value != prev_value) {
-				g_midi.send_cc(m_cfg.m_midi_out_chan, m_cfg.m_midi_cc, next_value);
-			}
-		}
-
-
-		// is retrigger active on this step?
-		if(m_state.m_retrig_ms) {
-			if(m_state.m_retrig_timeout) {
-				// sill waiting for the next retrig to be due
-				--m_state.m_retrig_timeout;
-			}
-			else {
-				// retrigger the gate
-				g_outs.gate(m_id, COuts::GATE_TRIG);
-				m_state.m_gate_timeout = m_state.m_trig_dur;
-
-				// retrigger the MIDI note
-				if(m_state.m_step_midi_note != NO_MIDI_NOTE) {
-					start_midi_note(0);
-				}
-
-				// schedule the next retrigger
-				m_state.m_retrig_timeout = m_state.m_retrig_ms;
-			}
-		}
-
-		// one less ms of this step
-		if(m_state.m_step_timeout) {
-			--m_state.m_step_timeout;
-		}
-		else {
-			// ensure retrig stops at end of stpe
-			m_state.m_retrig_ms = 0;
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// the long value is MIDI notes * 65536
-	CV_TYPE calculate_output(CV_TYPE this_input, CSequenceStep& step_value) {
+	CV_TYPE get_step_output(CV_TYPE this_input, CSequenceStep& step_value) {
 
 		CV_TYPE this_output;
 		if((m_cfg.m_combine_prev == V_SQL_COMBINE_MASK ||
@@ -1131,10 +1140,10 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	void apply_output(CV_TYPE output, CSequenceStep& step_value) {
+	CV_TYPE get_layer_output(CV_TYPE step_output, CSequenceStep& step_value) {
 
 		// apply transposition
-		output += COuts::SCALING * (int)m_cfg.m_cv_transpose;
+		CV_TYPE output = step_output + COuts::SCALING * (int)m_cfg.m_cv_transpose;
 
 		// quantize the output to scale if needed
 		switch(m_cfg.m_quantize) {
@@ -1156,6 +1165,12 @@ public:
 		if(m_cfg.m_cv_octave != V_SQL_CVSHIFT_NONE) {
 			output += 12 * COuts::SCALING * (m_cfg.m_cv_octave - V_SQL_CVSHIFT_NONE);
 		}
+
+		return output;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void process_cv(CV_TYPE output, CSequenceStep& step_value) {
 
 		// calculate glide time
 		int glide_time;

@@ -72,11 +72,13 @@ VIEW_TYPE g_view = VIEW_SEQUENCER;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 void midi::handle_note(byte chan, byte note, byte vel) {
+	g_midi_led.blink(g_midi_led.SHORT_BLINK);
 	g_sequence_editor.handle_midi_note(chan, note, vel);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 void midi::handle_realtime(byte ch) {
+	g_midi_led.blink(g_midi_led.SHORT_BLINK);
 	clock::g_midi_clock_in.on_midi_realtime(ch, g_clock.get_ms());
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +458,7 @@ int main(void) {
     	// run the i2c bus.
     	g_i2c_bus.run();
     }
+    g_sequence.silence();
     save_config();
     //g_sequence.save_patch(SLOT_AUTOSAVE);
     g_i2c_bus.wait_for_idle();

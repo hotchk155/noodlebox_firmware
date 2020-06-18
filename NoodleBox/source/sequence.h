@@ -38,7 +38,7 @@ private:
 	// four layers, regardless of whether the layer has advanced to a
 	// new step or whether the layer is muted
 	CSequenceStep m_step_value[NUM_LAYERS];
-	CV_TYPE m_output_value[NUM_LAYERS];
+	CV_TYPE m_step_output[NUM_LAYERS];
 
 	// whether the sequencer is running
 	byte m_is_running;
@@ -187,6 +187,13 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void silence() {
+		for(int i=0; i<NUM_LAYERS; ++i) {
+			m_layers[i]->silence();
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void midi_note_on(int layer, byte note, byte vel) {
 		m_rec_layer = layer;
 		m_rec.note = note;
@@ -259,12 +266,12 @@ public:
 					CSequenceLayer& layer = *m_layers[i];
 
 					// update output values based on current step vaues
-					m_output_value[i] = layer.calculate_output(output_value, m_step_value[i]);
-					output_value = m_output_value[i];
+					m_step_output[i] = layer.get_step_output(output_value, m_step_value[i]);
+					output_value = m_step_output[i];
 
 					// check if any mapped layer has an accent point (NB: need to establish this before any layer gates are
 					// triggered, since accent triggers first)
-					if(layer.is_enabled() && m_step_value[layer.get_gate_source_layer()].is(CSequenceStep::ACCENT_POINT)) {
+					if(!layer.is_muted() && m_step_value[layer.get_gate_source_layer()].is(CSequenceStep::ACCENT_POINT)) {
 						any_accented_step = 1;
 					}
 				}
@@ -280,21 +287,24 @@ public:
 
 					// we only need to do this for layers that are not muted
 					CSequenceLayer& layer = *m_layers[i];
-					if(layer.is_enabled()) {
+					if(!layer.is_muted()) {
 
 						// Lookup the CV and gate value that should be output from this layer
-						CV_TYPE output_value = m_output_value[layer.get_cv_source_layer()];
 						CSequenceStep& step_value = m_step_value[layer.get_gate_source_layer()];
+						CV_TYPE step_output = m_step_output[layer.get_cv_source_layer()];
+
+						// transpose and quantize to get the layer output from step output
+						CV_TYPE layer_output = layer.get_layer_output(step_output, step_value);
 
 						if(m_cal_mode == V_SEQ_OUT_CAL_NONE) {
 							// Update the analog CV output
-							layer.apply_output(output_value, step_value);
+							layer.process_cv(layer_output, step_value);
 
 						}
 
 						// Update the MIDI CC output if needed
 						if(V_SQL_MIDI_OUT_CC == layer.get_midi_out_mode()) {
-							layer.process_midi_cc(output_value);
+							layer.process_midi_cc(layer_output);
 						}
 
 						// Check if there is a change to the output on the gate source layer
@@ -305,7 +315,7 @@ public:
 
 							// Update MIDI note if appropriate
 							if(V_SQL_MIDI_OUT_NOTE == layer.get_midi_out_mode()) {
-								layer.process_midi_note(output_value, step_value);
+								layer.process_midi_note(layer_output, step_value);
 							}
 						}
 					}

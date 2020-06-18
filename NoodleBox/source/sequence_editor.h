@@ -179,10 +179,10 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_mutes() {
 		g_popup.text("L");
-		g_popup.text(g_sequence.get_layer(0).is_enabled()? "1":"$",1);
-		g_popup.text(g_sequence.get_layer(1).is_enabled()? "2":"$",1);
-		g_popup.text(g_sequence.get_layer(2).is_enabled()? "3":"$",1);
-		g_popup.text(g_sequence.get_layer(3).is_enabled()? "4":"$",1);
+		g_popup.text(g_sequence.get_layer(0).is_muted()? "$":"1",1);
+		g_popup.text(g_sequence.get_layer(1).is_muted()? "$":"2",1);
+		g_popup.text(g_sequence.get_layer(2).is_muted()? "$":"3",1);
+		g_popup.text(g_sequence.get_layer(3).is_muted()? "$":"4",1);
 		g_popup.avoid(m_cursor);
 		g_popup.no_hide();
 	}
@@ -228,7 +228,7 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer_page() {
 		g_popup.text(get_layer_page());
-		if(!g_sequence.get_layer(m_cur_layer).is_enabled()) {
+		if(g_sequence.get_layer(m_cur_layer).is_muted()) {
 			g_popup.text("$",1);
 		}
 		g_popup.avoid(m_cursor);
@@ -1246,7 +1246,12 @@ class CSequenceEditor {
 				}
 				if(layer_no >= 0) {
 					CSequenceLayer& other = g_sequence.get_layer(layer_no);
-					other.set_enabled(!other.is_enabled());
+					if(other.is_muted()) {
+						other.unmute();
+					}
+					else {
+						other.mute();
+					}
 				}
 				show_layer_mutes();
 				break;
