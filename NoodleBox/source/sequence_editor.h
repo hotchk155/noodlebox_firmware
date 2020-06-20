@@ -570,6 +570,7 @@ class CSequenceEditor {
 			break;
 		case CMD_CLEAR_LAYER:
 			if(value) {
+				layer.silence();
 				layer.init();
 				m_cur_page = 0;
 				return 1;
@@ -590,6 +591,7 @@ class CSequenceEditor {
 			if(value) {
 				byte target_layer = value - 1;
 				if(target_layer != m_cur_layer) {
+					g_sequence.get_layer(target_layer).silence();
 					g_sequence.get_layer(target_layer).set_content(g_sequence.get_layer(m_cur_layer));
  					return 1;
 				}
@@ -599,6 +601,8 @@ class CSequenceEditor {
 			if(value) {
 				byte target_layer = value - 1;
 				if(target_layer != m_cur_layer) {
+					g_sequence.get_layer(m_cur_layer).silence();
+					g_sequence.get_layer(target_layer).silence();
 					g_sequence.move_layer(m_cur_layer, target_layer);
 					m_cur_layer = target_layer;
  					return 1;
@@ -608,6 +612,7 @@ class CSequenceEditor {
 		case CMD_MEMORY:
 			if(m_memo_slot) {
 				if(value == 1) {
+					g_sequence.silence();
 					g_sequence.load_patch(m_memo_slot);
 				}
 				else if(value == 2) {
