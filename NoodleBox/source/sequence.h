@@ -192,9 +192,11 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_cal_volts() {
-		int volts = m_cal_mode - V_SEQ_OUT_CAL_NONE;
-		for(int i=0; i<NUM_LAYERS; ++i) {
-			m_layers[i]->set_cal_volts(volts);
+		if(m_cal_mode != V_SEQ_OUT_CAL_NONE) {
+			int volts = m_cal_mode - V_SEQ_OUT_CAL_NONE;
+			for(int i=0; i<NUM_LAYERS; ++i) {
+				m_layers[i]->set_cal_volts(volts);
+			}
 		}
 	}
 
