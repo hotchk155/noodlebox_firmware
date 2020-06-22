@@ -121,7 +121,7 @@
 #define KEY2_LAYER_MUTE			KEY_B7
 
 #define KEY2_FUNC_SCALE_MODE	KEY_B1
-#define KEY2_FUNC_AUTO_GATE		KEY_B2
+#define KEY2_FUNC_AUTO_TRIG		KEY_B2
 #define KEY2_FUNC_INTERPOLATE	KEY_B3
 #define KEY2_FUNC_GRID			KEY_B4
 #define KEY2_FUNC_REC_MODE		KEY_B5
@@ -455,6 +455,13 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////
 	byte is_key_down(uint32_t key) {
 		return !!(m_key_state & key);
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////
+	int get_enc_movement() {
+		int result = m_enc_pos - m_prev_enc_pos;
+		m_prev_enc_pos = m_enc_pos;
+		return result;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////

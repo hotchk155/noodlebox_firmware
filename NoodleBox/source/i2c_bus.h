@@ -114,6 +114,9 @@ CI2CDac g_i2c_dac;
 // Driver for the I2C EEPROM
 // M24256 is a 32kB EEPROM with a 64 byte page size
 //
+// memory is divided into slots. Each slot is 2560 bytes (40 pages)
+// allowing for a total of 12 slots in 32kB
+//
 ///////////////////////////////////////////////////////////////////////////////////
 class CI2CEeprom{
 	enum {

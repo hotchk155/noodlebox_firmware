@@ -48,6 +48,7 @@
 #include "sequence_editor.h"
 #include "params.h"
 #include "menu.h"
+#include "diagnostics.h"
 
 //
 // DATA
@@ -418,6 +419,13 @@ int main(void) {
     load_config();
     g_i2c_bus.wait_for_idle();
 
+    // diagnostic mode
+    if(g_ui.is_key_down(KEY_R1) &&
+       g_ui.is_key_down(KEY_R2) &&
+       g_ui.is_key_down(KEY_R3)) {
+    	g_diagnostics.run();
+    }
+
     // prepare to display the editor
     g_sequence_editor.activate();
 
@@ -472,3 +480,7 @@ int main(void) {
 	for(;;);
     return 0 ;
 }
+
+
+
+
