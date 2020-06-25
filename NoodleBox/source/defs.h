@@ -17,7 +17,9 @@
 #ifndef DEFS_H_
 #define DEFS_H_
 
+
 //#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex
+#define VERSION_NUMBER				"0.00"
 #define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
 #define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
 #define OFF_SWITCH_MS	500		// how long the power switch is held before power turns off
@@ -97,7 +99,6 @@ enum {
 #define CALIBRATION_DATA_COOKIE1 	0xAB
 #define CALIBRATION_DATA_COOKIE2	0xCD
 
-#define VERSION_NUMBER				"1.00"
 #ifdef NB_PROTOTYPE
 	#define VERSION_STRING VERSION_NUMBER "P"
 #else
