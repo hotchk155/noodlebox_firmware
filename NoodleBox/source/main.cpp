@@ -296,7 +296,7 @@ int is_cal_mode() {
 /////////////////////////////////////////////////////////////////////////////////////////////
 void save_config() {
 	byte *ptr = g_i2c_eeprom.buf();
-	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
+	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size();
 
 	// first gather the calibration data
 	*ptr++ = CALIBRATION_DATA_COOKIE1;
@@ -307,7 +307,6 @@ void save_config() {
 	*ptr++ = CONFIG_DATA_COOKIE1;
 	*ptr++ = CONFIG_DATA_COOKIE2;
 	g_clock.get_cfg(&ptr);
-	g_sequence_editor.get_cfg(&ptr);
 
 	// add a checksum
 	*ptr++ = g_i2c_eeprom.buf_checksum(len);
@@ -323,7 +322,7 @@ void load_config() {
 
 	// load data from EEPROM
 	byte *buf = g_i2c_eeprom.buf();
-	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size() + g_sequence_editor.get_cfg_size();
+	int len = 2 + g_outs.get_cfg_size() + 2 + g_clock.get_cfg_size();
 
 	g_i2c_eeprom.read(SLOT_CONFIG, len + 1);
 	g_i2c_bus.wait_for_idle();
@@ -350,7 +349,6 @@ void load_config() {
 
 			buf+=2;
 			g_clock.set_cfg(&buf);
-			g_sequence_editor.set_cfg(&buf);
 			fire_event(EV_REAPPLY_CONFIG, 0);
 		}
 		else {
