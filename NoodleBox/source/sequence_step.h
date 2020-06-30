@@ -97,22 +97,25 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
-	inline byte set(POINT_TYPE type, byte value) {
+	inline void set(POINT_TYPE type, byte value) {
 		switch(type) {
 		case DATA_POINT:
 			m_cv.m_is_data_point = !!value;
 			break;
 		case TRIG_POINT:
 			m_gate.m_trig = !!value;
+			m_gate.m_retrig = 0;
 			break;
 		case TIE_POINT:
-			return m_gate.m_tie = !!value;
+			m_gate.m_tie = !!value;
+			break;
 		case ACCENT_POINT:
-			return m_gate.m_accent = !!value;
+			m_gate.m_accent = !!value;
+			break;
 		case IGNORE_POINT:
-			return m_gate.m_ignore = !!value;
+			m_gate.m_ignore = !!value;
+			break;
 		}
-		return 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +138,9 @@ public:
 	void set_retrig(byte retrig) {
 		ASSERT(retrig<=RETRIG_MAX);
 		m_gate.m_retrig = retrig;
+		if(m_gate.m_retrig) {
+			m_gate.m_trig = 1;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
