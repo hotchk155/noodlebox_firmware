@@ -1242,10 +1242,20 @@ public:
 	// This function does the extra work following process_gate() call in order
 	// to send out any required MIDI notes
 	void process_midi_note(CV_TYPE output, CSequenceStep& step_value) {
+
 		// is there a trig or tie to action at at this step?
 		if(step_value.is(CSequenceStep::TRIG_POINT) || step_value.is(CSequenceStep::TIE_POINT)) {
 			// round the output pitch to the closest MIDI note
-			m_state.m_step_midi_note = ((output+COuts::SCALING/2)/COuts::SCALING);
+			int note = (output<0)?
+					((output-COuts::SCALING/2)/COuts::SCALING) :
+					((output+COuts::SCALING/2)/COuts::SCALING);
+			while(note <= 0) 	{
+				note += 12;
+			}
+			while(note > 127) {
+				note -= 12;
+			}
+			m_state.m_step_midi_note = note;
 			m_state.m_step_midi_vel = step_value.is(CSequenceStep::ACCENT_POINT) ? m_cfg.m_midi_acc_vel : m_cfg.m_midi_vel;
 			start_midi_note(step_value.is(CSequenceStep::TIE_POINT) && !step_value.is(CSequenceStep::TRIG_POINT));
 		}
