@@ -298,7 +298,7 @@ public:
 		m_state.m_playing_midi_note = NO_MIDI_NOTE;
 		m_state.m_step_midi_note = NO_MIDI_NOTE;
 		m_state.m_midi_cc_value = NO_MIDI_CC_VALUE;
-		m_state.m_cue_list_next = 0;
+		m_state.m_play_page_no = 0;
 
 		for(int i=0; i<NUM_PAGES; ++i) {
 			m_page[i].init_state();
@@ -310,16 +310,18 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	// Reset the playback state of the layer
 	void reset() {
-		m_state.m_play_pos = 0;
 		m_state.m_next_step_time = clock::TICKS_INFINITY;
 		m_state.m_gate_timeout = 0;
 		m_state.m_step_timeout = 0;
-		m_state.m_play_page_no = 0;
 		m_state.m_page_advanced = 0;
 		m_state.m_retrig_ms = 0;
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
 		m_state.m_first_step = 1;
+
+		silence();	// kill outputs
+		cue_reset(); // go to first page in the cued sequence
+		m_state.m_play_pos = get_page(m_state.m_play_page_no).get_loop_from(); // position at start of loop window
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -803,6 +805,20 @@ public:
 		m_cfg.m_cue_list[0] = 0;
 		m_cfg.m_cue_list_count = 0;
 		m_state.m_cue_list_next = 0;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// update the cue point when there is a sequencer reset
+	void cue_reset() {
+		if(CUE_NONE != m_cfg.m_cue_mode) {
+			if(CUE_AUTO == m_cfg.m_cue_mode) {
+				m_cfg.m_cue_list[0] = 0; // back to page A
+			}
+			m_state.m_play_page_no = m_cfg.m_cue_list[0];
+			m_state.m_cue_list_next = 0;
+			m_state.m_page_advanced = 1;
+			cue_update();
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
