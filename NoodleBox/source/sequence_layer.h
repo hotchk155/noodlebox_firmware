@@ -161,11 +161,12 @@ private:
 	// Calculate the page and step
 	byte calc_next_step(int &page_no, int &step_no) {
 
-		CSequencePage& page = get_page(page_no);
+		byte loop_from = get_loop_from(page_no);
+		byte loop_to = get_loop_to(page_no);
 		byte page_advance=0;
 
 		// have we reached end of the current page
-		if(step_no == page.get_loop_to()) {
+		if(step_no == loop_to) {
 			// do we have a cue list?
 			if(m_cfg.m_cue_list_count) {
 				byte cue_list_pos = m_state.m_cue_list_next;
@@ -174,33 +175,33 @@ private:
 				}
 				page_no = m_cfg.m_cue_list[cue_list_pos];
 			}
-			// back to first step
-			CSequencePage& new_page = get_page(page_no); // could be same page
-			step_no = new_page.get_loop_from();
+			// back to first step (poss page change)
+			step_no = get_loop_from(page_no);
 			page_advance = 1;
 		}
 		else {
+
 			// have not reached end of page yet...
-			if(page.get_loop_to() < page.get_loop_from()) { // running backwards
+			if(loop_to < loop_from) { // running backwards
 				if(--step_no < 0) {
 					step_no = CSequencePage::MAX_STEPS-1;
 				}
-				else if(step_no > page.get_loop_from()) {
-					step_no = page.get_loop_from();
+				else if(step_no > loop_from) {
+					step_no = loop_from;
 				}
-				else if(step_no < page.get_loop_to()) {
-					step_no = page.get_loop_to();
+				else if(step_no < loop_to) {
+					step_no = loop_to;
 				}
 			}
 			else {
 				if(++step_no > CSequencePage::MAX_STEPS-1) {
 					step_no = 0;
 				}
-				else if(step_no > page.get_loop_to()) {
-					step_no = page.get_loop_to();
+				else if(step_no > loop_to) {
+					step_no = loop_to;
 				}
-				else if(step_no < page.get_loop_from()) {
-					step_no = page.get_loop_from();
+				else if(step_no < loop_from) {
+					step_no = loop_from;
 				}
 			}
 		}
@@ -283,7 +284,7 @@ public:
 	void clear() {
 		for(int i=0; i<NUM_PAGES; ++i) {
 			CSequencePage& page = get_page(i);
-			page.clear(get_zero_value());
+			page.clear(get_zero_value(), CSequencePage::DEFAULT_LOOP_FROM, CSequencePage::DEFAULT_LOOP_TO);
 		}
 		m_cfg.m_max_page_no = 0;
 		m_cfg.m_cue_list_count = 0;
@@ -321,7 +322,7 @@ public:
 
 		silence();	// kill outputs
 		cue_reset(); // go to first page in the cued sequence
-		m_state.m_play_pos = get_page(m_state.m_play_page_no).get_loop_from(); // position at start of loop window
+		m_state.m_play_pos = get_loop_from(m_state.m_play_page_no); // position at start of loop window
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -537,7 +538,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void clear_page(byte page_no) {
 		CSequencePage& page = get_page(page_no);
-		page.clear(get_zero_value());
+		page.clear(get_zero_value(), CSequencePage::DEFAULT_LOOP_FROM, CSequencePage::DEFAULT_LOOP_TO);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -639,16 +640,17 @@ public:
 	// pages are addeded, they are initialised from the last existing page
 	void prepare_page(int page, byte init_mode) {
 		while(m_cfg.m_max_page_no < page) {
+			CSequencePage& page = get_page(m_cfg.m_max_page_no+1);
 			switch(init_mode) {
 			case INIT_FIRST:
-				get_page(m_cfg.m_max_page_no+1) = get_page(0);
+				page = get_page(0);
 				break;
 			case INIT_LAST:
-				get_page(m_cfg.m_max_page_no+1) = get_page(m_cfg.m_max_page_no);
+				page = get_page(m_cfg.m_max_page_no);
 				break;
 			case INIT_BLANK:
 			default:
-				get_page(m_cfg.m_max_page_no+1).clear(get_zero_value());
+				page.clear(get_zero_value(), get_page(0).loop_from(), get_page(0).loop_to());
 				break;
 			}
 			++m_cfg.m_max_page_no;
@@ -684,12 +686,13 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_per_page(int value) {
-		if(value) { // going to loop per page mode
-			int from = get_page(0).get_loop_from();
-			int to = get_page(0).get_loop_to();
+		if(value) {
+			// when going to loop per page mode we copy the value from page
+			// 0 into each page, so that there is no immediate change to the
+			// loop points on B/C/D
 			for(int i=1; i<NUM_PAGES; ++i) {
-				get_page(i).set_loop_from(from);
-				get_page(i).set_loop_to(to);
+				get_page(i).loop_from() = get_page(0).loop_from();
+				get_page(i).loop_to() = get_page(0).loop_to();
 			}
 		}
 		m_cfg.m_loop_per_page = value;
@@ -697,46 +700,22 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_from(byte page_no, int from) {
-		if(m_cfg.m_loop_per_page) {
-			get_page(page_no).set_loop_from(from);
-		}
-		else {
-			for(int i=0; i<NUM_PAGES; ++i) {
-				get_page(i).set_loop_from(from);
-			}
-		}
+		get_page(m_cfg.m_loop_per_page? page_no:0).loop_from() = from;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void set_loop_to(byte page_no, int to) {
-		if(m_cfg.m_loop_per_page) {
-			get_page(page_no).set_loop_to(to);
-		}
-		else {
-			for(int i=0; i<NUM_PAGES; ++i) {
-				get_page(i).set_loop_to(to);
-			}
-		}
+		get_page(m_cfg.m_loop_per_page? page_no:0).loop_to() = to;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_from(byte page_no) {
-		if(m_cfg.m_loop_per_page) {
-			return get_page(page_no).get_loop_from();
-		}
-		else {
-			return get_page(0).get_loop_from();
-		}
+		return get_page(m_cfg.m_loop_per_page? page_no:0).loop_from();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	int get_loop_to(byte page_no) {
-		if(m_cfg.m_loop_per_page) {
-			return get_page(page_no).get_loop_to();
-		}
-		else {
-			return get_page(0).get_loop_to();
-		}
+		return get_page(m_cfg.m_loop_per_page? page_no:0).loop_to();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

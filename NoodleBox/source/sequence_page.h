@@ -19,11 +19,11 @@
 // Holds a single page of the sequence
 // Has methods which act on entire page
 class CSequencePage {
+public:
 	enum {
 		DEFAULT_LOOP_FROM = 0,
 		DEFAULT_LOOP_TO = 15
 	};
-public:
 	enum {
 		MAX_STEPS = 32,					// number of steps in page
 	};
@@ -189,34 +189,23 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline void set_loop_from(byte index) {
-		ASSERT(index>=0 && index < MAX_STEPS);
-		m_cfg.m_loop_from = index;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	inline byte get_loop_from() {
+	inline byte &loop_from() {
 		return m_cfg.m_loop_from;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline void set_loop_to(byte index) {
-		ASSERT(index>=0 && index < MAX_STEPS);
-		m_cfg.m_loop_to = index;
+	inline byte &loop_to() {
+		return m_cfg.m_loop_to;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
-	inline byte get_loop_to() {
-		return m_cfg.m_loop_to;
-	}
-	///////////////////////////////////////////////////////////////////////////////
-	void clear(byte zero_value) {
+	void clear(byte zero_value, byte loop_from, byte loop_to) {
 		for(int i=0; i<MAX_STEPS; ++i) {
 			m_cfg.m_step[i].clear(CSequenceStep::ALL_DATA);
 		}
 		recalc(V_SQL_FILL_MODE_OFF, zero_value);
-		m_cfg.m_loop_from = DEFAULT_LOOP_FROM;
-		m_cfg.m_loop_to = DEFAULT_LOOP_TO;
+		m_cfg.m_loop_from = loop_from;
+		m_cfg.m_loop_to = loop_to;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
