@@ -286,7 +286,7 @@ class CSequenceEditor {
 
 		while(row < 16) {
 			if(row >= 0 && row <=12) {
-				g_ui.hilite(row) = 0x11111111U;
+				g_ui.hilite(row) = 0x88888888U;
 			}
 			if(spacing > 0) {
 				row += spacing;
