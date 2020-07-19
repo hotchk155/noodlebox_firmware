@@ -39,6 +39,7 @@ class CScale {
 	byte m_max_index;
 
 	static CScale *m_instance;
+public:
 
 	///////////////////////////////////////////////////////////////////////////////
 	// build the note mapping tables for the selected scale type and root
@@ -63,7 +64,6 @@ class CScale {
 		}
 	}
 
-public:
 	///////////////////////////////////////////////////////////////////////////////
 	// constructor
 	CScale()  {

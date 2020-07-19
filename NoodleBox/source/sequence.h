@@ -456,6 +456,9 @@ public:
 				g_popup.text(i<NUM_LAYERS? "OK MUTES": "OK");
 				break;
 			}
+
+			// build the scale mappings
+			m_scale.build();
 		}
 		else {
 			switch(slot) {
