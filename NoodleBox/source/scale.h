@@ -107,9 +107,9 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////
-	// return default note value forced to scale
+	// return root note value in octave 2
 	byte default_note() {
-		return force_to_scale(DEFAULT_NOTE);
+		return DEFAULT_NOTE+m_cfg.m_root;
 	}
 
 	/////////////////////////////////////////////////////////////////
