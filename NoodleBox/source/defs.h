@@ -54,6 +54,7 @@ enum {
 	EV_KEY_RELEASE,			// button release
 	EV_KEY_CLICK,			// button press and release
 	EV_KEY_HOLD,			// button held for a long time
+	EV_KEY_DOWN_RAW,		// raw key press
 
 	EV_SEQ_RESTART,			// sequencer playback restarting from beginning
 	EV_SEQ_STOP,			// sequencer playback stopped

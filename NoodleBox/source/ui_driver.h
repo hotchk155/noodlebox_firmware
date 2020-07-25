@@ -421,6 +421,11 @@ public:
 	// combined keypress
 	void key_down(uint32_t key) {
 
+		// fire raw keydown event
+		fire_event(EV_KEY_DOWN_RAW, key);
+
+		// now process the key to generate key combination press event
+		// and time long keypresses
 		m_button_hold_timeout = 0;
 		if(!m_key) {	// only valid if pressed when no other keys held
 			if(m_shift) {

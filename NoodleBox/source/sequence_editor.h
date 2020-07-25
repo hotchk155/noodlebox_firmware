@@ -39,6 +39,7 @@ class CSequenceEditor {
 		ACTION_CLICK,			// button pressed and release without encoder turn
 		ACTION_COMBO_BEGIN,		// SECONDARY button pressed while PRIMARY button held
 		ACTION_COMBO_END,		// SECONDARY button released while PRIMARY button still  held
+		ACTION_KEY_DOWN_RAW,		// Additional keys pressed while PRIMARY and SECONDARY keys already pressed
 		ACTION_END				// end of an action, when PRIMARY button is released
 	} ACTION;
 
@@ -97,6 +98,7 @@ class CSequenceEditor {
 	uint32_t m_action_key;		// the key to which the action applies
 	uint32_t m_last_action_key;
 	uint32_t m_key_combo;		// keys pressed in conjunction with edit shift
+	uint32_t m_key_down_raw;
 	byte m_combo_clicks;
 	int m_cursor;				// position of the vertical cursor bar
 	int m_edit_value;			// the value being edited (e.g. shift offset)
@@ -1229,39 +1231,31 @@ class CSequenceEditor {
 		case ACTION_ENC_RIGHT:
 			scroll(layer, +1);
 			break;
-		case ACTION_COMBO_BEGIN:
+		case ACTION_KEY_DOWN_RAW:
 			if(m_edit_mutes) {
-				int layer_no = -1;
-				switch(m_key_combo) {
-					case KEY_LAYER|KEY2_LAYER_1:
-						layer_no = 0;
-						break;
-					case KEY_LAYER|KEY2_LAYER_2:
-						layer_no = 1;
-						break;
-					case KEY_LAYER|KEY2_LAYER_3:
-						layer_no = 2;
-						break;
-					case KEY_LAYER|KEY2_LAYER_4:
-						layer_no = 3;
-						break;
-					case KEY_LAYER|KEY2_LAYER_MUTE:
-						layer_no = m_cur_layer;
-						break;
-				}
-				if(layer_no >= 0) {
-					CSequenceLayer& other = g_sequence.get_layer(layer_no);
-					if(other.is_muted()) {
-						other.unmute();
-					}
-					else {
-						other.mute();
-					}
+				switch(m_key_down_raw) {
+				case KEY2_LAYER_1:
+					g_sequence.get_layer(0).toggle_mute();
+					break;
+				case KEY2_LAYER_2:
+					g_sequence.get_layer(1).toggle_mute();
+					break;
+				case KEY2_LAYER_3:
+					g_sequence.get_layer(2).toggle_mute();
+					break;
+				case KEY2_LAYER_4:
+					g_sequence.get_layer(3).toggle_mute();
+					break;
+				case KEY2_LAYER_MUTE:
+					g_sequence.get_layer(m_cur_layer).toggle_mute();
+					break;
 				}
 				show_layer_mutes();
-				break;
 			}
-			else {
+			break;
+
+		case ACTION_COMBO_BEGIN:
+			if(!m_edit_mutes) {
 				m_clone_flags |= CLONE_RETAIN;
 				switch(m_key_combo) {
 					case KEY_LAYER|KEY2_LAYER_1:
@@ -1516,6 +1510,7 @@ public:
 		m_action_key = 0;
 		m_last_action_key = 0;
 		m_key_combo = 0;
+		m_key_down_raw = 0;
 		m_encoder_moved = 0;
 		m_edit_value = 0;
 		m_edit_mutes = 0;
@@ -1557,6 +1552,10 @@ public:
 				++m_combo_clicks;
 				action(layer, ACTION_COMBO_BEGIN);
 			}
+			break;
+		case EV_KEY_DOWN_RAW:
+			m_key_down_raw = param;
+			action(layer, ACTION_KEY_DOWN_RAW);
 			break;
 		case EV_KEY_RELEASE:
 			if(param & m_key_combo) {
