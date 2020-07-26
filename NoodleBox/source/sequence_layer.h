@@ -1004,15 +1004,13 @@ public:
 			}
 
 			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
-			//m_state.m_suppress_step = 0;
-			if(step_value.get_prob()) { // nonzero probability?
-				if(dice_roll>step_value.get_prob()) {
-					// dice roll is between 1 and 16, if this number is greater
-					// than the step probability (1-15) then the step will
-					// be suppressed
-					step_value.clear(CSequenceStep::ALL_DATA);
-					step_value.set(CSequenceStep::IGNORE_POINT,1);
-				}
+
+			// apply mute probability. dice roll is between 0 and 15.
+			// if this number is less than the step probability (0-15)
+			// then the step will be suppressed.
+			if(dice_roll < step_value.get_prob()) {
+				step_value.clear(CSequenceStep::ALL_DATA);
+				step_value.set(CSequenceStep::IGNORE_POINT,1);
 			}
 
 			// after we play a step, we need to schedule the next one...
