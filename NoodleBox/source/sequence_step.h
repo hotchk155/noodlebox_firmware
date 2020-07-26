@@ -32,6 +32,7 @@ class CSequenceStep {
 		byte m_accent:1;
 		byte m_prob:4;
 		byte m_retrig:4;
+		byte m_hold:4;
 		byte m_ignore:1;
 	} GATE_TYPE;
 
@@ -47,6 +48,7 @@ public:
 		VALUE_MAX = 127,
 		PROB_MAX = 15,
 		RETRIG_MAX = 15,
+		HOLD_MAX = 15,
 	};
 
 	typedef enum: byte {
@@ -141,6 +143,22 @@ public:
 		if(m_gate.m_retrig) {
 			m_gate.m_trig = 1;
 		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	inline byte get_hold() {
+		return m_gate.m_hold;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	inline byte get_step_count() {
+		return m_gate.m_hold + 1;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////
+	void set_hold(byte hold) {
+		ASSERT(hold<=HOLD_MAX);
+		m_gate.m_hold = hold;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////

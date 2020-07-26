@@ -1004,6 +1004,7 @@ public:
 			}
 
 			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+
 			//m_state.m_suppress_step = 0;
 			if(step_value.get_prob()) { // nonzero probability?
 				if(dice_roll>step_value.get_prob()) {
@@ -1024,6 +1025,10 @@ public:
 
 			// work out the next "grid" step position
 			clock::TICKS_TYPE next_step_grid_time = ticks_per_step * (int)(1.5+(double)ticks/ticks_per_step);
+
+			// add in the hold duration
+			next_step_grid_time += ticks_per_step * (clock::TICKS_TYPE)(step_value.get_hold());
+			m_state.m_step_timeout = m_state.m_step_timeout * (step_value.get_step_count());
 
 			// apply timing adjustments for swing etc
 			clock::TICKS_TYPE next_step_time = next_step_grid_time + get_ticks_offset(1+m_state.m_play_pos, ticks_per_step/2);
@@ -1224,7 +1229,9 @@ public:
 			m_state.m_gate_timeout = m_state.m_trig_dur;
 
 			if(step_value.get_retrig()) {
-				m_state.m_retrig_ms = ((16-(int)step_value.get_retrig()) * g_clock.get_ms_per_measure(m_cfg.m_step_rate)) / 16;
+				int step_ms = g_clock.get_ms_per_measure(m_cfg.m_step_rate);
+				int n_steps = step_value.get_step_count();
+				m_state.m_retrig_ms = ((16-(int)step_value.get_retrig()) * step_ms * n_steps) / 16;
 			}
 			else {
 				m_state.m_retrig_ms = 0;
