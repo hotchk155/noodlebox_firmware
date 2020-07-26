@@ -198,6 +198,22 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_loop_length(int from, int to) {
+		if (from > to) {
+			int tmp = from;
+			from = to;
+			to = tmp;
+		}
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
+		int count = 1;
+		for (int i = from; i < to; i++) {
+			count += layer.get_step(m_cur_page, i).get_step_count();
+		}
+		g_popup.num3digits(count, 0);
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	const char *get_layer() {
 		static char text[3];
 		text[0] = 'L';
@@ -1090,18 +1106,17 @@ class CSequenceEditor {
 			layer.set_pos(m_cursor);
 			break;
 		////////////////////////////////////////////////
+		case ACTION_HOLD:
+			show_loop_length(layer.get_loop_from(m_cur_page), layer.get_loop_to(m_cur_page));
+			break;
+		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			cursor_action(what, 0);
 			m_sel_to = m_cursor;
-			if(m_sel_to > m_sel_from) {
-				g_popup.num2digits(m_sel_to - m_sel_from + 1);
-			}
-			else {
-				g_popup.num2digits(m_sel_from - m_sel_to + 1);
-			}
+			show_loop_length(m_sel_from, m_sel_to);
 			break;
-			////////////////////////////////////////////////
+		////////////////////////////////////////////////
 		case ACTION_COMBO_BEGIN:
 			{
 				int page = -1;
