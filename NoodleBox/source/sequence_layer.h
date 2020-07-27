@@ -111,8 +111,9 @@ private:
 	// as part of the patch
 	typedef struct {
 		int m_play_page_no;				// the page number being played
-		int m_play_pos;
-		int m_cue_list_next;				// position of the next cued page within cued pages list
+		int m_play_pos;					// current step number
+		int m_hold_count;				// number of steps the current step is still held for
+		int m_cue_list_next;			// position of the next cued page within cued pages list
 		int m_page_advanced:1;
 		int m_first_step:1;				// flag says if we have not played any steps since reset
 		long m_midi_cc_value;
@@ -319,6 +320,7 @@ public:
 		m_state.m_retrig_timeout = 0;
 		m_state.m_trig_dur = 0;
 		m_state.m_first_step = 1;
+		m_state.m_hold_count = 0;
 
 		silence();	// kill outputs
 		cue_reset(); // go to first page in the cued sequence
@@ -818,15 +820,20 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_play_page(int page_no) {
 		m_state.m_play_page_no = page_no;
+		m_state.m_hold_count = 0; // hold ends when switching page explicitly.
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	int get_play_page() {
 		return m_state.m_play_page_no;
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	void set_pos(int pos) {
 		m_state.m_play_pos = pos;
+		m_state.m_hold_count = 0; // hold ends when setting position explicitly.
 	}
+
 	///////////////////////////////////////////////////////////////////////////////
 	int get_pos() {
 		return m_state.m_play_pos;
@@ -968,21 +975,29 @@ public:
 	// possible for steps to be scheduled out of order
 	//
 	byte play(clock::TICKS_TYPE ticks, int dice_roll, REC_SESSION *rec, CSequenceStep& step_value) {
-
-		auto do_advance = 0; 	// flag says if the play position moved at this call
-		auto do_play = 0; 		// flag says if we started playing a step at this call
+		byte do_advance = 0; 	// flag says if the play position moved at this call
+		byte do_play = 0; 		// flag says if we started playing a step at this call
+		byte do_schedule = 0;   // whether we should schedule the next step at this call
 		if(m_state.m_first_step) {
 			// the very first step.. we'll play it now and schedule the next
 			do_play = 1;
+			do_schedule = 1;
 			m_state.m_first_step = 0;
 		}
 		else if(m_state.m_next_step_time <= ticks) {
-			do_advance = 1;
-			do_play = 1;
+			do_schedule = 1;
+			// Play the next step unless the current step is still being held.
+			if(!m_state.m_hold_count) {
+				do_advance = 1;
+				do_play = 1;
+			}
+			else {
+				--m_state.m_hold_count;
+			}
 		}
 
 		// move to the next step, unless this is the very first step following
-		// a restart, in which case we are already pointing at step zero
+		// a restart, in which case we are already pointing at step zero.
 		if(do_advance) {
 			m_state.m_page_advanced = 0;
 			if(calc_next_step(m_state.m_play_page_no, m_state.m_play_pos)) {
@@ -1003,9 +1018,10 @@ public:
 				}
 			}
 
-			// set millisecond duration of this step
+			// set duration of this step
 			byte step_count = step_value.get_step_count();
 			m_state.m_step_timeout = g_clock.get_ms_per_measure(m_cfg.m_step_rate) * step_count;
+			m_state.m_hold_count = step_count - 1;
 
 			//m_state.m_suppress_step = 0;
 			if(step_value.get_prob()) { // nonzero probability?
@@ -1017,9 +1033,10 @@ public:
 					step_value.set(CSequenceStep::IGNORE_POINT,1);
 				}
 			}
+		}
 
-			// after we play a step, we need to schedule the next one...
-
+		// schedule the next step
+		if(do_schedule) {
 			// get the step rate for the layer in PP24 units and convert to ticks
 			int rate_pp24 = clock::pp24_per_measure(m_cfg.m_step_rate);
 			ASSERT(rate_pp24);
@@ -1027,7 +1044,6 @@ public:
 
 			// work out the next "grid" step position
 			clock::TICKS_TYPE next_step_grid_time = ticks_per_step * (int)(1.5+(double)ticks/ticks_per_step);
-			next_step_grid_time += ticks_per_step * (step_count-1);
 
 			// apply timing adjustments for swing etc
 			clock::TICKS_TYPE next_step_time = next_step_grid_time + get_ticks_offset(1+m_state.m_play_pos, ticks_per_step/2);
@@ -1038,6 +1054,7 @@ public:
 				m_state.m_next_step_time = next_step_time;
 			}
 		}
+
 		return do_play;
 	}
 
