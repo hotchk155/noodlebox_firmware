@@ -205,8 +205,8 @@ class CSequenceEditor {
 			to = tmp;
 		}
 		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
-		int count = 1;
-		for (int i = from; i < to; i++) {
+		int count = 0;
+		for (int i = from; i <= to; i++) {
 			count += layer.get_step(m_cur_page, i).get_step_count();
 		}
 		g_popup.num3digits(count, 0);
