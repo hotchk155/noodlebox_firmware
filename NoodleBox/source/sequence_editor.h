@@ -629,6 +629,8 @@ class CSequenceEditor {
 	// STUFF WHAT THE CV BUTTON DOES...
 	byte cv_action(CSequenceLayer& layer, ACTION what) {
 		CSequenceStep step = layer.get_step(m_cur_page, m_cursor);
+		int direction = 0; // for scroll/move commands
+
 		switch(what) {
 		////////////////////////////////////////////////
 		case ACTION_BEGIN:
@@ -647,41 +649,28 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
+			direction = (what == ACTION_ENC_LEFT)? -1: +1;
 			switch(m_key_combo) {
 			case KEY_CV|KEY2_CV_SCROLL:
 				// action to shift all points up or down
-				if(what == ACTION_ENC_LEFT) {
-					scroll(layer,-1);
-				}
-				else {
-					scroll(layer,+1);
-				}
+				scroll(layer, direction);
 				break;
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				// action to shift all points up or down
-				if(what == ACTION_ENC_LEFT) {
-					if(layer.shift_vertical(m_cur_page, -1)) {
-						--m_edit_value;
-					}
-				}
-				else {
-					if(layer.shift_vertical(m_cur_page, +1)) {
-						++m_edit_value;
-					}
+				if(layer.shift_vertical(m_cur_page, direction)) {
+					scroll(layer, direction);
+					m_edit_value += direction;
 				}
 				g_popup.show_offset(m_edit_value);
+				g_popup.avoid(m_cursor);
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				// action to shift all points left or right
 				if(encoder_action(what, m_edit_value, -GRID_WIDTH, GRID_WIDTH, 0)) {
-					if(what == ACTION_ENC_LEFT) {
-						layer.shift_horizontal(m_cur_page, -1);
-					}
-					else {
-						layer.shift_horizontal(m_cur_page, +1);
-					}
+					layer.shift_horizontal(m_cur_page, direction);
 				}
 				g_popup.show_offset(m_edit_value);
+				g_popup.avoid(m_cursor);
 				break;
 			case KEY_CV|KEY2_CV_FINE:
 			default:
@@ -711,10 +700,12 @@ class CSequenceEditor {
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT");
+				g_popup.avoid(m_cursor);
 				break;
 			case KEY_CV|KEY2_CV_MOVE_HORZ:
 				m_edit_value = 0;
 				g_popup.text("HORZ");
+				g_popup.avoid(m_cursor);
 				break;
 			case KEY_CV|KEY2_CV_AUTO_SCROLL:
 				layer.set_scroll_for_page(m_cur_page);
