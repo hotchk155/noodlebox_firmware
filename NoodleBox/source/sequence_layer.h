@@ -105,7 +105,6 @@ private:
 		V_SQL_GATE_ALIAS m_gate_alias;
 
 	} CONFIG;
-	CSequencePage 	m_page[NUM_PAGES];	// sequencer page
 
 	// Current playback state of the layer - stuff that is not saved
 	// as part of the patch
@@ -129,7 +128,8 @@ private:
 		clock::TICKS_TYPE m_next_step_time;
 	} STATE;
 
-	CONFIG m_cfg;				// instance of config
+	CSequencePage m_page[NUM_PAGES];
+	CONFIG m_cfg;
 	STATE m_state;
 	byte m_id;
 
@@ -836,6 +836,7 @@ public:
 	void set_content(CSequenceLayer& other) {
 		m_cfg = other.m_cfg;
 		m_state = other.m_state;
+		memcpy(&m_page, &other.m_page, sizeof(m_page));
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
