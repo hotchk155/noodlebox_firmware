@@ -465,8 +465,8 @@ public:
 		case EV_SEQ_RESTART:
 			switch(m_cfg.m_clock_out_mode) {
 			case V_CLOCK_OUT_MODE_START:
-			case V_CLOCK_OUT_MODE_RESTART:
 			case V_CLOCK_OUT_MODE_START_STOP:
+			case V_CLOCK_OUT_MODE_RESET:
 				pulse();
 				break;
 			case V_CLOCK_OUT_MODE_RUNNING:
@@ -474,6 +474,19 @@ public:
 				break;
 			case V_CLOCK_OUT_MODE_ACCENT:
 				m_out.set(0);
+				break;
+			case V_CLOCK_OUT_MODE_GATED_CLOCK:
+			case V_CLOCK_OUT_MODE_CLOCK:
+				if(m_running || V_CLOCK_OUT_MODE_CLOCK == m_cfg.m_clock_out_mode) {
+					// if the clock output is currently running, we'll force a low period
+					// and slightly delay the first clock pulse after a reset. This ensures
+					// that that first pulse has a clean rising edge and also ensures that
+					// reset output is high at the time (if applicable)
+					m_out.set(0);
+					m_state = ST_LOW;
+					m_timeout = LOW_MS;
+					pulse();
+				}
 				break;
 			}
 			m_running = 1;
