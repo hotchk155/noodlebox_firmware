@@ -662,11 +662,13 @@ class CSequenceEditor {
 				if(what == ACTION_ENC_LEFT) {
 					if(layer.shift_vertical(m_cur_page, -1)) {
 						--m_edit_value;
+						scroll(layer,-1);
 					}
 				}
 				else {
 					if(layer.shift_vertical(m_cur_page, +1)) {
 						++m_edit_value;
+						scroll(layer,1);
 					}
 				}
 				g_popup.show_offset(m_edit_value);
