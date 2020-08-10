@@ -122,6 +122,7 @@ class CSequenceEditor {
 
 	int m_edit_mutes:1;		// are we currently editing mutes
 	int m_encoder_moved:1;		// whether encoder has been previously moved since action was in progress
+	int m_show_scrollbar:1;		// whether to show the scrollbar
 	int m_rec_arm:1;
 	byte m_midi_in_note[MAX_MIDI_IN_NOTES];
 	int m_num_midi_in_notes;
@@ -148,6 +149,7 @@ class CSequenceEditor {
 		m_rand_seed = 0;
 		m_rec_arm = 0;
 		m_num_midi_in_notes = 0;
+		m_show_scrollbar = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -366,13 +368,16 @@ class CSequenceEditor {
 		case V_SQL_SEQ_MODE_PITCH:
 		case V_SQL_SEQ_MODE_OFFSET:
 			{
+				const int MAX_SCROLL_NOTE = 114;
+				int max_scroll = (V_SQL_SEQ_MODE_PITCH == layer.get_mode() && layer.is_scaled_view())?
+					CScale::instance().note_to_index(MAX_SCROLL_NOTE) : MAX_SCROLL_NOTE;
 				int scroll_ofs = layer.get_scroll_ofs();
 				scroll_ofs += dir;
 				if(scroll_ofs < 0) {
 					scroll_ofs = 0;
 				}
-				else if(scroll_ofs > 114) {
-					scroll_ofs = 114;
+				else if(scroll_ofs > max_scroll) {
+					scroll_ofs = max_scroll;
 				}
 				layer.set_scroll_ofs(scroll_ofs);
 				break;
@@ -710,6 +715,9 @@ class CSequenceEditor {
 		////////////////////////////////////////////////
 		case ACTION_COMBO_BEGIN:
 			switch(m_key_combo) {
+			case KEY_CV|KEY2_CV_SCROLL:
+				m_show_scrollbar = 1;
+				break;
 			case KEY_CV|KEY2_CV_MOVE_VERT:
 				m_edit_value = 0;
 				g_popup.text("VERT");
@@ -722,6 +730,9 @@ class CSequenceEditor {
 				layer.set_scroll_for_page(m_cur_page);
 				break;
 			}
+			break;
+		case ACTION_END:
+			m_show_scrollbar = 0;
 			break;
 		default:
 			break;
@@ -1807,7 +1818,22 @@ public:
 			mask>>=1;
 		}
 
+		// scrollbar
+		if(m_show_scrollbar) {
+			int thumb = layer.get_scroll_ofs();
+			if(layer.get_mode() == V_SQL_SEQ_MODE_PITCH && layer.is_scaled_view()) {
+				thumb = CScale::instance().index_to_note(thumb);
+			}
+			thumb /= 12;
+			mask = g_ui.bit(31);
+			for(int i=3; i<=12; ++i) {
+				g_ui.raster(i) |= mask;
+				g_ui.hilite(i) &= ~mask;
+			}
+			g_ui.hilite(12-thumb) |= mask;
+		}
 
+		// playing page indicator
 		if(m_ppi_timeout) {
 			g_ui.hilite(14) |= 0b11;
 			g_ui.hilite(15) |= 0b11;

@@ -97,7 +97,7 @@ private:
 		byte 			m_midi_acc_vel;
 		byte 			m_max_page_no;		// the highest numbered active page (0-3)
 		V_SQL_FILL_MODE	m_fill_mode;
-		byte 			m_scroll_ofs;					// lowest step value shown on grid
+		byte 			m_scroll_ofs;		// data value on lowest grid row (raw value or scale index)
 		int 			m_scaled_view:1;	// whether the pitch view is 7 rows/oct
 		int 			m_loop_per_page:1;
 		int 			m_muted:1;
