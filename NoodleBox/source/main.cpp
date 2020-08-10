@@ -470,6 +470,9 @@ int main(void) {
 
     	// run the i2c bus.
     	g_i2c_bus.run();
+
+    	// poll the aux in
+    	g_clock.poll_aux_in();
     }
     g_sequence.silence();
     save_config();

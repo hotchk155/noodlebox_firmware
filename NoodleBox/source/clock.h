@@ -29,6 +29,7 @@ CDigitalIn g_clock_in(kGPIO_PORTA, 0);
 CDigitalOut g_clock_out(kGPIO_PORTD, 3);
 CDigitalIn g_aux_in(kGPIO_PORTC, 7);
 CDigitalOut g_aux_out(kGPIO_PORTC, 5);
+#define BIT_AUXIN	MK_GPIOA_BIT(PORTC_BASE, 7)
 #endif
 
 // This namespace wraps up various clock based utilities
@@ -36,7 +37,6 @@ namespace clock {
 
 enum {
 	KBI0_BIT_CLOCKIN = (1<<0),
-	KBI0_BIT_AUXIN = (1<<23)
 };
 // Noodlebox uses the following type for handling "musical time"...
 // TICKS_TYPE is a 32 bit unsigned value where there are 256 * 24ppqn = 6144 LSB
@@ -711,7 +711,7 @@ class CClock {
 	volatile uint32_t m_ms;					// ms counter
 	volatile TICKS_TYPE m_ticks;
 	volatile double m_ticks_remainder;
-	volatile int m_aux_in_count;
+	byte m_aux_in_state;
 
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -759,11 +759,7 @@ public:
 		// configure the KBI peripheral to cause an interrupt when sync pulse in is triggered
 		kbi_config_t kbiConfig;
 		kbiConfig.mode = kKBI_EdgesDetect;
-#ifdef NB_PROTOTYPE
 		kbiConfig.pinsEnabled = KBI0_BIT_CLOCKIN;
-#else
-		kbiConfig.pinsEnabled = KBI0_BIT_CLOCKIN|KBI0_BIT_AUXIN;
-#endif
 		kbiConfig.pinsEdge = 0; // Falling Edge (after Schmitt Trigger inverter on input)
 		KBI_Init(KBI0, &kbiConfig);
 	}
@@ -774,7 +770,7 @@ public:
 		m_ms_tick = 0;
 		m_ticks = 0;
 		m_ticks_remainder = 0;
-		m_aux_in_count = 0;
+		m_aux_in_state = 0;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -930,20 +926,34 @@ public:
 		g_pulse_clock_in.run(m_ms);
 		g_pulse_clock_out.run();
 		g_pulse_aux_out.run();
-		if(m_aux_in_count)  {
-			switch(m_cfg.m_aux_in_mode) {
-			case V_AUX_IN_MODE_RUN_STOP:
-				fire_event(EV_SEQ_RUN_STOP, 0);
-				break;
-			case V_AUX_IN_MODE_CONT:
-				fire_event(EV_SEQ_CONTINUE, 0);
-				break;
-			case V_AUX_IN_MODE_RESTART:
-				fire_event(EV_SEQ_RESTART, 0);
-				break;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// method called as fast as poss
+	inline void poll_aux_in() {
+#ifndef NB_PROTOTYPE
+		if(m_aux_in_state) {
+			if(!READ_GPIOA(BIT_AUXIN)) { // falling edge
+				switch(m_cfg.m_aux_in_mode) {
+				case V_AUX_IN_MODE_RUN_STOP:
+					fire_event(EV_SEQ_RUN_STOP, 0);
+					break;
+				case V_AUX_IN_MODE_CONT:
+					fire_event(EV_SEQ_CONTINUE, 0);
+					break;
+				case V_AUX_IN_MODE_RESTART:
+					fire_event(EV_SEQ_RESTART, 0);
+					break;
+				}
+				m_aux_in_state = 0;
 			}
-			--m_aux_in_count;
 		}
+		else {
+			if(READ_GPIOA(BIT_AUXIN)) {
+				m_aux_in_state = 1;
+			}
+		}
+#endif
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -991,10 +1001,6 @@ public:
 	}
 	inline void ext_clock_isr() {
 		g_pulse_clock_in.on_pulse(m_ms);
-	}
-
-	inline void aux_in_isr() {
-		++m_aux_in_count;
 	}
 
 	static int get_cfg_size() {
@@ -1052,11 +1058,6 @@ extern "C" void KBI0_IRQHandler(void)
         if(keys & clock::KBI0_BIT_CLOCKIN) {
         	g_clock.ext_clock_isr();
         }
-#ifndef NB_PROTOTYPE
-        if(keys & clock::KBI0_BIT_AUXIN) {
-        	g_clock.aux_in_isr();
-        }
-#endif
     }
 }
 
