@@ -156,9 +156,11 @@ public:
 				if(!g_clock_in.get()) {
 					mask3 |= g_ui.make_mask(20, 23);
 				}
+#ifndef NB_PROTOTYPE
 				if(!g_aux_in.get()) {
 					mask3 |= g_ui.make_mask(24, 27);
 				}
+#endif
 				if(!OffSwitch.get()) {
 					mask3 |= g_ui.make_mask(28, 31);
 				}
@@ -224,7 +226,9 @@ public:
 				g_gate_led.set(!!((count & 0x300) == 0x200));
 
 				g_clock_out.set(!!((count & 0x300) == 0x000));
+#ifndef NB_PROTOTYPE
 				g_aux_out.set(!!((count & 0x300) == 0x100));
+#endif
 
 				g_outs.impl_set_gate(0, !!((count & 0x300) == 0x000));
 				g_outs.impl_set_gate(1, !!((count & 0x300) == 0x100));

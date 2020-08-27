@@ -582,7 +582,9 @@ public:
 	}
 };
 CPulseClockOut g_pulse_clock_out(g_clock_out);
-CPulseClockOut g_pulse_aux_out(g_aux_out);
+#ifndef NB_PROTOTYPE
+	CPulseClockOut g_pulse_aux_out(g_aux_out);
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -802,6 +804,7 @@ public:
 				g_pulse_clock_out.set_rate((V_CLOCK_OUT_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
+#ifndef NB_PROTOTYPE
 			case P_AUX_OUT_MODE:
 				g_pulse_aux_out.set_mode((V_CLOCK_OUT_MODE)value);
 				fire_event(EV_CLOCK_RESET, 0);
@@ -810,6 +813,7 @@ public:
 				g_pulse_aux_out.set_rate((V_CLOCK_OUT_RATE)value);
 				fire_event(EV_CLOCK_RESET, 0);
 				break;
+#endif
 			case P_MIDI_CLOCK_OUT:
 				g_midi_clock_out.set_mode((V_MIDI_CLOCK_OUT)value);
 				break;
@@ -827,8 +831,10 @@ public:
 		case P_CLOCK_IN_RATE: return g_pulse_clock_in.get_rate();
 		case P_CLOCK_OUT_MODE: return g_pulse_clock_out.get_mode();
 		case P_CLOCK_OUT_RATE: return g_pulse_clock_out.get_rate();
+#ifndef NB_PROTOTYPE
 		case P_AUX_OUT_MODE: return g_pulse_aux_out.get_mode();
 		case P_AUX_OUT_RATE: return g_pulse_aux_out.get_rate();
+#endif
 		case P_MIDI_CLOCK_OUT: return g_midi_clock_out.get_mode();
 		default: return 0;
 		}
@@ -840,7 +846,12 @@ public:
 		case P_CLOCK_BPM: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_INTERNAL);
 		case P_CLOCK_IN_RATE: return !!(m_cfg.m_source_mode == V_CLOCK_SRC_EXTERNAL);
 		case P_CLOCK_OUT_RATE: return !!(g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_clock_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
+#ifndef NB_PROTOTYPE
 		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
+#else
+		case P_AUX_OUT_MODE: return 0;
+		case P_AUX_OUT_RATE: return 0;
+#endif
 		default: return 1;
 		}
 	}
@@ -864,7 +875,9 @@ public:
 		g_fixed_clock.event(event, param);
 		g_pulse_clock_in.event(event, param);
 		g_pulse_clock_out.event(event, param);
+#ifndef NB_PROTOTYPE
 		g_pulse_aux_out.event(event, param);
+#endif
 		g_midi_clock_in.event(event, param);
 		g_midi_clock_out.event(event, param);
 	}
@@ -873,7 +886,9 @@ public:
 	// Set accent gates if according to mode
 	void set_accent(int value) {
 		g_pulse_clock_out.set_accent(value);
+#ifndef NB_PROTOTYPE
 		g_pulse_aux_out.set_accent(value);
+#endif
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -925,7 +940,9 @@ public:
 	void run() {
 		g_pulse_clock_in.run(m_ms);
 		g_pulse_clock_out.run();
+#ifndef NB_PROTOTYPE
 		g_pulse_aux_out.run();
+#endif
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -993,7 +1010,9 @@ public:
 		if((m_ticks ^ prev_ticks)&~0xFF) {
 			int pp24 = m_ticks>>8;
 			g_pulse_clock_out.on_pp24(pp24);
+#ifndef NB_PROTOTYPE
 			g_pulse_aux_out.on_pp24(pp24);
+#endif
 			g_midi_clock_out.on_pp24();
 			g_beat_led_out.on_pp24(pp24);
 		}
@@ -1017,7 +1036,9 @@ public:
 		g_fixed_clock.get_cfg(dest);
 		g_pulse_clock_in.get_cfg(dest);
 		g_pulse_clock_out.get_cfg(dest);
+#ifndef NB_PROTOTYPE
 		g_pulse_aux_out.get_cfg(dest);
+#endif
 		g_midi_clock_out.get_cfg(dest);
 	}
 	void set_cfg(byte **src) {
@@ -1026,7 +1047,9 @@ public:
 		g_fixed_clock.set_cfg(src);
 		g_pulse_clock_in.set_cfg(src);
 		g_pulse_clock_out.set_cfg(src);
+#ifndef NB_PROTOTYPE
 		g_pulse_aux_out.set_cfg(src);
+#endif
 		g_midi_clock_out.set_cfg(src);
 	}
 

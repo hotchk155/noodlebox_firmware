@@ -18,7 +18,7 @@
 #define DEFS_H_
 
 
-//#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex
+#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex
 #define VERSION_NUMBER				"1.1"
 #define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
 #define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
