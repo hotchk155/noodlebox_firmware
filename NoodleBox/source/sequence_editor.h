@@ -164,20 +164,17 @@ class CSequenceEditor {
 	void show_gate_prob(CSequenceStep& step) {
 		g_popup.text("PRB.");
 		g_popup.num2digits(step.get_prob(),1);
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_retrig(CSequenceStep& step) {
 		g_popup.text("RTR.");
 		g_popup.num2digits(step.get_retrig(),1);
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_accent(CSequenceStep& step) {
 		g_popup.text(step.is(CSequenceStep::ACCENT_POINT) ? "ACC:ON" : "ACC:OFF");
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -187,7 +184,6 @@ class CSequenceEditor {
 		g_popup.text(g_sequence.get_layer(1).is_muted()? "$":"2",1);
 		g_popup.text(g_sequence.get_layer(2).is_muted()? "$":"3",1);
 		g_popup.text(g_sequence.get_layer(3).is_muted()? "$":"4",1);
-		g_popup.avoid(m_cursor);
 		g_popup.no_hide();
 	}
 
@@ -226,7 +222,6 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_layer() {
 		g_popup.text(get_layer());
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -235,13 +230,11 @@ class CSequenceEditor {
 		if(g_sequence.get_layer(m_cur_layer).is_muted()) {
 			g_popup.text("$",1);
 		}
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	void show_page_list(int value) {
 		g_popup.text_value("A   |AB  |ABC |ABCD", value);
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -254,7 +247,6 @@ class CSequenceEditor {
 	///////////////////////////////////////////////////////////////////////////////
 	void show_swing(int value) {
 		g_popup.num2digits(value);
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -315,7 +307,6 @@ class CSequenceEditor {
 			g_popup.num3digits(value);
 			break;
 		}
-		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -440,6 +431,7 @@ class CSequenceEditor {
 	// Move cursor left / right for encoder event
 	inline void cursor_action(ACTION what, byte wrap) {
 		encoder_action(what, m_cursor, 0, GRID_WIDTH-1, wrap);
+		g_popup.avoid(m_cursor);
 	}
 
 
@@ -1047,7 +1039,6 @@ class CSequenceEditor {
 						layer.get_page_content(m_cur_page, m_save_page);
 						m_edit_value = 0;
 						g_popup.text("DONE");
-						g_popup.avoid(m_cursor);
 						break;
 				}
 				if(page_no >= 0) {
@@ -1058,7 +1049,6 @@ class CSequenceEditor {
 						layer.get_page_content(m_cur_page, this_page);
 						layer.set_page_content(page_no, this_page);
 						g_popup.text("DONE");
-						g_popup.avoid(m_cursor);
 					}
 				}
 			}
@@ -1415,6 +1405,8 @@ class CSequenceEditor {
 		if(what == ACTION_END && !(m_clone_flags & CLONE_RETAIN)) {
 			m_clone_flags = 0;
 		}
+		// move popup away from cursor
+		g_popup.avoid(m_cursor);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -1599,7 +1591,6 @@ public:
 				}
 				else {
 					cursor_action(what, 1);
-					g_popup.avoid(m_cursor);
 				}
 				break;
 			}
