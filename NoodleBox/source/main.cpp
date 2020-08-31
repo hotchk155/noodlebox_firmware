@@ -331,7 +331,7 @@ void load_config() {
 
 	// we handle the calibration data separately so that it is preserved even if we need to
 	// discard the remaining configuration data due to a change in the data structure
-	if(buf[0] != CALIBRATION_DATA_COOKIE1 && buf[1] != CALIBRATION_DATA_COOKIE2) {
+	if(buf[0] != CALIBRATION_DATA_COOKIE1 || buf[1] != CALIBRATION_DATA_COOKIE2) {
 		g_outs.init_config();
 		g_popup.text("CAL ERR");
 	}

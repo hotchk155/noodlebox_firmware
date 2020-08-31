@@ -1027,7 +1027,9 @@ public:
 			CFixedClockSource::get_cfg_size() +
 			CPulseClockSource::get_cfg_size() +
 			CPulseClockOut::get_cfg_size() +
+#ifndef NB_PROTOTYPE
 			CPulseClockOut::get_cfg_size() +
+#endif
 			CMidiClockOut::get_cfg_size();
 	}
 	void get_cfg(byte **dest) {
