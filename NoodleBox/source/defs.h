@@ -18,8 +18,8 @@
 #define DEFS_H_
 
 
-#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex
-#define VERSION_NUMBER				"1.1"
+#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex and regenerate code
+#define VERSION_NUMBER				"1.2A"
 #define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
 #define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
 #define OFF_SWITCH_MS	500		// how long the power switch is held before power turns off
@@ -344,6 +344,7 @@ typedef enum:byte {
 typedef enum:byte {
 	V_CLOCK_IN_RATE_8,
 	V_CLOCK_IN_RATE_16,
+	V_CLOCK_IN_RATE_32,
 	V_CLOCK_IN_RATE_24PP,
 	V_CLOCK_IN_RATE_MAX
 } V_CLOCK_IN_RATE;
@@ -351,6 +352,7 @@ typedef enum:byte {
 typedef enum:byte {
 	V_CLOCK_OUT_RATE_8,
 	V_CLOCK_OUT_RATE_16,
+	V_CLOCK_OUT_RATE_32,
 	V_CLOCK_OUT_RATE_24PP,
 	V_CLOCK_OUT_RATE_MAX
 } V_CLOCK_OUT_RATE;

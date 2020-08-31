@@ -170,7 +170,7 @@ public:
 	}
 	////////////////////////////////////////
 	void set_rate(V_CLOCK_IN_RATE clock_in_rate) {
-		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_8, PP24_16, PP24_24PPQN};
+		const byte rate[V_CLOCK_IN_RATE_MAX] = {PP24_8, PP24_16, PP24_32, PP24_24PPQN};
 		m_cfg.m_clock_in_rate = clock_in_rate;
 		m_period = pp24_to_ticks(rate[clock_in_rate]);
 	}
@@ -421,7 +421,7 @@ public:
 	}
 	///////////////////////////////////////////////////////////////////////////////
 	void set_rate(V_CLOCK_OUT_RATE clock_out_rate) {
-		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_8, PP24_16, PP24_24PPQN };
+		const byte rate[V_CLOCK_OUT_RATE_MAX] = { PP24_8, PP24_16, PP24_32, PP24_24PPQN };
 		m_cfg.m_clock_out_rate = clock_out_rate;
 		m_period = rate[clock_out_rate];
 	}
@@ -849,6 +849,7 @@ public:
 #ifndef NB_PROTOTYPE
 		case P_AUX_OUT_RATE: return !!(g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_CLOCK || g_pulse_aux_out.get_mode() == V_CLOCK_OUT_MODE_GATED_CLOCK);
 #else
+		case P_AUX_IN_MODE: return 0;
 		case P_AUX_OUT_MODE: return 0;
 		case P_AUX_OUT_RATE: return 0;
 #endif
