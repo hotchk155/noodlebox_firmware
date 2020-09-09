@@ -235,10 +235,10 @@ public:
 				g_outs.impl_set_gate(2, !!((count & 0x300) == 0x200));
 				g_outs.impl_set_gate(3, !!((count & 0x300) == 0x300));
 
-				g_outs.impl_set_cv(0, ((count<<4) + 0x000) & 0xFFF);
-				g_outs.impl_set_cv(1, ((count<<4) + 0x400) & 0xFFF);
-				g_outs.impl_set_cv(2, ((count<<4) + 0x800) & 0xFFF);
-				g_outs.impl_set_cv(3, ((count<<4) + 0xC00) & 0xFFF);
+				g_i2c_dac.set(0, ((count<<4) + 0x000) & 0xFFF);
+				g_i2c_dac.set(1, ((count<<4) + 0x400) & 0xFFF);
+				g_i2c_dac.set(2, ((count<<4) + 0x800) & 0xFFF);
+				g_i2c_dac.set(3, ((count<<4) + 0xC00) & 0xFFF);
 				++count;
 
 			}
