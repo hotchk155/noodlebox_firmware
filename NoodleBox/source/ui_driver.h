@@ -189,16 +189,23 @@ class CUiDriver {
 		PHASE_BRIGHT		// layer 1 and layer 2 together
 	} UPDATE_PHASE;
 
-	// The render buffer, contains two "layers". Elements 0-15 are layer 1
-	// and elements 16-31 are layer 2
-	// Refresh is done in 2 phases
-	// Layer 1 time --- Layer 2 time
 
+	// switch states are read during the display update cycle and values from each input
+	// line are accumulated in these variables before being assembled into 32-bit value
 	volatile uint16_t m_acc_key1 = 0;
 	volatile uint16_t m_acc_key2 = 0;
-	//volatile uint16_t m_acc_key3 = 0;
+
+	// stores the previous 32 bit key scan result. Two consecutive scans must yield the
+	// same results for this to register. This filters line glitches
+	volatile uint32_t m_last_acc_key_state = 0;
+
+	// the filtered key status
 	volatile uint32_t m_key_state = 0;
+
+	// the previous filtered key status, used to detect changes in key status
 	volatile uint32_t m_prev_key_state = ~0;
+
+
 	volatile byte m_keys_pending = 0;
 	volatile uint32_t m_disp_buf[32] = {0};
 	volatile byte m_enc_state[3] = {0};
@@ -208,6 +215,10 @@ class CUiDriver {
 	volatile byte m_disp_update = 0;
 	volatile uint32_t m_next_pit_period = 0;
 
+	// The render buffer, contains two "layers". Elements 0-15 are layer 1
+	// and elements 16-31 are layer 2
+	// Refresh is done in 2 phases
+	// Layer 1 time --- Layer 2 time
 	uint32_t m_render_buf[DISPLAY_BUF_SIZE];
 
 	uint32_t m_periodShort;
@@ -399,14 +410,18 @@ public:
 				m_cathode = 0;
 
 				// form the final 32 bit key state value
-				m_key_state = ((uint32_t)m_acc_key2);
-				m_key_state |= ((uint32_t)m_acc_key1);
-				//m_key_state |= (((uint32_t)m_acc_key3)<<8);
+				uint32_t m_acc_key_state = ((uint32_t)m_acc_key2) | ((uint32_t)m_acc_key1);
+
+				// ensure that the same status is read on two consecutive cycles
+				// before it is acknowledged. This filters out read glitches
+				if(m_acc_key_state == m_last_acc_key_state) {
+					m_key_state = m_acc_key_state;
+				}
+				m_last_acc_key_state = m_acc_key_state;
 
 				// zero the key state accumulators
 				m_acc_key1 = 0;
 				m_acc_key2 = 0;
-				//m_acc_key3 = 0;
 			}
 
 			m_phase = PHASE_NORMAL;
