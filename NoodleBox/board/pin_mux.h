@@ -35,200 +35,329 @@ void BOARD_InitBootPins(void);
  * @brief UART0 RxD Filter Select: RXD0 input signal is connected to UART0 module directly. */
 #define SOPT0_RXDFE_0b00 0x00u
 
-/*! @name PORTA6 (number 26), GATEOUT4
+/*! @name PORTA6 (number 38), GATEOUT4
   @{ */
-#define BOARD_INITPINS_RELEASE_GATEOUT4_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT4_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT4_GPIO_PORT kGPIO_PORTA /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_GATEOUT4_PORT PORTA            /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_RELEASE_GATEOUT4_PIN 6U                /*!<@brief PORTA pin index: 6 */
-                                                              /* @} */
 
-/*! @name PORTB2 (number 22), P_ASCK
-  @{ */
-#define BOARD_INITPINS_RELEASE_P_ASCK_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_P_ASCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_P_ASCK_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_P_ASCK_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_RELEASE_P_ASCK_PIN 2U                /*!<@brief PORTB pin index: 2 */
-                                                            /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_GPIO_PORT kGPIO_PORTA    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_GPIO_PIN_MASK (1U << 6U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTB3 (number 21), P_ADAT
-  @{ */
-#define BOARD_INITPINS_RELEASE_P_ADAT_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_P_ADAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_P_ADAT_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_P_ADAT_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_RELEASE_P_ADAT_PIN 3U                /*!<@brief PORTB pin index: 3 */
-                                                            /* @} */
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_PORT PORTA               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_PIN 6U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_GATEOUT4_PIN_MASK (1U << 6U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
 
-/*! @name PORTB5 (number 12), LED1
+/*! @name PORTB2 (number 32), P_ASCK
   @{ */
-#define BOARD_INITPINS_RELEASE_LED1_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_LED1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_LED1_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_LED1_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_RELEASE_LED1_PIN 5U                /*!<@brief PORTB pin index: 5 */
-                                                          /* @} */
 
-/*! @name PORTC0 (number 20), P_ARCK
-  @{ */
-#define BOARD_INITPINS_RELEASE_P_ARCK_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_P_ARCK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_P_ARCK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_P_ARCK_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_P_ARCK_PIN 0U                /*!<@brief PORTC pin index: 0 */
-                                                            /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_P_ASCK_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ASCK_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ASCK_GPIO_PORT kGPIO_PORTB    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_P_ASCK_GPIO_PIN_MASK (1U << 10U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTC1 (number 19), P_KDAT
-  @{ */
-#define BOARD_INITPINS_RELEASE_P_KCLK_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_P_KCLK_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_P_KCLK_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_P_KCLK_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_P_KCLK_PIN 1U                /*!<@brief PORTC pin index: 1 */
-                                                            /* @} */
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_P_ASCK_PORT PORTB               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ASCK_PIN 2U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_P_ASCK_PIN_MASK (1U << 2U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
 
-/*! @name PORTC2 (number 15), LED3
+/*! @name PORTB3 (number 31), P_ADAT
   @{ */
-#define BOARD_INITPINS_RELEASE_LED3_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_LED3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_LED3_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_LED3_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_LED3_PIN 2U                /*!<@brief PORTC pin index: 2 */
-                                                          /* @} */
 
-/*! @name PORTC3 (number 14), LED2
-  @{ */
-#define BOARD_INITPINS_RELEASE_LED2_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_LED2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_LED2_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_LED2_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_LED2_PIN 3U                /*!<@brief PORTC pin index: 3 */
-                                                          /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_P_ADAT_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ADAT_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ADAT_GPIO_PORT kGPIO_PORTB    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_P_ADAT_GPIO_PIN_MASK (1U << 11U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTC5 (number 41), SYNCOUT
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_P_ADAT_PORT PORTB               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ADAT_PIN 3U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_P_ADAT_PIN_MASK (1U << 3U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
+
+/*! @name PORTB5 (number 18), LED1
   @{ */
-#define BOARD_INITPINS_RELEASE_SYNCOUT_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_SYNCOUT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_SYNCOUT_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_SYNCOUT_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_SYNCOUT_PIN 5U                /*!<@brief PORTC pin index: 5 */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_LED1_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED1_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED1_GPIO_PORT kGPIO_PORTB    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_LED1_GPIO_PIN_MASK (1U << 13U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_LED1_PORT PORTB               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED1_PIN 5U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_LED1_PIN_MASK (1U << 5U)      /*!<@brief PORT pin mask */
                                                              /* @} */
 
-/*! @name PORTC6 (number 37), KEYSCAN1
+/*! @name PORTC0 (number 26), P_ARCK
   @{ */
-#define BOARD_INITPINS_RELEASE_KEYSCAN1_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN1_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_KEYSCAN1_PIN 6U                /*!<@brief PORTC pin index: 6 */
-                                                              /* @} */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_P_ARCK_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ARCK_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ARCK_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_P_ARCK_GPIO_PIN_MASK (1U << 16U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_P_ARCK_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_ARCK_PIN 0U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_P_ARCK_PIN_MASK (1U << 0U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
+
+/*! @name PORTC1 (number 25), P_KDAT
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_P_KCLK_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KCLK_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KCLK_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_P_KCLK_GPIO_PIN_MASK (1U << 17U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_P_KCLK_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KCLK_PIN 1U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_P_KCLK_PIN_MASK (1U << 1U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
+
+/*! @name PORTC2 (number 21), LED3
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_LED3_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED3_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED3_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_LED3_GPIO_PIN_MASK (1U << 18U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_LED3_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED3_PIN 2U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_LED3_PIN_MASK (1U << 2U)      /*!<@brief PORT pin mask */
+                                                             /* @} */
+
+/*! @name PORTC3 (number 20), LED2
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_LED2_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED2_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED2_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_LED2_GPIO_PIN_MASK (1U << 19U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_LED2_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_LED2_PIN 3U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_LED2_PIN_MASK (1U << 3U)      /*!<@brief PORT pin mask */
+                                                             /* @} */
+
+/*! @name PORTC5 (number 61), SYNCOUT
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_GPIO_PIN_MASK (1U << 21U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_PIN 5U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_SYNCOUT_PIN_MASK (1U << 5U)      /*!<@brief PORT pin mask */
+                                                                /* @} */
+
+/*! @name PORTC6 (number 52), KEYSCAN1
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_GPIO_PIN_MASK (1U << 22U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_PIN 6U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_KEYSCAN1_PIN_MASK (1U << 6U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
 
 /*! @name PORTD0 (number 2), ENCODER2
   @{ */
-#define BOARD_INITPINS_RELEASE_ENCODER2_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_ENCODER2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_ENCODER2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_ENCODER2_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_ENCODER2_PIN 0U                /*!<@brief PORTD pin index: 0 */
-                                                              /* @} */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_ENCODER2_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER2_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER2_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_ENCODER2_GPIO_PIN_MASK (1U << 24U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_ENCODER2_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER2_PIN 0U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_ENCODER2_PIN_MASK (1U << 0U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
 
 /*! @name PORTD1 (number 1), ENCODER1
   @{ */
-#define BOARD_INITPINS_RELEASE_ENCODER1_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_ENCODER1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_ENCODER1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_ENCODER1_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_ENCODER1_PIN 1U                /*!<@brief PORTD pin index: 1 */
-                                                              /* @} */
 
-/*! @name PORTD2 (number 31), GATEOUT1
-  @{ */
-#define BOARD_INITPINS_RELEASE_GATEOUT1_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT1_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT1_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_GATEOUT1_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_GATEOUT1_PIN 2U                /*!<@brief PORTD pin index: 2 */
-                                                              /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_ENCODER1_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER1_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER1_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_ENCODER1_GPIO_PIN_MASK (1U << 25U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTD3 (number 30), GATEOUT2
-  @{ */
-#define BOARD_INITPINS_RELEASE_GATEOUT2_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT2_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_GATEOUT2_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_GATEOUT2_PIN 3U                /*!<@brief PORTD pin index: 3 */
-                                                              /* @} */
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_ENCODER1_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_ENCODER1_PIN 1U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_ENCODER1_PIN_MASK (1U << 1U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
 
-/*! @name PORTD4 (number 29), GATEOUT3
+/*! @name PORTD2 (number 46), GATEOUT1
   @{ */
-#define BOARD_INITPINS_RELEASE_GATEOUT3_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT3_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_GATEOUT3_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_GATEOUT3_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_GATEOUT3_PIN 4U                /*!<@brief PORTD pin index: 4 */
-                                                              /* @} */
 
-/*! @name PORTD5 (number 18), P_KDAT
-  @{ */
-#define BOARD_INITPINS_RELEASE_P_KDAT_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_P_KDAT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_P_KDAT_GPIO_PORT kGPIO_PORTD /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_P_KDAT_PORT PORTD            /*!<@brief PORT device name: PORTD */
-#define BOARD_INITPINS_RELEASE_P_KDAT_PIN 5U                /*!<@brief PORTD pin index: 5 */
-                                                            /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_GPIO_PIN_MASK (1U << 26U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTA0 (number 35), EXTSYNC
-  @{ */
-#define BOARD_INITPINS_RELEASE_EXTSYNC_PORT PORTA /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_RELEASE_EXTSYNC_PIN 0U     /*!<@brief PORTA pin index: 0 */
-                                                  /* @} */
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_PIN 2U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_GATEOUT1_PIN_MASK (1U << 2U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
 
-/*! @name PORTB4 (number 13), KEYSCAN2
+/*! @name PORTD3 (number 45), GATEOUT2
   @{ */
-#define BOARD_INITPINS_RELEASE_KEYSCAN2_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO_PORT kGPIO_PORTB /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_KEYSCAN2_PORT PORTB            /*!<@brief PORT device name: PORTB */
-#define BOARD_INITPINS_RELEASE_KEYSCAN2_PIN 4U                /*!<@brief PORTB pin index: 4 */
-                                                              /* @} */
 
-/*! @name PORTE7 (number 3), OFF_SWITCH
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_GPIO_PIN_MASK (1U << 27U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_PIN 3U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_GATEOUT2_PIN_MASK (1U << 3U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
+
+/*! @name PORTD4 (number 44), GATEOUT3
   @{ */
-#define BOARD_INITPINS_RELEASE_OFF_SWITCH_FGPIO FGPIOB          /*!<@brief FGPIO device name: FGPIOB */
-#define BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
-#define BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
-#define BOARD_INITPINS_RELEASE_OFF_SWITCH_PORT PORTE            /*!<@brief PORT device name: PORTE */
-#define BOARD_INITPINS_RELEASE_OFF_SWITCH_PIN 7U                /*!<@brief PORTE pin index: 7 */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_GPIO_PIN_MASK (1U << 28U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_PIN 4U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_GATEOUT3_PIN_MASK (1U << 4U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
+
+/*! @name PORTD5 (number 24), P_KDAT
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_P_KDAT_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KDAT_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KDAT_GPIO_PORT kGPIO_PORTD    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_P_KDAT_GPIO_PIN_MASK (1U << 29U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_P_KDAT_PORT PORTD               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_P_KDAT_PIN 5U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_P_KDAT_PIN_MASK (1U << 5U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
+
+/*! @name PORTA0 (number 50), EXTSYNC
+  @{ */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_EXTSYNC_PORT PORTA               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_EXTSYNC_PIN 0U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_EXTSYNC_PIN_MASK (1U << 0U)      /*!<@brief PORT pin mask */
                                                                 /* @} */
 
-/*! @name PORTC7 (number 36), AUXIN
+/*! @name PORTB4 (number 19), KEYSCAN2
   @{ */
-#define BOARD_INITPINS_RELEASE_AUXIN_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_AUXIN_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_AUXIN_GPIO_PORT kGPIO_PORTC /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_AUXIN_PORT PORTC            /*!<@brief PORT device name: PORTC */
-#define BOARD_INITPINS_RELEASE_AUXIN_PIN 7U                /*!<@brief PORTC pin index: 7 */
-                                                           /* @} */
 
-/*! @name PORTA7 (number 25), AUXOUT
-  @{ */
-#define BOARD_INITPINS_RELEASE_AUXOUT_FGPIO FGPIOA          /*!<@brief FGPIO device name: FGPIOA */
-#define BOARD_INITPINS_RELEASE_AUXOUT_GPIO GPIOA            /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_RELEASE_AUXOUT_GPIO_PORT kGPIO_PORTA /*!<@brief PORTA GPIO port: PORTA */
-#define BOARD_INITPINS_RELEASE_AUXOUT_PORT PORTA            /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_RELEASE_AUXOUT_PIN 7U                /*!<@brief PORTA pin index: 7 */
-                                                            /* @} */
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO_PORT kGPIO_PORTB    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_GPIO_PIN_MASK (1U << 12U) /*!<@brief GPIO pin mask */
 
-/*! @name PORTE2 (number 38), POWER_CTRL
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_PORT PORTB               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_PIN 4U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_KEYSCAN2_PIN_MASK (1U << 4U)      /*!<@brief PORT pin mask */
+                                                                 /* @} */
+
+/*! @name PORTE7 (number 5), OFF_SWITCH
   @{ */
-#define BOARD_INITPINS_RELEASE_POWER_CTRL_FGPIO FGPIOB          /*!<@brief FGPIO device name: FGPIOB */
-#define BOARD_INITPINS_RELEASE_POWER_CTRL_GPIO GPIOB            /*!<@brief GPIO device name: GPIOB */
-#define BOARD_INITPINS_RELEASE_POWER_CTRL_GPIO_PORT kGPIO_PORTE /*!<@brief PORTB GPIO port: PORTB */
-#define BOARD_INITPINS_RELEASE_POWER_CTRL_PORT PORTE            /*!<@brief PORT device name: PORTE */
-#define BOARD_INITPINS_RELEASE_POWER_CTRL_PIN 2U                /*!<@brief PORTE pin index: 2 */
-                                                                /* @} */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_FGPIO FGPIOB             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO GPIOB               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO_PORT kGPIO_PORTE    /*!<@brief PORTB GPIO port: PORTB */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_GPIO_PIN_MASK (1U << 7U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_PORT PORTE               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_PIN 7U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_OFF_SWITCH_PIN_MASK (1U << 7U)      /*!<@brief PORT pin mask */
+                                                                   /* @} */
+
+/*! @name PORTC7 (number 51), AUXIN
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_AUXIN_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXIN_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXIN_GPIO_PORT kGPIO_PORTC    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_AUXIN_GPIO_PIN_MASK (1U << 23U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_AUXIN_PORT PORTC               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXIN_PIN 7U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_AUXIN_PIN_MASK (1U << 7U)      /*!<@brief PORT pin mask */
+                                                              /* @} */
+
+/*! @name PORTA7 (number 37), AUXOUT
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_AUXOUT_FGPIO FGPIOA             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXOUT_GPIO GPIOA               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXOUT_GPIO_PORT kGPIO_PORTA    /*!<@brief PORTA GPIO port: PORTA */
+#define BOARD_INITPINS_RELEASE_AUXOUT_GPIO_PIN_MASK (1U << 7U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_AUXOUT_PORT PORTA               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_AUXOUT_PIN 7U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_AUXOUT_PIN_MASK (1U << 7U)      /*!<@brief PORT pin mask */
+                                                               /* @} */
+
+/*! @name PORTE2 (number 54), POWER_CTRL
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_FGPIO FGPIOB             /*!<@brief FGPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_GPIO GPIOB               /*!<@brief GPIO peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_GPIO_PORT kGPIO_PORTE    /*!<@brief PORTB GPIO port: PORTB */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_GPIO_PIN_MASK (1U << 2U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_PORT PORTE               /*!<@brief PORT peripheral base pointer */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_PIN 2U                   /*!<@brief PORT pin number */
+#define BOARD_INITPINS_RELEASE_POWER_CTRL_PIN_MASK (1U << 2U)      /*!<@brief PORT pin mask */
+                                                                   /* @} */
 
 /*!
  * @brief Configures pin routing and optionally pin electrical features.

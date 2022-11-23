@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding= "UTF-8" ?>
-<configuration name="MKE04Z128xxx4" version="1.7" xsi:schemaLocation="http://mcuxpresso.nxp.com/XSD/mex_configuration_1.7 http://mcuxpresso.nxp.com/XSD/mex_configuration_1.7.xsd" uuid="dafd6f23-9e53-418b-bb32-a8eaec41ca6d" xmlns="http://mcuxpresso.nxp.com/XSD/mex_configuration_1.7" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<configuration name="" xsi:schemaLocation="http://mcuxpresso.nxp.com/XSD/mex_configuration_11 http://mcuxpresso.nxp.com/XSD/mex_configuration_11.xsd" uuid="58f6ae2c-8189-4473-8699-cfce5830f84a" version="11" xmlns="http://mcuxpresso.nxp.com/XSD/mex_configuration_11" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
    <common>
       <processor>MKE04Z128xxx4</processor>
-      <package>MKE04Z128VLD4</package>
+      <package>MKE04Z128VQH4</package>
       <mcu_data>ksdk2_0</mcu_data>
       <cores selected="core0">
          <core name="Cortex-M0P" id="core0" description="M0P core"/>
@@ -13,34 +13,40 @@
       <validate_boot_init_only>true</validate_boot_init_only>
       <generate_extended_information>false</generate_extended_information>
       <generate_code_modified_registers_only>false</generate_code_modified_registers_only>
+      <update_include_paths>true</update_include_paths>
+      <generate_registers_defines>false</generate_registers_defines>
    </preferences>
    <tools>
-      <pins name="Pins" version="7.0" enabled="true" update_project_code="true">
+      <pins name="Pins" version="11.0" enabled="true" update_project_code="true">
+         <generated_project_files>
+            <file path="board/pin_mux.c" update_enabled="true"/>
+            <file path="board/pin_mux.h" update_enabled="true"/>
+         </generated_project_files>
          <pins_profile>
-            <processor_version>7.0.1</processor_version>
+            <processor_version>11.0.1</processor_version>
             <pin_labels>
                <pin_label pin_num="1" pin_signal="PTD1/KBI0_P25/FTM2_CH3/SPI1_MOSI" label="ENCODER1" identifier="ENCODER1"/>
                <pin_label pin_num="2" pin_signal="PTD0/KBI0_P24/FTM2_CH2/SPI1_SCK" label="ENCODER2" identifier="ENCODER2"/>
-               <pin_label pin_num="12" pin_signal="PTB5/KBI0_P13/FTM2_CH5/SPI0_PCS/ACMP1_OUT" label="LED1" identifier="LED1"/>
-               <pin_label pin_num="14" pin_signal="PTC3/KBI0_P19/FTM2_CH3/ADC0_SE11" label="LED2" identifier="LED2"/>
-               <pin_label pin_num="15" pin_signal="PTC2/KBI0_P18/FTM2_CH2/ADC0_SE10" label="LED3" identifier="LED3"/>
-               <pin_label pin_num="37" pin_signal="PTC6/KBI0_P22/UART1_RX" label="KEYSCAN1" identifier="KEYSCAN1"/>
-               <pin_label pin_num="18" pin_signal="PTD5/KBI0_P29/PWT_IN0" label="P_KDAT" identifier="P_KDAT"/>
-               <pin_label pin_num="19" pin_signal="PTC1/KBI0_P17/FTM2_CH1/ADC0_SE9" label="P_KDAT" identifier="P_KDAT;P_KCLK"/>
-               <pin_label pin_num="20" pin_signal="PTC0/KBI0_P16/FTM2_CH0/ADC0_SE8" label="P_ARCK" identifier="P_ARCK"/>
-               <pin_label pin_num="21" pin_signal="PTB3/KBI0_P11/SPI0_MOSI/FTM0_CH1/ADC0_SE7" label="P_ADAT" identifier="P_ADAT"/>
-               <pin_label pin_num="22" pin_signal="PTB2/KBI0_P10/SPI0_SCK/FTM0_CH0/ADC0_SE6" label="P_ASCK" identifier="P_ASCK"/>
-               <pin_label pin_num="26" pin_signal="PTA6/KBI0_P6/FTM2_FLT1/ACMP1_IN0/ADC0_SE2" label="GATEOUT4" identifier="GATEOUT4"/>
-               <pin_label pin_num="29" pin_signal="PTD4/KBI0_P28" label="GATEOUT3" identifier="GATEOUT3"/>
-               <pin_label pin_num="30" pin_signal="PTD3/KBI0_P27/SPI1_PCS" label="GATEOUT2" identifier="GATEOUT2"/>
-               <pin_label pin_num="31" pin_signal="PTD2/KBI0_P26/SPI1_MISO" label="GATEOUT1" identifier="GATEOUT1"/>
-               <pin_label pin_num="35" pin_signal="PTA0/KBI0_P0/FTM0_CH0/I2C0_4WSCLOUT/ACMP0_IN0/ADC0_SE0" label="EXTSYNC" identifier="EXTSYNC"/>
-               <pin_label pin_num="38" pin_signal="PTE2/KBI1_P2/SPI0_MISO/PWT_IN0" label="POWER_CTRL" identifier="POWER_CTRL"/>
-               <pin_label pin_num="41" pin_signal="PTC5/KBI0_P21/FTM1_CH1/RTCO" label="SYNCOUT" identifier="SYNCOUT"/>
-               <pin_label pin_num="13" pin_signal="PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b" label="KEYSCAN2" identifier="KEYSCAN2"/>
-               <pin_label pin_num="3" pin_signal="PTE7/KBI1_P7/TCLK2/FTM1_CH1" label="OFF_SWITCH" identifier="OFF_SWITCH"/>
-               <pin_label pin_num="36" pin_signal="PTC7/KBI0_P23/UART1_TX" label="AUXIN" identifier="AUXIN"/>
-               <pin_label pin_num="25" pin_signal="PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3" label="AUXOUT" identifier="AUXOUT"/>
+               <pin_label pin_num="18" pin_signal="PTB5/KBI0_P13/FTM2_CH5/SPI0_PCS/ACMP1_OUT" label="LED1" identifier="LED1"/>
+               <pin_label pin_num="20" pin_signal="PTC3/KBI0_P19/FTM2_CH3/ADC0_SE11" label="LED2" identifier="LED2"/>
+               <pin_label pin_num="21" pin_signal="PTC2/KBI0_P18/FTM2_CH2/ADC0_SE10" label="LED3" identifier="LED3"/>
+               <pin_label pin_num="52" pin_signal="PTC6/KBI0_P22/UART1_RX" label="KEYSCAN1" identifier="KEYSCAN1"/>
+               <pin_label pin_num="24" pin_signal="PTD5/KBI0_P29/PWT_IN0" label="P_KDAT" identifier="P_KDAT"/>
+               <pin_label pin_num="25" pin_signal="PTC1/KBI0_P17/FTM2_CH1/ADC0_SE9" label="P_KDAT" identifier="P_KDAT;P_KCLK"/>
+               <pin_label pin_num="26" pin_signal="PTC0/KBI0_P16/FTM2_CH0/ADC0_SE8" label="P_ARCK" identifier="P_ARCK"/>
+               <pin_label pin_num="31" pin_signal="PTB3/KBI0_P11/SPI0_MOSI/FTM0_CH1/ADC0_SE7" label="P_ADAT" identifier="P_ADAT"/>
+               <pin_label pin_num="32" pin_signal="PTB2/KBI0_P10/SPI0_SCK/FTM0_CH0/ADC0_SE6" label="P_ASCK" identifier="P_ASCK"/>
+               <pin_label pin_num="38" pin_signal="PTA6/KBI0_P6/FTM2_FLT1/ACMP1_IN0/ADC0_SE2" label="GATEOUT4" identifier="GATEOUT4"/>
+               <pin_label pin_num="44" pin_signal="PTD4/KBI0_P28" label="GATEOUT3" identifier="GATEOUT3"/>
+               <pin_label pin_num="45" pin_signal="PTD3/KBI0_P27/SPI1_PCS" label="GATEOUT2" identifier="GATEOUT2"/>
+               <pin_label pin_num="46" pin_signal="PTD2/KBI0_P26/SPI1_MISO" label="GATEOUT1" identifier="GATEOUT1"/>
+               <pin_label pin_num="50" pin_signal="PTA0/KBI0_P0/FTM0_CH0/I2C0_4WSCLOUT/ACMP0_IN0/ADC0_SE0" label="EXTSYNC" identifier="EXTSYNC"/>
+               <pin_label pin_num="54" pin_signal="PTE2/KBI1_P2/SPI0_MISO/PWT_IN0" label="POWER_CTRL" identifier="POWER_CTRL"/>
+               <pin_label pin_num="61" pin_signal="PTC5/KBI0_P21/FTM1_CH1/RTCO" label="SYNCOUT" identifier="SYNCOUT"/>
+               <pin_label pin_num="19" pin_signal="PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b" label="KEYSCAN2" identifier="KEYSCAN2"/>
+               <pin_label pin_num="5" pin_signal="PTE7/KBI1_P7/TCLK2/FTM1_CH1" label="OFF_SWITCH" identifier="OFF_SWITCH"/>
+               <pin_label pin_num="51" pin_signal="PTC7/KBI0_P23/UART1_TX" label="AUXIN" identifier="AUXIN"/>
+               <pin_label pin_num="37" pin_signal="PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3" label="AUXOUT" identifier="AUXOUT"/>
             </pin_labels>
          </pins_profile>
          <functions_list>
@@ -94,23 +100,23 @@
                   </dependency>
                </dependencies>
                <pins>
-                  <pin peripheral="I2C0" signal="SCL" pin_num="32" pin_signal="PTA3/KBI0_P3/UART0_TX/I2C0_SCL"/>
-                  <pin peripheral="I2C0" signal="SDA" pin_num="33" pin_signal="PTA2/KBI0_P2/UART0_RX/I2C0_SDA"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 1" pin_num="34" pin_signal="PTA1/KBI0_P1/FTM0_CH1/I2C0_4WSDAOUT/ACMP0_IN1/ADC0_SE1"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 6" pin_num="26" pin_signal="PTA6/KBI0_P6/FTM2_FLT1/ACMP1_IN0/ADC0_SE2"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 10" pin_num="22" pin_signal="PTB2/KBI0_P10/SPI0_SCK/FTM0_CH0/ADC0_SE6"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 11" pin_num="21" pin_signal="PTB3/KBI0_P11/SPI0_MOSI/FTM0_CH1/ADC0_SE7"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 13" pin_num="12" pin_signal="PTB5/KBI0_P13/FTM2_CH5/SPI0_PCS/ACMP1_OUT"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 16" pin_num="20" pin_signal="PTC0/KBI0_P16/FTM2_CH0/ADC0_SE8"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 17" pin_num="19" pin_signal="PTC1/KBI0_P17/FTM2_CH1/ADC0_SE9">
+                  <pin peripheral="I2C0" signal="SCL" pin_num="47" pin_signal="PTA3/KBI0_P3/UART0_TX/I2C0_SCL"/>
+                  <pin peripheral="I2C0" signal="SDA" pin_num="48" pin_signal="PTA2/KBI0_P2/UART0_RX/I2C0_SDA"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 1" pin_num="49" pin_signal="PTA1/KBI0_P1/FTM0_CH1/I2C0_4WSDAOUT/ACMP0_IN1/ADC0_SE1"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 6" pin_num="38" pin_signal="PTA6/KBI0_P6/FTM2_FLT1/ACMP1_IN0/ADC0_SE2"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 10" pin_num="32" pin_signal="PTB2/KBI0_P10/SPI0_SCK/FTM0_CH0/ADC0_SE6"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 11" pin_num="31" pin_signal="PTB3/KBI0_P11/SPI0_MOSI/FTM0_CH1/ADC0_SE7"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 13" pin_num="18" pin_signal="PTB5/KBI0_P13/FTM2_CH5/SPI0_PCS/ACMP1_OUT"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 16" pin_num="26" pin_signal="PTC0/KBI0_P16/FTM2_CH0/ADC0_SE8"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 17" pin_num="25" pin_signal="PTC1/KBI0_P17/FTM2_CH1/ADC0_SE9">
                      <pin_features>
                         <pin_feature name="identifier" value="P_KCLK"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIOA" signal="GPIO, 18" pin_num="15" pin_signal="PTC2/KBI0_P18/FTM2_CH2/ADC0_SE10"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 19" pin_num="14" pin_signal="PTC3/KBI0_P19/FTM2_CH3/ADC0_SE11"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 21" pin_num="41" pin_signal="PTC5/KBI0_P21/FTM1_CH1/RTCO"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 22" pin_num="37" pin_signal="PTC6/KBI0_P22/UART1_RX">
+                  <pin peripheral="GPIOA" signal="GPIO, 18" pin_num="21" pin_signal="PTC2/KBI0_P18/FTM2_CH2/ADC0_SE10"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 19" pin_num="20" pin_signal="PTC3/KBI0_P19/FTM2_CH3/ADC0_SE11"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 21" pin_num="61" pin_signal="PTC5/KBI0_P21/FTM1_CH1/RTCO"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 22" pin_num="52" pin_signal="PTC6/KBI0_P22/UART1_RX">
                      <pin_features>
                         <pin_feature name="direction" value="INPUT"/>
                         <pin_feature name="pullup_enable" value="enable"/>
@@ -126,51 +132,55 @@
                         <pin_feature name="pullup_enable" value="enable"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIOA" signal="GPIO, 26" pin_num="31" pin_signal="PTD2/KBI0_P26/SPI1_MISO"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 27" pin_num="30" pin_signal="PTD3/KBI0_P27/SPI1_PCS"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 28" pin_num="29" pin_signal="PTD4/KBI0_P28"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 29" pin_num="18" pin_signal="PTD5/KBI0_P29/PWT_IN0"/>
-                  <pin peripheral="KBI0" signal="P, 0" pin_num="35" pin_signal="PTA0/KBI0_P0/FTM0_CH0/I2C0_4WSCLOUT/ACMP0_IN0/ADC0_SE0"/>
-                  <pin peripheral="OSC" signal="EXTAL" pin_num="9" pin_signal="PTB7/KBI0_P15/I2C0_SCL/EXTAL"/>
-                  <pin peripheral="OSC" signal="XTAL" pin_num="10" pin_signal="PTB6/KBI0_P14/I2C0_SDA/XTAL"/>
-                  <pin peripheral="UART0" signal="RX" pin_num="24" pin_signal="PTB0/KBI0_P8/UART0_RX/PWT_IN1/ADC0_SE4"/>
-                  <pin peripheral="UART0" signal="TX" pin_num="23" pin_signal="PTB1/KBI0_P9/UART0_TX/ADC0_SE5"/>
-                  <pin peripheral="GPIOA" signal="GPIO, 12" pin_num="13" pin_signal="PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b">
+                  <pin peripheral="GPIOA" signal="GPIO, 26" pin_num="46" pin_signal="PTD2/KBI0_P26/SPI1_MISO"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 27" pin_num="45" pin_signal="PTD3/KBI0_P27/SPI1_PCS"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 28" pin_num="44" pin_signal="PTD4/KBI0_P28"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 29" pin_num="24" pin_signal="PTD5/KBI0_P29/PWT_IN0"/>
+                  <pin peripheral="KBI0" signal="P, 0" pin_num="50" pin_signal="PTA0/KBI0_P0/FTM0_CH0/I2C0_4WSCLOUT/ACMP0_IN0/ADC0_SE0"/>
+                  <pin peripheral="OSC" signal="EXTAL" pin_num="11" pin_signal="PTB7/KBI0_P15/I2C0_SCL/EXTAL"/>
+                  <pin peripheral="OSC" signal="XTAL" pin_num="12" pin_signal="PTB6/KBI0_P14/I2C0_SDA/XTAL"/>
+                  <pin peripheral="UART0" signal="RX" pin_num="34" pin_signal="PTB0/KBI0_P8/UART0_RX/PWT_IN1/ADC0_SE4"/>
+                  <pin peripheral="UART0" signal="TX" pin_num="33" pin_signal="PTB1/KBI0_P9/UART0_TX/ADC0_SE5"/>
+                  <pin peripheral="GPIOA" signal="GPIO, 12" pin_num="19" pin_signal="PTB4/KBI0_P12/FTM2_CH4/SPI0_MISO/ACMP1_IN2/NMI_b">
                      <pin_features>
                         <pin_feature name="direction" value="INPUT"/>
                         <pin_feature name="pullup_enable" value="enable"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="I2C1" signal="SCL" pin_num="39" pin_signal="PTE1/KBI1_P1/SPI0_MOSI/I2C1_SCL"/>
-                  <pin peripheral="GPIOB" signal="GPIO, 7" pin_num="3" pin_signal="PTE7/KBI1_P7/TCLK2/FTM1_CH1">
+                  <pin peripheral="I2C1" signal="SCL" pin_num="59" pin_signal="PTE1/KBI1_P1/SPI0_MOSI/I2C1_SCL"/>
+                  <pin peripheral="GPIOB" signal="GPIO, 7" pin_num="5" pin_signal="PTE7/KBI1_P7/TCLK2/FTM1_CH1">
                      <pin_features>
                         <pin_feature name="direction" value="INPUT"/>
                         <pin_feature name="pullup_enable" value="enable"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIOA" signal="GPIO, 23" pin_num="36" pin_signal="PTC7/KBI0_P23/UART1_TX">
+                  <pin peripheral="GPIOA" signal="GPIO, 23" pin_num="51" pin_signal="PTC7/KBI0_P23/UART1_TX">
                      <pin_features>
                         <pin_feature name="direction" value="INPUT"/>
                         <pin_feature name="pullup_enable" value="enable"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIOA" signal="GPIO, 7" pin_num="25" pin_signal="PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3">
+                  <pin peripheral="GPIOA" signal="GPIO, 7" pin_num="37" pin_signal="PTA7/KBI0_P7/FTM2_FLT2/ACMP1_IN1/ADC0_SE3">
                      <pin_features>
                         <pin_feature name="direction" value="OUTPUT"/>
                      </pin_features>
                   </pin>
-                  <pin peripheral="GPIOB" signal="GPIO, 2" pin_num="38" pin_signal="PTE2/KBI1_P2/SPI0_MISO/PWT_IN0"/>
-                  <pin peripheral="I2C1" signal="SDA" pin_num="40" pin_signal="PTE0/KBI1_P0/SPI0_SCK/TCLK1/I2C1_SDA"/>
+                  <pin peripheral="GPIOB" signal="GPIO, 2" pin_num="54" pin_signal="PTE2/KBI1_P2/SPI0_MISO/PWT_IN0"/>
+                  <pin peripheral="I2C1" signal="SDA" pin_num="60" pin_signal="PTE0/KBI1_P0/SPI0_SCK/TCLK1/I2C1_SDA"/>
                </pins>
             </function>
          </functions_list>
       </pins>
-      <clocks name="Clocks" version="7.0" enabled="true" update_project_code="true">
+      <clocks name="Clocks" version="9.0" enabled="true" update_project_code="true">
+         <generated_project_files>
+            <file path="board/clock_config.c" update_enabled="true"/>
+            <file path="board/clock_config.h" update_enabled="true"/>
+         </generated_project_files>
          <clocks_profile>
-            <processor_version>7.0.1</processor_version>
+            <processor_version>11.0.1</processor_version>
          </clocks_profile>
          <clock_configurations>
-            <clock_configuration name="BOARD_BootClockRUN">
+            <clock_configuration name="BOARD_BootClockRUN" id_prefix="" prefix_user_defined="false">
                <description></description>
                <options/>
                <dependencies>
@@ -235,38 +245,25 @@
          </clock_configurations>
       </clocks>
       <dcdx name="DCDx" version="2.0" enabled="false" update_project_code="true">
+         <generated_project_files/>
          <dcdx_profile>
             <processor_version>N/A</processor_version>
          </dcdx_profile>
          <dcdx_configurations/>
       </dcdx>
-      <periphs name="Peripherals" version="7.0" enabled="true" update_project_code="true">
+      <periphs name="Peripherals" version="5.0" enabled="false" update_project_code="true">
+         <generated_project_files/>
          <peripherals_profile>
-            <processor_version>7.0.1</processor_version>
+            <processor_version>N/A</processor_version>
          </peripherals_profile>
-         <functional_groups>
-            <functional_group name="BOARD_InitPeripherals" uuid="1725ab87-81ac-4105-9782-090da6fa1c04" called_from_default_init="true" id_prefix="" core="core0">
-               <description></description>
-               <options/>
-               <dependencies/>
-               <instances/>
-            </functional_group>
-         </functional_groups>
-         <components>
-            <component name="system" uuid="017b7d5c-3dac-470b-9051-4c04510f224b" type_id="system_54b53072540eeeb8f8e9343e71f28176">
-               <config_set_global name="global_system_definitions"/>
-            </component>
-            <component name="msg" uuid="c3927e33-027b-4896-9372-4f737ab4aab3" type_id="msg_6e2baaf3b97dbeef01c0043275f9a0e7">
-               <config_set_global name="global_messages"/>
-            </component>
-         </components>
+         <functional_groups/>
+         <components/>
       </periphs>
-      <tee name="TEE" version="1.0" enabled="false" update_project_code="true">
+      <tee name="TEE" version="4.0" enabled="false" update_project_code="true">
+         <generated_project_files/>
          <tee_profile>
             <processor_version>N/A</processor_version>
          </tee_profile>
-         <global_options/>
-         <user_memory_regions/>
       </tee>
    </tools>
 </configuration>
