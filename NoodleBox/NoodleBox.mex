@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding= "UTF-8" ?>
-<configuration name="" xsi:schemaLocation="http://mcuxpresso.nxp.com/XSD/mex_configuration_11 http://mcuxpresso.nxp.com/XSD/mex_configuration_11.xsd" uuid="58f6ae2c-8189-4473-8699-cfce5830f84a" version="11" xmlns="http://mcuxpresso.nxp.com/XSD/mex_configuration_11" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<configuration name="MKE04Z128xxx4" xsi:schemaLocation="http://mcuxpresso.nxp.com/XSD/mex_configuration_11 http://mcuxpresso.nxp.com/XSD/mex_configuration_11.xsd" uuid="5bed05ca-c5c2-46ef-8965-eba20c655876" version="11" xmlns="http://mcuxpresso.nxp.com/XSD/mex_configuration_11" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
    <common>
       <processor>MKE04Z128xxx4</processor>
       <package>MKE04Z128VQH4</package>
@@ -18,10 +18,6 @@
    </preferences>
    <tools>
       <pins name="Pins" version="11.0" enabled="true" update_project_code="true">
-         <generated_project_files>
-            <file path="board/pin_mux.c" update_enabled="true"/>
-            <file path="board/pin_mux.h" update_enabled="true"/>
-         </generated_project_files>
          <pins_profile>
             <processor_version>11.0.1</processor_version>
             <pin_labels>
@@ -172,10 +168,6 @@
          </functions_list>
       </pins>
       <clocks name="Clocks" version="9.0" enabled="true" update_project_code="true">
-         <generated_project_files>
-            <file path="board/clock_config.c" update_enabled="true"/>
-            <file path="board/clock_config.h" update_enabled="true"/>
-         </generated_project_files>
          <clocks_profile>
             <processor_version>11.0.1</processor_version>
          </clocks_profile>
@@ -244,23 +236,52 @@
             </clock_configuration>
          </clock_configurations>
       </clocks>
-      <dcdx name="DCDx" version="2.0" enabled="false" update_project_code="true">
-         <generated_project_files/>
+      <dcdx name="DCDx" version="3.0" enabled="false" update_project_code="true">
          <dcdx_profile>
             <processor_version>N/A</processor_version>
          </dcdx_profile>
          <dcdx_configurations/>
       </dcdx>
-      <periphs name="Peripherals" version="5.0" enabled="false" update_project_code="true">
-         <generated_project_files/>
+      <periphs name="Peripherals" version="11.0" enabled="true" update_project_code="true">
          <peripherals_profile>
-            <processor_version>N/A</processor_version>
+            <processor_version>11.0.1</processor_version>
          </peripherals_profile>
-         <functional_groups/>
-         <components/>
+         <functional_groups>
+            <functional_group name="BOARD_InitPeripherals" uuid="1725ab87-81ac-4105-9782-090da6fa1c04" called_from_default_init="true" id_prefix="" core="core0">
+               <description></description>
+               <options/>
+               <dependencies/>
+               <instances/>
+            </functional_group>
+         </functional_groups>
+         <components>
+            <component name="system" uuid="01cd945b-67e5-4c4c-88bc-6cf5eb3d61a6" type_id="system_54b53072540eeeb8f8e9343e71f28176">
+               <config_set_global name="global_system_definitions">
+                  <setting name="user_definitions" value=""/>
+                  <setting name="user_includes" value=""/>
+               </config_set_global>
+            </component>
+            <component name="uart_cmsis_common" uuid="393018c3-733b-4b53-92ad-f611eed148e3" type_id="uart_cmsis_common_9cb8e302497aa696fdbb5a4fd622c2a8">
+               <config_set_global name="global_USART_CMSIS_common" quick_selection="default"/>
+            </component>
+            <component name="gpio_adapter_common" uuid="9dbdee18-3e3b-42c1-9783-29439b9ceea2" type_id="gpio_adapter_common_57579b9ac814fe26bf95df0a384c36b6">
+               <config_set_global name="global_gpio_adapter_common" quick_selection="default"/>
+            </component>
+            <component name="msg" uuid="16250bd4-849b-488d-9bce-52ff7ba513f4" type_id="msg_6e2baaf3b97dbeef01c0043275f9a0e7">
+               <config_set_global name="global_messages"/>
+            </component>
+            <component name="generic_uart" uuid="a269ee27-8baf-4291-9304-379033e64cb6" type_id="generic_uart_8cae00565451cf2346eb1b8c624e73a6">
+               <config_set_global name="global_uart"/>
+            </component>
+            <component name="generic_enet" uuid="0f2b2160-d8b7-4b2c-8373-0b071b0ec435" type_id="generic_enet_74db5c914f0ddbe47d86af40cb77a619">
+               <config_set_global name="global_enet"/>
+            </component>
+            <component name="generic_can" uuid="69f9a3d1-ec70-47c9-926d-6450bf8e3230" type_id="generic_can_1bfdd78b1af214566c1f23cf6a582d80">
+               <config_set_global name="global_can"/>
+            </component>
+         </components>
       </periphs>
       <tee name="TEE" version="4.0" enabled="false" update_project_code="true">
-         <generated_project_files/>
          <tee_profile>
             <processor_version>N/A</processor_version>
          </tee_profile>

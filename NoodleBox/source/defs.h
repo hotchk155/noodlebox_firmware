@@ -19,7 +19,7 @@
 
 
 //#define NB_PROTOTYPE 1		// define this for prototype hardware. Also need to use NoodleboxProto.mex and regenerate code
-#define VERSION_NUMBER				"1.2A"
+#define VERSION_NUMBER				"1.2"
 #define MIDDLE_C_OCTAVE 4 		// should middle C (note 60) be C3 or C4 as displayed in editor
 #define MIDI_TRANSPOSE_ZERO 60	// MIDI note that is zero transposition
 #define OFF_SWITCH_MS	500		// how long the power switch is held before power turns off

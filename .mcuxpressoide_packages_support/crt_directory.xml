@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?debugstack-directory version="1.0"?>
 <directory xmlns:xi="http://www.w3.org/2001/XInclude">
-   <xi:include href="file:/D:/GitHub/matrix_sequencer/matrix-seq-firmware2/.mcuxpressoide_packages_support/MKE06Z128xxx4_support/KE0x_dir_part.xml"/>
-   <xi:include href="file:/D:/GitHub/matrix_sequencer/matrix-seq-firmware2/.mcuxpressoide_packages_support/MKE04Z128xxx4_support/KE0x_dir_part.xml"/>
+   <xi:include href="file:/C:/Users/jason/Dropbox/Github/noodlebox_firmware/.mcuxpressoide_packages_support/MKE06Z128xxx4_support/KE0x_dir_part.xml"/>
+   <xi:include href="file:/C:/Users/jason/Dropbox/Github/noodlebox_firmware/.mcuxpressoide_packages_support/MKE04Z128xxx4_support/KE0x_dir_part.xml"/>
 </directory>
