@@ -580,8 +580,20 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	void set_page_content(byte page_no, CSequencePage& page) {
 		ASSERT(page_no >= 0 && page_no < NUM_PAGES);
+
+		// Save layer loop points.
+		int layer_loop_from = get_page(0).loop_from();
+		int layer_loop_to = get_page(0).loop_to();
+
 		prepare_page(page_no, INIT_BLANK);
 		get_page(page_no) = page;
+
+		// Ensure layer loop points aren't messed up when modifying
+		// page zero in loop-per-layer mode.
+		if (!m_cfg.m_loop_per_page) {
+			get_page(0).loop_from() = layer_loop_from;
+			get_page(0).loop_to() = layer_loop_to;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
