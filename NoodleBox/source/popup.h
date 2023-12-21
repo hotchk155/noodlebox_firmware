@@ -102,12 +102,16 @@ public:
 	/////////////////////////////////////////////////////////////////////////
 	// automatically set left or right alignment based
 	void avoid(int col) {
+		byte prev = m_align;
 		if(col < 16 && m_align != ALIGN_RIGHT) {
 			m_align = ALIGN_RIGHT;
-			m_render = 1;
 		}
 		else if(col >= 16 && m_align != ALIGN_LEFT) {
 			m_align = ALIGN_LEFT;
+		}
+
+		// re-render if alignment changed
+		if (m_len > 0 && prev != m_align) {
 			m_render = 1;
 		}
 	}
