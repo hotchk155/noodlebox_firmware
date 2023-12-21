@@ -291,7 +291,7 @@ public:
 
 			byte layer_update[NUM_LAYERS] = {0}; 			// whether individual layer has updated
 			int any_layer_updated = 0;						// whether any layer has updated
-			int dice_roll = 1+rand()%16;		 			// random value for gate probability
+			int dice_roll = rand()%16;		 			// random value for gate probability
 			clock::TICKS_TYPE ticks = g_clock.get_ticks(); 	// get the current clock tick count
 			for(int i=0; i<NUM_LAYERS; ++i) {
 				int update;
