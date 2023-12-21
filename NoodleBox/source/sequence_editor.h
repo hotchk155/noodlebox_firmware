@@ -61,6 +61,7 @@ class CSequenceEditor {
 		GATE_VIEW_ACCENT,
 		GATE_VIEW_PROB,
 		GATE_VIEW_RETRIG,
+		GATE_VIEW_HOLD,
 		GATE_VIEW_MAX = GATE_VIEW_RETRIG
 	};
 
@@ -175,6 +176,13 @@ class CSequenceEditor {
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
+	void show_gate_hold(CSequenceStep& step) {
+		g_popup.text("HLD.");
+		g_popup.num2digits(step.get_step_count(),1);
+		g_popup.avoid(m_cursor);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
 	void show_gate_accent(CSequenceStep& step) {
 		g_popup.text(step.is(CSequenceStep::ACCENT_POINT) ? "ACC:ON" : "ACC:OFF");
 		g_popup.avoid(m_cursor);
@@ -189,6 +197,22 @@ class CSequenceEditor {
 		g_popup.text(g_sequence.get_layer(3).is_muted()? "$":"4",1);
 		g_popup.avoid(m_cursor);
 		g_popup.no_hide();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	void show_loop_length(int from, int to) {
+		if (from > to) {
+			int tmp = from;
+			from = to;
+			to = tmp;
+		}
+		CSequenceLayer& layer = g_sequence.get_layer(m_cur_layer);
+		int count = 0;
+		for (int i = from; i <= to; i++) {
+			count += layer.get_step(m_cur_page, i).get_step_count();
+		}
+		g_popup.num3digits(count, 0);
+		g_popup.avoid(m_cursor);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -761,6 +785,10 @@ class CSequenceEditor {
 				m_gate_view = GATE_VIEW_RETRIG;
 				show_gate_retrig(step);
 				break;
+			case KEY_GATE|KEY2_GATE_HOLD:
+				m_gate_view = GATE_VIEW_HOLD;
+				show_gate_hold(step);
+				break;
 			case KEY_GATE|KEY2_GATE_VEL:
 				m_gate_view = GATE_VIEW_ACCENT;
 				show_gate_accent(step);
@@ -794,6 +822,12 @@ class CSequenceEditor {
 				layer.set_step(m_cur_page, m_cursor, step);
 				show_gate_retrig(step);
 				m_gate_view = GATE_VIEW_RETRIG;
+				break;
+			case KEY_GATE|KEY2_GATE_HOLD:
+				step.set_hold(inc_value(what, step.get_hold(), 0, CSequenceStep::HOLD_MAX, 0));
+				layer.set_step(m_cur_page, m_cursor, step);
+				show_gate_hold(step);
+				m_gate_view = GATE_VIEW_HOLD;
 				break;
 			case KEY_GATE|KEY2_GATE_VEL:
 				step.set(CSequenceStep::ACCENT_POINT, (what == ACTION_ENC_RIGHT));
@@ -1085,18 +1119,17 @@ class CSequenceEditor {
 			layer.set_pos(m_cursor);
 			break;
 		////////////////////////////////////////////////
+		case ACTION_HOLD:
+			show_loop_length(layer.get_loop_from(m_cur_page), layer.get_loop_to(m_cur_page));
+			break;
+		////////////////////////////////////////////////
 		case ACTION_ENC_LEFT:
 		case ACTION_ENC_RIGHT:
 			cursor_action(what, 0);
 			m_sel_to = m_cursor;
-			if(m_sel_to > m_sel_from) {
-				g_popup.num2digits(m_sel_to - m_sel_from + 1);
-			}
-			else {
-				g_popup.num2digits(m_sel_from - m_sel_to + 1);
-			}
+			show_loop_length(m_sel_from, m_sel_to);
 			break;
-			////////////////////////////////////////////////
+		////////////////////////////////////////////////
 		case ACTION_COMBO_BEGIN:
 			{
 				int page = -1;
@@ -1778,6 +1811,14 @@ public:
 					break;
 				case GATE_VIEW_RETRIG:
 					if(!!step.get_retrig()) {
+						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
+					}
+					else if(trig_or_tie){
+						bri = BRIGHT_LOW;
+					}
+					break;
+				case GATE_VIEW_HOLD:
+					if(!!step.get_hold()) {
 						bri = trig_or_tie? BRIGHT_HIGH : BRIGHT_MED;
 					}
 					else if(trig_or_tie){
